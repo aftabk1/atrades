@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATrades Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg:       #0b0f19;
+    --surface:  #131929;
+    --surface2: #1a2236;
+    --border:   #1f2d45;
+    --text:     #e2e8f0;
+    --muted:    #64748b;
+    --green:    #22c55e;
+    --red:      #ef4444;
+    --yellow:   #eab308;
+    --blue:     #3b82f6;
+    --cyan:     #06b6d4;
+    --accent:   #6366f1;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 13px; min-height: 100vh; }
+
+  /* ── Layout ── */
+  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .logo   { font-size: 18px; font-weight: 700; letter-spacing: 1px; color: var(--cyan); flex: 1; }
+  .main   { padding: 20px 24px; max-width: 1400px; margin: 0 auto; }
+
+  /* ── Tabs ── */
+  .tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
+  .tab  { padding: 8px 20px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; transition: all .15s; font-size: 13px; }
+  .tab:hover  { color: var(--text); }
+  .tab.active { color: var(--cyan); border-bottom-color: var(--cyan); }
+  .tab-panel  { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── Controls ── */
+  input[type=date] { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 6px 10px; border-radius: 6px; font-size: 13px; cursor: pointer; }
+  input[type=date]:focus { outline: none; border-color: var(--accent); }
+  button { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px; transition: background .15s; }
+  button:hover { background: var(--border); }
+  .btn-primary { background: var(--accent); border-color: var(--accent); }
+  .btn-primary:hover { opacity: .85; }
+
+  /* ── Stats bar ── */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .stat  { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+  .stat-label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
+  .stat-value { font-size: 22px; font-weight: 700; margin-top: 4px; }
+
+  /* ── Regime badge ── */
+  .regime { display: inline-flex; align-items: center; gap: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 5px 14px; font-size: 12px; }
+  .regime-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .bull  { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .bear  { background: var(--red);   box-shadow: 0 0 6px var(--red); }
+  .side  { background: var(--yellow); }
+  .hvol  { background: var(--yellow); }
+
+  /* ── Cards ── */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 16px; overflow: hidden; }
+  .card-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .card-title  { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
+  .card-body   { padding: 0; }
+
+  /* ── Tables ── */
+  table { width: 100%; border-collapse: collapse; }
+  th { padding: 8px 12px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td { padding: 9px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+  .num  { text-align: right; font-variant-numeric: tabular-nums; }
+  .mono { font-family: 'Consolas', monospace; }
+
+  /* ── Colours ── */
+  .green  { color: var(--green); }
+  .red    { color: var(--red); }
+  .yellow { color: var(--yellow); }
+  .cyan   { color: var(--cyan); }
+  .muted  { color: var(--muted); }
+
+  /* ── Score bar ── */
+  .score-wrap { display: flex; align-items: center; gap: 8px; }
+  .score-bar  { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; min-width: 50px; }
+  .score-fill { height: 100%; border-radius: 2px; background: var(--cyan); }
+
+  /* ── Trap badge ── */
+  .trap-badge { background: rgba(239,68,68,.15); color: var(--red); border: 1px solid rgba(239,68,68,.3); border-radius: 4px; padding: 1px 6px; font-size: 10px; }
+
+  /* ── PnL chip ── */
+  .pnl-pos { color: var(--green); }
+  .pnl-neg { color: var(--red); }
+
+  /* ── Empty state ── */
+  .empty { padding: 32px; text-align: center; color: var(--muted); }
+
+  /* ── Chart wrapper ── */
+  .chart-wrap { padding: 16px; height: 220px; position: relative; }
+
+  /* ── History table ── */
+  .regime-pill { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; }
+  .bull-pill   { background: rgba(34,197,94,.15);  color: var(--green); }
+  .bear-pill   { background: rgba(239,68,68,.15);  color: var(--red); }
+  .side-pill   { background: rgba(234,179,8,.15);  color: var(--yellow); }
+
+  /* ── Spinner ── */
+  .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--cyan); border-radius: 50%; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Market closed banner ── */
+  .closed-banner { background: rgba(234,179,8,.1); border: 1px solid rgba(234,179,8,.3); color: var(--yellow); border-radius: 6px; padding: 8px 14px; margin-bottom: 16px; font-size: 12px; }
+
+  /* ── Scrollable tables ── */
+  .table-scroll { overflow-x: auto; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="logo">&#9650; ATRADES</div>
+  <div id="regime-badge" class="regime"><span class="regime-dot" id="regime-dot"></span><span id="regime-text">Loading...</span></div>
+  <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
+    <input type="date" id="date-picker">
+    <button onclick="loadToday()">Today</button>
+    <button onclick="refresh()" id="refresh-btn">&#8635; Refresh</button>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="main">
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('today', this)">Today</div>
+    <div class="tab" onclick="switchTab('history', this)">Last 30 Days</div>
+  </div>
+
+  <!-- ── TODAY TAB ── -->
+  <div class="tab-panel active" id="tab-today">
+
+    <div id="closed-banner" class="closed-banner" style="display:none"></div>
+
+    <!-- Stats -->
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-label">Symbols Scanned</div>
+        <div class="stat-value cyan" id="stat-scanned">—</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Candidates</div>
+        <div class="stat-value" id="stat-candidates">—</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Trades Placed</div>
+        <div class="stat-value" id="stat-trades">—</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Scans Run</div>
+        <div class="stat-value muted" id="stat-scans">—</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">ADX</div>
+        <div class="stat-value" id="stat-adx">—</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Regime Mult</div>
+        <div class="stat-value" id="stat-mult">—</div>
+      </div>
+    </div>
+
+    <!-- Scanner Candidates -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Scanner Candidates</span>
+        <span class="muted" id="candidates-ts" style="font-size:11px;"></span>
+      </div>
+      <div class="card-body table-scroll">
+        <table id="candidates-table">
+          <thead>
+            <tr>
+              <th>#</th><th>Symbol</th><th>Score</th>
+              <th class="num">Entry</th><th class="num">Stop</th>
+              <th class="num">Partial&nbsp;2R</th><th class="num">Trail&nbsp;ATR</th>
+              <th class="num">Shares</th><th class="num">R:R</th>
+              <th class="num">$&nbsp;Risk</th>
+              <th class="num">RSI</th><th class="num">RS/SPY</th>
+              <th class="num">Vol</th><th>Trap</th>
+            </tr>
+          </thead>
+          <tbody id="candidates-body">
+            <tr><td colspan="14" class="empty"><span class="spin"></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Trades Placed -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Trades Placed</span>
+      </div>
+      <div class="card-body table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th><th>Symbol</th>
+              <th class="num">Total&nbsp;Sh</th><th class="num">Partial&nbsp;Sh</th><th class="num">Trail&nbsp;Sh</th>
+              <th class="num">Entry</th><th class="num">Stop</th>
+              <th class="num">Partial&nbsp;Target</th><th class="num">Trail&nbsp;ATR</th>
+              <th class="num">Score</th>
+            </tr>
+          </thead>
+          <tbody id="trades-body">
+            <tr><td colspan="10" class="empty"><span class="spin"></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Open Positions -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Open Positions (Live)</span>
+        <button onclick="loadPositions()" style="font-size:11px;padding:3px 10px;">&#8635;</button>
+      </div>
+      <div class="card-body table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Symbol</th><th class="num">Qty</th>
+              <th class="num">Avg&nbsp;Entry</th><th class="num">Current</th>
+              <th class="num">Market&nbsp;Value</th>
+              <th class="num">Unrealized&nbsp;P&amp;L</th><th class="num">%</th>
+            </tr>
+          </thead>
+          <tbody id="positions-body">
+            <tr><td colspan="7" class="empty"><span class="spin"></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /tab-today -->
+
+  <!-- ── HISTORY TAB ── -->
+  <div class="tab-panel" id="tab-history">
+
+    <!-- Chart -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">Daily Candidates Found — Last 30 Days</span></div>
+      <div class="chart-wrap"><canvas id="history-chart"></canvas></div>
+    </div>
+
+    <!-- History Table -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">Daily Summary</span></div>
+      <div class="card-body table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th><th>Regime</th><th class="num">ADX</th>
+              <th class="num">Scanned</th><th class="num">Candidates</th>
+              <th class="num">Trades</th><th class="num">Mult</th>
+            </tr>
+          </thead>
+          <tbody id="history-body">
+            <tr><td colspan="7" class="empty"><span class="spin"></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /tab-history -->
+
+</div><!-- /main -->
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let historyChart = null;
+let currentDate  = todayStr();
+
+// ── Utilities ──────────────────────────────────────────────────────────────
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+function fmt(n, dec=2) {
+  if (n == null) return '—';
+  return Number(n).toFixed(dec);
+}
+function fmtDollar(n) {
+  if (n == null) return '—';
+  return '$' + Number(n).toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
+}
+function fmtTime(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  return d.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit', hour12:false});
+}
+function colorClass(val) {
+  return val > 0 ? 'green' : val < 0 ? 'red' : 'muted';
+}
+
+// ── Tab switching ──────────────────────────────────────────────────────────
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'history') loadHistory();
+}
+
+// ── Dashboard (today / selected date) ─────────────────────────────────────
+async function loadDashboard(dateStr) {
+  currentDate = dateStr;
+  document.getElementById('date-picker').value = dateStr;
+  document.getElementById('refresh-btn').innerHTML = '<span class="spin"></span>';
+
+  try {
+    const res  = await fetch('/api/dashboard?date=' + dateStr);
+    const data = await res.json();
+    renderDashboard(data);
+  } catch(e) {
+    console.error(e);
+  } finally {
+    document.getElementById('refresh-btn').innerHTML = '&#8635; Refresh';
+  }
+
+  loadPositions();
+}
+
+function renderDashboard(d) {
+  // Regime
+  const regimeMap = {
+    'BULL_TREND':      ['bull',  'BULL TREND'],
+    'BEAR_TREND':      ['bear',  'BEAR TREND'],
+    'SIDEWAYS':        ['side',  'SIDEWAYS'],
+    'HIGH_VOLATILITY': ['hvol',  'HIGH VOL'],
+  };
+  const [cls, label] = regimeMap[d.regime] || ['side', d.regime || 'UNKNOWN'];
+  document.getElementById('regime-dot').className  = 'regime-dot ' + cls;
+  document.getElementById('regime-text').textContent =
+    label + (d.adx ? '  ADX ' + fmt(d.adx, 1) : '') +
+    (d.spy_above_200ma ? '  SPY > 200MA' : '');
+
+  // Stats
+  document.getElementById('stat-scanned').textContent    = d.symbols_scanned || '—';
+  document.getElementById('stat-candidates').textContent = d.candidates_found || '0';
+  document.getElementById('stat-trades').textContent     = d.trades_placed    || '0';
+  document.getElementById('stat-scans').textContent      = d.scan_count       || '0';
+  document.getElementById('stat-adx').textContent        = d.adx ? fmt(d.adx, 1) : '—';
+  document.getElementById('stat-mult').textContent       = d.score_multiplier ? fmt(d.score_multiplier, 2) + 'x' : '—';
+
+  // Candidates
+  const cb = document.getElementById('candidates-body');
+  if (!d.candidates || d.candidates.length === 0) {
+    cb.innerHTML = '<tr><td colspan="14" class="empty muted">No candidates found for this date</td></tr>';
+  } else {
+    cb.innerHTML = d.candidates.map((c, i) => `
+      <tr>
+        <td class="muted">${i+1}</td>
+        <td><strong>${c.symbol}</strong></td>
+        <td>
+          <div class="score-wrap">
+            <span>${fmt(c.score,0)}</span>
+            <div class="score-bar"><div class="score-fill" style="width:${c.score}%"></div></div>
+          </div>
+        </td>
+        <td class="num mono">$${fmt(c.entry)}</td>
+        <td class="num mono red">$${fmt(c.stop)}</td>
+        <td class="num mono green">$${fmt(c.target)}</td>
+        <td class="num mono muted">$${fmt(c.trail_atr)}</td>
+        <td class="num">${c.partial_shares||'—'}+${c.trail_shares||'—'}</td>
+        <td class="num">${fmt(c.risk_reward,1)}x</td>
+        <td class="num">${fmtDollar(c.dollar_risk)}</td>
+        <td class="num ${c.rsi > 70 ? 'yellow' : ''}">${fmt(c.rsi,0)}</td>
+        <td class="num ${c.rs_vs_spy > 0 ? 'green' : 'red'}">${c.rs_vs_spy > 0 ? '+' : ''}${fmt(c.rs_vs_spy,1)}%</td>
+        <td class="num ${c.volume_ratio >= 1.5 ? 'green' : c.volume_ratio < 0.8 ? 'muted' : ''}">${fmt(c.volume_ratio,1)}x</td>
+        <td>${c.is_trap ? '<span class="trap-badge">TRAP</span>' : '<span class="muted">—</span>'}</td>
+      </tr>`).join('');
+  }
+
+  // Trades
+  const tb = document.getElementById('trades-body');
+  if (!d.trades || d.trades.length === 0) {
+    tb.innerHTML = '<tr><td colspan="10" class="empty muted">No trades placed this date</td></tr>';
+  } else {
+    tb.innerHTML = d.trades.map(t => `
+      <tr>
+        <td class="muted">${fmtTime(t.ts)}</td>
+        <td><strong>${t.symbol}</strong></td>
+        <td class="num">${t.shares}</td>
+        <td class="num">${t.partial_shares}</td>
+        <td class="num">${t.trail_shares}</td>
+        <td class="num mono">$${fmt(t.entry)}</td>
+        <td class="num mono red">$${fmt(t.stop_loss)}</td>
+        <td class="num mono green">$${fmt(t.partial_target)}</td>
+        <td class="num mono muted">$${fmt(t.trail_atr)}</td>
+        <td class="num">${fmt(t.score,0)}</td>
+      </tr>`).join('');
+  }
+}
+
+// ── Live Positions ─────────────────────────────────────────────────────────
+async function loadPositions() {
+  try {
+    const res  = await fetch('/api/positions');
+    const data = await res.json();
+
+    const banner = document.getElementById('closed-banner');
+    if (!data.market_open && data.next_open) {
+      const next = new Date(data.next_open).toLocaleString('en-US', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+      banner.style.display = 'block';
+      banner.textContent   = 'Market closed — next open ' + next + ' ET';
+    } else {
+      banner.style.display = 'none';
+    }
+
+    const pb = document.getElementById('positions-body');
+    if (data.error) {
+      pb.innerHTML = `<tr><td colspan="7" class="empty muted">Alpaca error: ${data.error}</td></tr>`;
+      return;
+    }
+    if (!data.positions || data.positions.length === 0) {
+      pb.innerHTML = '<tr><td colspan="7" class="empty muted">No open positions</td></tr>';
+      return;
+    }
+    pb.innerHTML = data.positions.map(p => {
+      const plCls = p.unrealized_pl >= 0 ? 'green' : 'red';
+      const sign  = p.unrealized_pl >= 0 ? '+' : '';
+      return `
+        <tr>
+          <td><strong>${p.symbol}</strong></td>
+          <td class="num">${p.qty}</td>
+          <td class="num mono">$${fmt(p.avg_entry)}</td>
+          <td class="num mono">$${fmt(p.current)}</td>
+          <td class="num">${fmtDollar(p.market_value)}</td>
+          <td class="num ${plCls}">${sign}${fmtDollar(p.unrealized_pl)}</td>
+          <td class="num ${plCls}">${sign}${fmt(p.unrealized_plpc,2)}%</td>
+        </tr>`;
+    }).join('');
+  } catch(e) {
+    document.getElementById('positions-body').innerHTML =
+      '<tr><td colspan="7" class="empty muted">Could not load positions</td></tr>';
+  }
+}
+
+// ── History ────────────────────────────────────────────────────────────────
+async function loadHistory() {
+  try {
+    const res  = await fetch('/api/history?days=30');
+    const rows = await res.json();
+    renderHistory(rows);
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+function renderHistory(rows) {
+  // Chart
+  const labels   = rows.map(r => r.date).reverse();
+  const candData = rows.map(r => r.candidates_found || 0).reverse();
+  const tradData = rows.map(r => r.trades_placed    || 0).reverse();
+
+  if (historyChart) historyChart.destroy();
+  const ctx = document.getElementById('history-chart').getContext('2d');
+  historyChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Candidates',
+          data: candData,
+          backgroundColor: 'rgba(6,182,212,.35)',
+          borderColor: 'rgba(6,182,212,.8)',
+          borderWidth: 1,
+          borderRadius: 3,
+        },
+        {
+          label: 'Trades',
+          data: tradData,
+          backgroundColor: 'rgba(99,102,241,.5)',
+          borderColor: 'rgba(99,102,241,.9)',
+          borderWidth: 1,
+          borderRadius: 3,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#94a3b8', boxWidth: 12, font: { size: 11 } } },
+        tooltip: { backgroundColor: '#1a2236', titleColor: '#e2e8f0', bodyColor: '#94a3b8' },
+      },
+      scales: {
+        x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#1f2d45' } },
+        y: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#1f2d45' }, beginAtZero: true },
+      },
+    },
+  });
+
+  // Table
+  const regimePill = r => {
+    if (!r) return '<span class="muted">—</span>';
+    const map = { BULL_TREND:'bull-pill', BEAR_TREND:'bear-pill', SIDEWAYS:'side-pill', HIGH_VOLATILITY:'side-pill' };
+    const lbl = { BULL_TREND:'BULL', BEAR_TREND:'BEAR', SIDEWAYS:'SIDE', HIGH_VOLATILITY:'HVOL' };
+    return `<span class="regime-pill ${map[r]||'side-pill'}">${lbl[r]||r}</span>`;
+  };
+
+  const hb = document.getElementById('history-body');
+  if (!rows || rows.length === 0) {
+    hb.innerHTML = '<tr><td colspan="7" class="empty muted">No history yet — run the scanner to populate data</td></tr>';
+    return;
+  }
+  hb.innerHTML = rows.map(r => `
+    <tr style="cursor:pointer" onclick="jumpToDate('${r.date}')">
+      <td>${r.date}</td>
+      <td>${regimePill(r.regime)}</td>
+      <td class="num">${r.adx ? fmt(r.adx,1) : '—'}</td>
+      <td class="num">${r.symbols_scanned || '—'}</td>
+      <td class="num ${(r.candidates_found||0) > 0 ? 'cyan' : 'muted'}">${r.candidates_found || 0}</td>
+      <td class="num ${(r.trades_placed||0) > 0 ? 'green' : 'muted'}">${r.trades_placed || 0}</td>
+      <td class="num">${r.score_multiplier ? fmt(r.score_multiplier,2)+'x' : '—'}</td>
+    </tr>`).join('');
+}
+
+function jumpToDate(d) {
+  switchTab('today', document.querySelectorAll('.tab')[0]);
+  loadDashboard(d);
+}
+
+// ── Controls ───────────────────────────────────────────────────────────────
+function loadToday() {
+  loadDashboard(todayStr());
+}
+function refresh() {
+  loadDashboard(currentDate);
+  if (document.getElementById('tab-history').classList.contains('active')) loadHistory();
+}
+
+document.getElementById('date-picker').addEventListener('change', e => {
+  loadDashboard(e.target.value);
+});
+
+// ── Auto-refresh every 5 min ───────────────────────────────────────────────
+setInterval(() => refresh(), 5 * 60 * 1000);
+
+// ── Boot ───────────────────────────────────────────────────────────────────
+loadDashboard(todayStr());
+</script>
+</body>
+</html>
