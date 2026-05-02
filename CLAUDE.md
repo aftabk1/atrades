@@ -57,6 +57,42 @@ Commit message style: imperative, lowercase, no period. Lead with the what, incl
 
 Never commit `.env`, `*.db`, or `__pycache__/` — all excluded in `.gitignore`. The remote is `https://github.com/aftabk1/atrades` (private).
 
+## Trading Strategy
+
+### What the system trades
+Momentum breakouts on S&P 500 equities. It looks for stocks breaking out of a consolidation base to new highs with institutional accumulation behind the move. It does not trade shorts, options, or intraday scalps — daily close data only.
+
+### Entry conditions (all must pass)
+A candidate must score ≥ 60/100 and pass the regime gate to qualify for a trade. The score is built from:
+
+| Signal | Max pts | What it measures |
+|---|---|---|
+| Volume surge | 25 | Today's volume ≥ 1.5× 20-day average |
+| 20-day breakout | 20 | Close above 20-day high (mandatory) |
+| Relative strength | 15 | Outperforming SPY over last 20 days |
+| RSI zone | 15 | RSI(14) between 55–70 (momentum, not overbought) |
+| 50-day breakout | 15 | Close above 50-day high (multi-month conviction) |
+| ATR expansion | 10 | Today's ATR > 1.2× 14-day average (volatility expanding) |
+| Consolidation | 10 | Low daily volatility in prior 15 days (tight base) |
+| Higher lows | 10 | Ascending lows over prior 15 days (demand building) |
+| Earnings proximity | 5 | Catalyst within ±7 days |
+| Accumulation bonus | +15 | OBV trend, CMF > 0, up/down volume ratio, block trade days |
+| Bull trap penalty | −40 max | Reversal candles, low volume, gap-and-fade, resistance proximity |
+
+### Market regime gate
+The scanner checks SPY daily before scanning. In `HIGH_VOLATILITY` (realised vol > 30%) it suspends all scanning. In `BEAR_TREND` (SPY < 200MA) it applies a heavy score penalty. In `SIDEWAYS` it raises the score floor. Only `BULL_TREND` (SPY > 200MA, ADX ≥ 25, positive slope) runs at full sensitivity.
+
+### Exit rules (3-order bracket per trade)
+1. **Hard stop** — if price drops to stop before partial fills, exit all shares at stop. No order placed for this; must be monitored manually or via the runner.
+2. **Partial exit (50% of shares)** — GTC limit sell at 2R target, capped at 1.5× entry.
+3. **Trailing stop (remaining 50%)** — GTC trailing stop with trail distance = 2×ATR(14). After partial fills, the trail ratchets up each day: `MAX(trail_stop, close − 2×ATR, previous candle low)`.
+
+### Risk limits
+- Max loss per trade: 1% of portfolio ($1,000 on $100k)
+- Max position size: 10% of portfolio
+- Max concurrent open trades: 4
+- Universe: 503 S&P 500 symbols, min price $25, min avg volume 1M shares/day
+
 ## Architecture
 
 ### Signal → Score → Setup → Orders pipeline
@@ -100,7 +136,7 @@ Key config values live in `config.py` (all overridable via `.env`): `BREAKOUT_AT
 
 ### Windows Task Scheduler (automated daily trading)
 
-`runner.py` is designed to run unattended. Schedule it to start before US market open and stop after close. Times below are IST (UTC+5:30); adjust if timezone differs.
+`runner.py` is designed to run unattended. Schedule it to start before US market open and stop after close. Times below are Doha/AST (UTC+3); adjust if timezone differs.
 
 ```powershell
 # Start runner Mon–Fri at 4:15 PM AST (15 min before US market open)
