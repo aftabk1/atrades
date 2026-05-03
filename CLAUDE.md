@@ -30,7 +30,7 @@ python runner.py --interval 30      # rescan every 30 min
 python -m webapp.app                # http://localhost:8000
 
 # Run regression tests
-python run_tests.py                 # run all 104 tests
+python run_tests.py                 # run all 117 tests
 python run_tests.py -k TestConfig   # run one test class
 python run_tests.py -k "e2e"        # run E2E tests only
 python run_tests.py --cov           # with coverage report
@@ -98,7 +98,7 @@ The scanner checks SPY daily before scanning. In `HIGH_VOLATILITY` (realised vol
 - Max loss per trade: 1% of portfolio ($1,000 on $100k)
 - Max position size: 10% of portfolio
 - Max concurrent open trades: 4
-- Universe: 503 S&P 500 symbols by default (customisable via Config tab → Fallback Symbols), min price $25, min avg volume 1M shares/day
+- Universe: 503 S&P 500 symbols by default (customisable via Config tab → Scanner Universe), min price $25, min avg volume 1M shares/day
 
 ## Architecture
 
@@ -115,6 +115,8 @@ The scanner checks SPY daily before scanning. In `HIGH_VOLATILITY` (realised vol
 7. **Scorer** (`strategy/breakout_scorer.py`) — `BreakoutScorer.score()` produces a 0–100 confidence score.
 8. **Trade setup** (`risk/trade_setup.py`) — `calculate_setup()` takes a `BreakoutSignals` + score and returns a `TradeSetup` with stop, target, sizing. Returns `None` when ATR=0 or risk-per-share is invalid.
 9. **Order execution** (`execution/bracket_orders.py`) — 3 separate Alpaca orders: market buy (all shares), GTC limit sell (partial), GTC trailing stop sell (remainder).
+
+`scanner.py` calls `save_scan()` after every run so scan results and candidates persist to the DB regardless of how the scanner is invoked (CLI or web dashboard Scan Now button).
 
 ### Stop / target / sizing rules
 
@@ -137,26 +139,37 @@ Key config values live in `config.py` (all overridable via `.env`): `BREAKOUT_AT
 |---|---|
 | `GET /api/dashboard?date=` | Single-day scan results |
 | `GET /api/history?days=30` | 30-day summary |
-| `GET /api/positions` | Live Alpaca positions |
+| `GET /api/positions` | Live Alpaca positions (direct API call, reflects all account positions) |
 | `GET /api/config` | All config settings merged with defaults |
 | `POST /api/config` | Write settings back to `.env` |
 | `GET /api/symbols/fallback` | Returns custom override list or default 503 S&P 500 symbols |
 | `POST /api/symbols/fallback` | Saves a custom symbol list to `data/universe_override.json` |
 | `DELETE /api/symbols/fallback/reset` | Deletes the override file, restoring S&P 500 defaults |
+| `GET /api/runner/status` | Whether runner.py daemon is currently running |
+| `POST /api/runner/start` | Start runner.py daemon (accepts `{"dry_run": bool}`) |
+| `POST /api/runner/stop` | Stop runner.py daemon |
+| `POST /api/scan/start` | Run scanner.py immediately (accepts `{"execute": bool}`) |
+| `GET /api/scan/output?offset=N` | Poll scanner subprocess output lines since offset |
 
 The web dashboard (`webapp/static/index.html`) has three tabs:
-- **Today** — latest scan results with signal breakdown
-- **Last 30 Days** — historical summary table
+- **Today** — Open Positions (live) → Trades Placed → Scanner Candidates
+- **Last 30 Days** — historical summary table and chart
 - **Config** — editable configuration (see Config Tab below)
 
-The dashboard auto-refreshes every **15 minutes** with a live countdown timer in the header.
+The dashboard auto-refreshes every **15 minutes** with a live countdown timer in the header. On load it automatically shows the most recent date that has scan data (not necessarily today).
+
+### Scan Now button
+
+The header contains a **Scan Now** button with a **DRY RUN / LIVE** toggle:
+- **DRY RUN** (default, grey) — runs `scanner.py` immediately, streams output to a slide-in panel, no orders placed.
+- **LIVE** (red, requires confirmation) — runs `scanner.py --execute`, placing real bracket orders for qualifying setups.
+- If the runner daemon is already active, the button shows **Stop Runner** and stops it instead.
+- The slide-in panel shows colour-coded output (green = signals, yellow = warnings, red = errors) with a summary on completion and a Scan Again button.
 
 ### Config Tab
 
-The Config tab in the web UI exposes all system settings. Sections:
+The Config tab in the web UI exposes all system settings. Sections (in order):
 
-- **Scanner Universe (Fallback Symbols)** — view all fallback symbols as chips, filter, add new, remove individual, or reset to S&P 500 defaults. Saves to `data/universe_override.json`.
-- **Symbol Exclusions** — comma-separated list of tickers to always skip
 - **Scanner Thresholds** — min score, min price, min volume, ATR multipliers, RSI zone bounds
 - **Risk Management** — max portfolio risk %, max position size %, max open trades
 - **Trade Setup** — partial exit R, partial exit %, trailing stop ATR multiplier
@@ -164,8 +177,9 @@ The Config tab in the web UI exposes all system settings. Sections:
 - **Market Regime** — ADX threshold, regime penalty multiplier
 - **Scanner Schedule** — scan interval, market open buffer
 - **Backtest Settings** — max hold days, slippage
-- **Trading Mode** — `SCAN_MODE` (custom / sp500), dry run toggle
-- **Alpaca Credentials** — API key, secret, base URL (paper vs live)
+- **Trading Mode** — paper trading toggle, Alpaca base URL
+- **Scanner Universe** — view all fallback symbols as chips, filter, add new, remove individual, or reset to S&P 500 defaults. Saves to `data/universe_override.json`.
+- **Alpaca Credentials** — API key, secret key
 
 Clicking "Save Configuration" POSTs to both `/api/config` and `/api/symbols/fallback` in parallel.
 
@@ -177,23 +191,24 @@ Clicking "Save Configuration" POSTs to both `/api/config` and `/api/symbols/fall
 - Override file is deleted by `DELETE /api/symbols/fallback/reset`
 - Absence of the file = use S&P 500 defaults (no override in effect)
 
-`runner.py` — autonomous daemon. Polls Alpaca clock, sleeps until market open, scans 5 min after open, then rescans on `--interval` cadence. Writes logs to `logs/runner_YYYY-MM-DD.log`.
+`runner.py` — autonomous daemon. Polls Alpaca clock, sleeps until market open, scans 5 min after open, then rescans on `--interval` cadence. Writes logs to `logs/runner_YYYY-MM-DD.log`. On scan errors it retries at next interval; on unexpected exceptions it sleeps 60s and restarts the loop automatically.
 
 ### Regression Test Suite
 
-`tests/test_regression.py` — 104 tests across 10 test classes. `tests/conftest.py` holds shared fixtures. `run_tests.py` is a convenience runner.
+`tests/test_regression.py` — 117 tests across 11 test classes. `tests/conftest.py` holds shared fixtures. `run_tests.py` is a convenience runner.
 
 Test classes:
 - `TestConfig` (9) — config/env loading
 - `TestUniverse` (9) — symbol universe and override file
-- `TestStore` (8) — SQLite persistence
+- `TestStore` (9) — SQLite persistence
 - `TestBreakoutSignals` (13) — signal detection pipeline
 - `TestBreakoutScorer` (10) — scoring engine
 - `TestMarketRegime` (11) — regime classification
 - `TestTradeSetup` (11) — trade setup calculation
 - `TestRiskManager` (8) — risk approval logic
-- `TestWebappAPI` (15) — REST API endpoints
+- `TestWebappAPI` (16) — REST API endpoints
 - `TestE2EPipeline` (10) — full end-to-end pipeline
+- `TestRunnerAndScanAPI` (11) — runner daemon and scan subprocess API
 
 Key test fixtures (in `conftest.py`):
 - `make_ohlcv()`, `make_breakout_df()`, `make_spy_df()`, `make_bull_spy_df()`, `make_bear_spy_df()` — OHLCV data generators
@@ -229,10 +244,10 @@ Start-Process python -ArgumentList "-m webapp.app" -NoNewWindow
 
 ```powershell
 # Start runner Mon–Fri at 4:15 PM AST (15 min before US market open)
-schtasks /create /tn "ATrades Start" /sc weekly /d MON,TUE,WED,THU,FRI /st 16:15 /tr "python C:\projects\atrades\runner.py" /f
+schtasks /create /tn "A1TRADES Start" /sc weekly /d MON,TUE,WED,THU,FRI /st 16:15 /tr "python C:\projects\atrades\runner.py" /f
 
 # Stop runner Mon–Fri at 11:15 PM AST (15 min after US market close)
-schtasks /create /tn "ATrades Stop" /sc weekly /d MON,TUE,WED,THU,FRI /st 23:15 /tr "powershell -ExecutionPolicy Bypass -File C:\projects\atrades\stop_runner.ps1" /f
+schtasks /create /tn "A1TRADES Stop" /sc weekly /d MON,TUE,WED,THU,FRI /st 23:15 /tr "powershell -ExecutionPolicy Bypass -File C:\projects\atrades\stop_runner.ps1" /f
 ```
 
 `stop_runner.ps1` kills the runner process by matching the command line — do not inline this in schtasks (escaping breaks). Tasks run as a Windows service and do not need a terminal open, but the PC must be on and not sleeping (`powercfg /change standby-timeout-ac 0`).
