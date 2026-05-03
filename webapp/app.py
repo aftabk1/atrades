@@ -1,5 +1,5 @@
 """
-ATrades Web Dashboard — FastAPI backend.
+A1TRADES Web Dashboard — FastAPI backend.
 
 Endpoints:
   GET  /                        → dashboard HTML
@@ -120,7 +120,7 @@ async def lifespan(app):
     init_db()
     yield
 
-app = FastAPI(title="ATrades Dashboard", docs_url=None, redoc_url=None, lifespan=lifespan)
+app = FastAPI(title="A1TRADES Dashboard", docs_url=None, redoc_url=None, lifespan=lifespan)
 
 STATIC = Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=str(STATIC)), name="static")
@@ -245,14 +245,17 @@ _scan_running: bool      = False
 
 
 @app.post("/api/scan/start")
-def scan_start():
+def scan_start(body: dict = Body(default={})):
     global _scan_proc, _scan_lines, _scan_running
     if _scan_running:
         return {"ok": False, "message": "scan already running"}
     _scan_lines   = []
     _scan_running = True
+    cmd = [sys.executable, str(ROOT / "scanner.py")]
+    if body.get("execute"):
+        cmd.append("--execute")
     _scan_proc    = subprocess.Popen(
-        [sys.executable, str(ROOT / "scanner.py")],
+        cmd,
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
         text=True, cwd=str(ROOT),
         encoding="utf-8", errors="replace",

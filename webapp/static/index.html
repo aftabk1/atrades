@@ -3,7 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ATrades Dashboard</title>
+<title>A1TRADES Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="/static/A1Trades.png?v=2">
+<link rel="shortcut icon" type="image/png" href="/static/A1Trades.png?v=2">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <style>
   :root {
@@ -25,7 +29,9 @@
 
   /* ── Layout ── */
   .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-  .logo   { font-size: 18px; font-weight: 700; letter-spacing: 1px; color: var(--cyan); flex: 1; }
+  .logo   { font-family: 'Exo 2', 'Segoe UI', sans-serif; font-size: 20px; font-weight: 800; letter-spacing: 2px; color: var(--cyan); flex: 1; display: flex; align-items: center; gap: 10px; }
+  .logo span.logo-one { color: #fff; }
+  .logo img.logo-icon { width: 40px; height: 40px; border-radius: 9px; flex-shrink: 0; margin: -4px 0; }
   .main   { padding: 20px 24px; max-width: 1400px; margin: 0 auto; }
 
   /* ── Tabs ── */
@@ -183,6 +189,10 @@
   /* refresh countdown */
   .refresh-info { font-size: 11px; color: var(--muted); }
 
+  /* execute mode toggle */
+  #execute-toggle { transition: background .15s, color .15s; }
+  #execute-toggle.live { background: rgba(239,68,68,.15); color: var(--red); font-weight: 700; }
+
   /* ── Scan progress panel ── */
   .scan-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 200; opacity: 0; pointer-events: none; transition: opacity .25s; }
   .scan-overlay.open { opacity: 1; pointer-events: all; }
@@ -227,14 +237,23 @@
 
 <!-- Header -->
 <div class="header">
-  <div class="logo">&#9650; ATRADES</div>
+  <div class="logo">
+    <img class="logo-icon" src="/static/A1Trades.png?v=2" alt="A1TRADES">
+    A1<span class="logo-one">TRADES</span>
+  </div>
   <div id="regime-badge" class="regime"><span class="regime-dot" id="regime-dot"></span><span id="regime-text">Loading...</span></div>
   <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
     <span class="refresh-info" id="refresh-countdown"></span>
     <input type="date" id="date-picker">
     <button onclick="loadToday()">Today</button>
     <button onclick="refresh()" id="refresh-btn">&#8635; Refresh</button>
-    <button onclick="onScanNowClick()" id="runner-btn"><span class="runner-dot" id="runner-dot"></span><span id="runner-label">Scan Now</span></button>
+    <div style="display:flex;align-items:center;gap:0;border:1px solid var(--border);border-radius:6px;overflow:hidden;">
+      <button onclick="onScanNowClick()" id="runner-btn" style="border:none;border-radius:0;"><span class="runner-dot" id="runner-dot"></span><span id="runner-label">Scan Now</span></button>
+      <div style="width:1px;background:var(--border);height:100%;align-self:stretch;"></div>
+      <div id="execute-toggle" onclick="toggleExecuteMode()" title="Toggle live order execution" style="padding:6px 10px;cursor:pointer;font-size:11px;color:var(--muted);background:var(--surface2);user-select:none;white-space:nowrap;">
+        DRY RUN
+      </div>
+    </div>
   </div>
 </div>
 
@@ -950,8 +969,25 @@ setInterval(updateRunnerStatus, 10000);
 
 // ── Scan progress panel ─────────────────────────────────────────────────────
 
-let _scanPollTimer = null;
-let _scanOffset    = 0;
+let _scanPollTimer  = null;
+let _scanOffset     = 0;
+let _scanExecute    = false;
+
+function toggleExecuteMode() {
+  _scanExecute = !_scanExecute;
+  const el = document.getElementById('execute-toggle');
+  if (_scanExecute) {
+    if (!confirm('Switch to LIVE mode? Scan Now will place real orders on your Alpaca account.')) {
+      _scanExecute = false;
+      return;
+    }
+    el.textContent = 'LIVE';
+    el.classList.add('live');
+  } else {
+    el.textContent = 'DRY RUN';
+    el.classList.remove('live');
+  }
+}
 
 function openScanPanel() {
   document.getElementById('scan-overlay').classList.add('open');
@@ -974,9 +1010,12 @@ async function startScan() {
   document.getElementById('scan-status-label').textContent = 'Running…';
   document.getElementById('scan-status-label').style.color = 'var(--cyan)';
   document.getElementById('scan-again-btn').style.display  = 'none';
+  const modeLabel = _scanExecute ? '⚡ LIVE — orders will be placed' : 'Dry run — no orders';
+  const modeCls   = _scanExecute ? 'error' : 'mute';
+  appendScanLine(modeLabel, modeCls);
   appendScanLine('Starting scanner…', 'mute');
   try {
-    await fetch('/api/scan/start', { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
+    await fetch('/api/scan/start', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({execute: _scanExecute}) });
   } catch(e) {
     appendScanLine('Failed to start scan: ' + e.message, 'error');
     return;

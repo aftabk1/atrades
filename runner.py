@@ -1,5 +1,5 @@
 """
-ATrades Autonomous Runner
+A1TRADES Autonomous Runner
 
 Runs the breakout scanner during US market hours, places trades automatically,
 and sleeps between sessions. No manual intervention needed.
@@ -19,8 +19,8 @@ Usage:
     python runner.py --dry-run              # scan + print, no orders placed
 
 Windows autostart (Task Scheduler):
-    schtasks /create /tn "ATrades" /sc daily /st 09:20 /tr "python C:\\projects\\atrades\\runner.py" /f
-    schtasks /delete /tn "ATrades" /f
+    schtasks /create /tn "A1TRADES" /sc daily /st 09:20 /tr "python C:\\projects\\atrades\\runner.py" /f
+    schtasks /delete /tn "A1TRADES" /f
 """
 
 from __future__ import annotations
@@ -178,7 +178,7 @@ def _wait_for_close(scanner: BreakoutScanner) -> None:
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main() -> None:
-    p = argparse.ArgumentParser(description="ATrades autonomous trading runner")
+    p = argparse.ArgumentParser(description="A1TRADES autonomous trading runner")
     p.add_argument("--interval", type=int, default=60,
                    help="Re-scan interval in minutes (0 = once at open only, default: 60)")
     p.add_argument("--dry-run",  action="store_true",
@@ -192,7 +192,7 @@ def main() -> None:
     rescan  = f"every {args.interval} min" if args.interval > 0 else "once at open"
 
     logger.info("=" * 58)
-    logger.info(f"  ATrades Autonomous Runner")
+    logger.info(f"  A1TRADES Autonomous Runner")
     logger.info(f"  Mode     : {mode}")
     logger.info(f"  Scan     : {rescan}")
     logger.info(f"  Universe : {config.MAX_CONCURRENT_TRADES} max positions | "

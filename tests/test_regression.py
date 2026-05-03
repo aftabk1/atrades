@@ -17,6 +17,7 @@ Sections:
   8. Risk Manager
   9. Webapp API Endpoints
   10. End-to-End Pipeline
+  11. Runner & Scan API
 """
 from __future__ import annotations
 
@@ -658,7 +659,7 @@ class TestWebappAPI:
         r = api_client.get("/")
         assert r.status_code == 200
         assert "text/html" in r.headers["content-type"]
-        assert "ATrades" in r.text
+        assert "A1TRADES" in r.text
 
     def test_dashboard_today_returns_dict(self, api_client):
         r = api_client.get("/api/dashboard")
@@ -766,6 +767,10 @@ class TestWebappAPI:
     def test_post_fallback_symbols_rejects_non_list(self, api_client):
         r = api_client.post("/api/symbols/fallback", json={"symbols": "AAPL,NVDA"})
         assert r.status_code == 400 or r.json().get("ok") is False
+
+    def test_config_does_not_contain_symbol_exclusions(self, api_client):
+        r = api_client.get("/api/config")
+        assert "SYMBOL_EXCLUSIONS" not in r.json()
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -929,3 +934,110 @@ class TestE2EPipeline:
         r2 = api_client.get("/api/symbols/fallback")
         assert r2.json()["is_custom"] is False
         assert len(r2.json()["symbols"]) >= 400
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 11. RUNNER & SCAN API
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestRunnerAndScanAPI:
+    """Tests for /api/runner/* and /api/scan/* endpoints."""
+
+    # ── Runner status ─────────────────────────────────────────────────────────
+
+    def test_runner_status_returns_running_key(self, api_client):
+        r = api_client.get("/api/runner/status")
+        assert r.status_code == 200
+        assert "running" in r.json()
+        assert isinstance(r.json()["running"], bool)
+
+    def test_runner_not_running_by_default(self, api_client):
+        r = api_client.get("/api/runner/status")
+        assert r.json()["running"] is False
+
+    def test_runner_stop_when_not_running(self, api_client):
+        r = api_client.post("/api/runner/stop", json={})
+        assert r.status_code == 200
+        assert r.json()["ok"] is True
+        assert r.json()["running"] is False
+
+    def test_runner_start_spawns_process(self, api_client):
+        mock_proc = MagicMock()
+        mock_proc.poll.return_value = None
+        with patch("webapp.app.subprocess.Popen", return_value=mock_proc):
+            r = api_client.post("/api/runner/start", json={})
+        assert r.status_code == 200
+        assert r.json()["ok"] is True
+        assert r.json()["running"] is True
+
+    def test_runner_start_dry_run_adds_flag(self, api_client):
+        import webapp.app as app_module
+        app_module._runner_proc = None
+        mock_proc = MagicMock()
+        mock_proc.poll.return_value = None
+        with patch("webapp.app.subprocess.Popen", return_value=mock_proc) as mock_popen:
+            api_client.post("/api/runner/start", json={"dry_run": True})
+        cmd = mock_popen.call_args[0][0]
+        assert "--dry-run" in cmd
+
+    def test_runner_start_live_omits_dry_run_flag(self, api_client):
+        import webapp.app as app_module
+        app_module._runner_proc = None
+        mock_proc = MagicMock()
+        mock_proc.poll.return_value = None
+        with patch("webapp.app.subprocess.Popen", return_value=mock_proc) as mock_popen:
+            api_client.post("/api/runner/start", json={"dry_run": False})
+        cmd = mock_popen.call_args[0][0]
+        assert "--dry-run" not in cmd
+
+    # ── Scan output ───────────────────────────────────────────────────────────
+
+    def test_scan_output_returns_correct_shape(self, api_client):
+        r = api_client.get("/api/scan/output")
+        assert r.status_code == 200
+        data = r.json()
+        assert "lines" in data
+        assert "offset" in data
+        assert "running" in data
+        assert isinstance(data["lines"], list)
+        assert isinstance(data["running"], bool)
+
+    def test_scan_output_not_running_by_default(self, api_client):
+        r = api_client.get("/api/scan/output")
+        assert r.json()["running"] is False
+
+    def test_scan_output_offset_parameter(self, api_client):
+        r = api_client.get("/api/scan/output?offset=0")
+        assert r.status_code == 200
+        assert r.json()["offset"] == 0
+
+    # ── Scan start ────────────────────────────────────────────────────────────
+
+    def test_scan_start_dry_run_omits_execute_flag(self, api_client):
+        mock_proc = MagicMock()
+        mock_proc.stdout = iter([])
+        with patch("webapp.app.subprocess.Popen", return_value=mock_proc) as mock_popen:
+            r = api_client.post("/api/scan/start", json={"execute": False})
+        assert r.status_code == 200
+        assert r.json()["ok"] is True
+        cmd = mock_popen.call_args[0][0]
+        assert "--execute" not in cmd
+
+    def test_scan_start_live_adds_execute_flag(self, api_client):
+        mock_proc = MagicMock()
+        mock_proc.stdout = iter([])
+        with patch("webapp.app.subprocess.Popen", return_value=mock_proc) as mock_popen:
+            r = api_client.post("/api/scan/start", json={"execute": True})
+        assert r.status_code == 200
+        cmd = mock_popen.call_args[0][0]
+        assert "--execute" in cmd
+
+    def test_scan_start_while_running_returns_not_ok(self, api_client):
+        import webapp.app as app_module
+        original = app_module._scan_running
+        app_module._scan_running = True
+        try:
+            r = api_client.post("/api/scan/start", json={})
+            assert r.json()["ok"] is False
+        finally:
+            app_module._scan_running = original

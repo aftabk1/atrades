@@ -1,5 +1,5 @@
 """
-ATrades Breakout Scanner
+A1TRADES Breakout Scanner
 ────────────────────────
 Identifies high-probability breakout setups in US equities using a
 multi-factor scoring model augmented with:
@@ -509,7 +509,7 @@ def _dict_to_trade_setup(c: dict) -> TradeSetup:
 
 def _build_arg_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        description="ATrades Breakout Scanner v2 — high-probability US equity breakouts",
+        description="A1TRADES Breakout Scanner v2 — high-probability US equity breakouts",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
