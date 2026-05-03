@@ -564,6 +564,14 @@ def main() -> None:
 
     candidates = scanner.scan(symbols=args.symbols)
 
+    try:
+        from data.store import init_db, save_scan
+        init_db()
+        universe_size = len(scanner._universe.get_symbols())
+        save_scan(candidates, universe_size, scanner._last_regime)
+    except Exception:
+        pass
+
     if args.json:
         print(scanner.to_json(candidates))
     else:

@@ -54,6 +54,11 @@
   .btn-danger  { background: rgba(239,68,68,.15); border-color: rgba(239,68,68,.4); color: var(--red); }
   .btn-danger:hover { background: rgba(239,68,68,.25); }
   .btn-sm { padding: 4px 10px; font-size: 11px; }
+  .btn-green { background: rgba(34,197,94,.15); border-color: rgba(34,197,94,.4); color: var(--green); }
+  .btn-green:hover { background: rgba(34,197,94,.25); }
+  .runner-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; background: var(--muted); }
+  .runner-dot.on { background: var(--green); box-shadow: 0 0 5px var(--green); animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 
   /* ── Stats bar ── */
   .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
@@ -177,9 +182,45 @@
 
   /* refresh countdown */
   .refresh-info { font-size: 11px; color: var(--muted); }
+
+  /* ── Scan progress panel ── */
+  .scan-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 200; opacity: 0; pointer-events: none; transition: opacity .25s; }
+  .scan-overlay.open { opacity: 1; pointer-events: all; }
+  .scan-panel { position: fixed; top: 0; right: -480px; width: 460px; max-width: 96vw; height: 100vh; background: var(--surface); border-left: 1px solid var(--border); display: flex; flex-direction: column; z-index: 201; transition: right .28s cubic-bezier(.4,0,.2,1); box-shadow: -8px 0 32px rgba(0,0,0,.4); }
+  .scan-panel.open { right: 0; }
+  .scan-panel-header { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .scan-panel-title { font-size: 13px; font-weight: 700; letter-spacing: .3px; flex: 1; }
+  .scan-panel-status { font-size: 11px; color: var(--muted); }
+  .scan-panel-close { background: none; border: none; color: var(--muted); font-size: 18px; cursor: pointer; padding: 0 4px; line-height: 1; }
+  .scan-panel-close:hover { color: var(--text); background: none; }
+  .scan-log { flex: 1; overflow-y: auto; padding: 12px 16px; font-family: 'Consolas', monospace; font-size: 11.5px; line-height: 1.7; }
+  .scan-log-line { white-space: pre-wrap; word-break: break-all; }
+  .scan-log-line.info  { color: var(--text); }
+  .scan-log-line.warn  { color: var(--yellow); }
+  .scan-log-line.error { color: var(--red); }
+  .scan-log-line.good  { color: var(--green); }
+  .scan-log-line.mute  { color: var(--muted); }
+  .scan-panel-footer { padding: 10px 16px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .scan-panel-footer .scan-summary { font-size: 11px; color: var(--muted); flex: 1; }
 </style>
 </head>
 <body>
+
+<!-- Scan progress panel -->
+<div class="scan-overlay" id="scan-overlay" onclick="closeScanPanel()"></div>
+<div class="scan-panel" id="scan-panel">
+  <div class="scan-panel-header">
+    <span class="scan-panel-title">&#9654; Scan Progress</span>
+    <span class="scan-panel-status" id="scan-status-label">Idle</span>
+    <button class="scan-panel-close" onclick="closeScanPanel()">&#10005;</button>
+  </div>
+  <div class="scan-log" id="scan-log"></div>
+  <div class="scan-panel-footer">
+    <span class="scan-summary" id="scan-summary"></span>
+    <button class="btn-sm" onclick="clearScanLog()">Clear</button>
+    <button class="btn-sm btn-primary" id="scan-again-btn" onclick="startScan()" style="display:none">&#9654; Scan Again</button>
+  </div>
+</div>
 
 <!-- Toast -->
 <div class="toast" id="toast"></div>
@@ -193,6 +234,7 @@
     <input type="date" id="date-picker">
     <button onclick="loadToday()">Today</button>
     <button onclick="refresh()" id="refresh-btn">&#8635; Refresh</button>
+    <button onclick="onScanNowClick()" id="runner-btn"><span class="runner-dot" id="runner-dot"></span><span id="runner-label">Scan Now</span></button>
   </div>
 </div>
 
@@ -239,27 +281,24 @@
       </div>
     </div>
 
-    <!-- Scanner Candidates -->
+    <!-- Open Positions -->
     <div class="card">
       <div class="card-header">
-        <span class="card-title">Scanner Candidates</span>
-        <span class="muted" id="candidates-ts" style="font-size:11px;"></span>
+        <span class="card-title">Open Positions (Live)</span>
+        <button onclick="loadPositions()" style="font-size:11px;padding:3px 10px;">&#8635;</button>
       </div>
       <div class="card-body table-scroll">
-        <table id="candidates-table">
+        <table>
           <thead>
             <tr>
-              <th>#</th><th>Symbol</th><th>Score</th>
-              <th class="num">Entry</th><th class="num">Stop</th>
-              <th class="num">Partial&nbsp;2R</th><th class="num">Trail&nbsp;ATR</th>
-              <th class="num">Shares</th><th class="num">R:R</th>
-              <th class="num">$&nbsp;Risk</th>
-              <th class="num">RSI</th><th class="num">RS/SPY</th>
-              <th class="num">Vol</th><th>Trap</th>
+              <th>Symbol</th><th class="num">Qty</th>
+              <th class="num">Avg&nbsp;Entry</th><th class="num">Current</th>
+              <th class="num">Market&nbsp;Value</th>
+              <th class="num">Unrealized&nbsp;P&amp;L</th><th class="num">%</th>
             </tr>
           </thead>
-          <tbody id="candidates-body">
-            <tr><td colspan="14" class="empty"><span class="spin"></span></td></tr>
+          <tbody id="positions-body">
+            <tr><td colspan="7" class="empty"><span class="spin"></span></td></tr>
           </tbody>
         </table>
       </div>
@@ -288,24 +327,27 @@
       </div>
     </div>
 
-    <!-- Open Positions -->
+    <!-- Scanner Candidates -->
     <div class="card">
       <div class="card-header">
-        <span class="card-title">Open Positions (Live)</span>
-        <button onclick="loadPositions()" style="font-size:11px;padding:3px 10px;">&#8635;</button>
+        <span class="card-title">Scanner Candidates</span>
+        <span class="muted" id="candidates-ts" style="font-size:11px;"></span>
       </div>
       <div class="card-body table-scroll">
-        <table>
+        <table id="candidates-table">
           <thead>
             <tr>
-              <th>Symbol</th><th class="num">Qty</th>
-              <th class="num">Avg&nbsp;Entry</th><th class="num">Current</th>
-              <th class="num">Market&nbsp;Value</th>
-              <th class="num">Unrealized&nbsp;P&amp;L</th><th class="num">%</th>
+              <th>#</th><th>Symbol</th><th>Score</th>
+              <th class="num">Entry</th><th class="num">Stop</th>
+              <th class="num">Partial&nbsp;2R</th><th class="num">Trail&nbsp;ATR</th>
+              <th class="num">Shares</th><th class="num">R:R</th>
+              <th class="num">$&nbsp;Risk</th>
+              <th class="num">RSI</th><th class="num">RS/SPY</th>
+              <th class="num">Vol</th><th>Trap</th>
             </tr>
           </thead>
-          <tbody id="positions-body">
-            <tr><td colspan="7" class="empty"><span class="spin"></span></td></tr>
+          <tbody id="candidates-body">
+            <tr><td colspan="14" class="empty"><span class="spin"></span></td></tr>
           </tbody>
         </table>
       </div>
@@ -343,43 +385,6 @@
 
   <!-- ── CONFIG TAB ── -->
   <div class="tab-panel" id="tab-config">
-
-    <!-- Symbol Watchlist -->
-    <div class="cfg-card" style="margin-bottom:16px;">
-      <div class="cfg-card-header">
-        <span class="cfg-card-icon">&#128202;</span>
-        <span class="cfg-card-title">Scanner Universe — Fallback Symbols</span>
-        <span id="symbol-count-badge" style="margin-left:auto;font-size:11px;color:var(--cyan);background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.25);border-radius:12px;padding:2px 10px;"></span>
-        <button class="btn-sm" onclick="resetFallbackSymbols()" style="margin-left:8px;" id="reset-universe-btn">Reset to defaults</button>
-      </div>
-      <div class="cfg-card-body">
-        <div style="color:var(--muted);font-size:11px;padding:8px 0 8px;">
-          The scanner uses this list as its universe. Add any ticker — S&amp;P 500 stocks, ETFs, ADRs, or anything else.
-        </div>
-        <input type="text" id="symbol-filter" placeholder="&#128269; Filter symbols..." oninput="filterSymbols(this.value)" style="margin-bottom:8px;">
-        <div class="chip-area" id="symbol-chips" style="max-height:220px;overflow-y:auto;padding-right:4px;"></div>
-        <div class="chip-add-row" style="margin-top:8px;">
-          <input type="text" id="symbol-input" placeholder="Add symbol (e.g. NVDA, QQQ, BRK.B)" maxlength="10" onkeydown="if(event.key==='Enter') addSymbol()">
-          <button onclick="addSymbol()">+ Add</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Symbol Exclusions -->
-    <div class="cfg-card" style="margin-bottom:16px;">
-      <div class="cfg-card-header">
-        <span class="cfg-card-icon">&#128683;</span>
-        <span class="cfg-card-title">Symbol Exclusions</span>
-      </div>
-      <div class="cfg-card-body">
-        <div style="color:var(--muted);font-size:11px;padding-top:8px;">Always skip these symbols regardless of score.</div>
-        <div class="chip-area" id="exclusion-chips"></div>
-        <div class="chip-add-row">
-          <input type="text" id="exclusion-input" placeholder="e.g. GME" maxlength="10" onkeydown="if(event.key==='Enter') addExclusion()">
-          <button onclick="addExclusion()">+ Add</button>
-        </div>
-      </div>
-    </div>
 
     <!-- 2-col grid -->
     <div class="config-grid">
@@ -591,6 +596,27 @@
 
     </div><!-- /config-grid -->
 
+    <!-- Scanner Universe -->
+    <div class="cfg-card" style="margin-bottom:16px;">
+      <div class="cfg-card-header">
+        <span class="cfg-card-icon">&#128202;</span>
+        <span class="cfg-card-title">Scanner Universe</span>
+        <span id="symbol-count-badge" style="margin-left:auto;font-size:11px;color:var(--cyan);background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.25);border-radius:12px;padding:2px 10px;"></span>
+        <button class="btn-sm" onclick="resetFallbackSymbols()" style="margin-left:8px;" id="reset-universe-btn">Reset to defaults</button>
+      </div>
+      <div class="cfg-card-body">
+        <div style="color:var(--muted);font-size:11px;padding:8px 0 8px;">
+          The scanner uses this list as its universe. Add any ticker — S&amp;P 500 stocks, ETFs, ADRs, or anything else.
+        </div>
+        <input type="text" id="symbol-filter" placeholder="&#128269; Filter symbols..." oninput="filterSymbols(this.value)" style="margin-bottom:8px;">
+        <div class="chip-area" id="symbol-chips" style="max-height:220px;overflow-y:auto;padding-right:4px;"></div>
+        <div class="chip-add-row" style="margin-top:8px;">
+          <input type="text" id="symbol-input" placeholder="Add symbol (e.g. NVDA, QQQ, BRK.B)" maxlength="10" onkeydown="if(event.key==='Enter') addSymbol()">
+          <button onclick="addSymbol()">+ Add</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Alpaca Credentials -->
     <div class="cfg-card" style="margin-bottom:80px;">
       <div class="cfg-card-header"><span class="cfg-card-icon">&#128273;</span><span class="cfg-card-title">Alpaca Credentials</span></div>
@@ -626,7 +652,6 @@ let historyChart  = null;
 let currentDate   = todayStr();
 let fallbackSymbols = [];
 let symbolFilter    = '';
-let exclusionList   = [];
 let refreshTimer    = null;
 let countdown     = 15 * 60; // seconds
 
@@ -875,6 +900,142 @@ function tickCountdown() {
 setInterval(tickCountdown, 1000);
 resetCountdown();
 
+// ── Runner daemon status ────────────────────────────────────────────────────
+
+async function updateRunnerStatus() {
+  try {
+    const r = await fetch('/api/runner/status');
+    const d = await r.json();
+    setRunnerUI(d.running);
+  } catch {}
+}
+
+function setRunnerUI(running) {
+  const dot   = document.getElementById('runner-dot');
+  const label = document.getElementById('runner-label');
+  const btn   = document.getElementById('runner-btn');
+  if (running) {
+    dot.classList.add('on');
+    label.textContent = 'Stop Runner';
+    btn.classList.remove('btn-green');
+    btn.classList.add('btn-danger');
+  } else {
+    dot.classList.remove('on');
+    label.textContent = 'Scan Now';
+    btn.classList.remove('btn-danger');
+    btn.classList.add('btn-green');
+  }
+}
+
+async function onScanNowClick() {
+  const isRunning = document.getElementById('runner-dot').classList.contains('on');
+  if (isRunning) {
+    // Stop the daemon
+    const btn = document.getElementById('runner-btn');
+    btn.disabled = true;
+    try {
+      const r = await fetch('/api/runner/stop', { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
+      const d = await r.json();
+      setRunnerUI(d.running);
+    } finally { btn.disabled = false; }
+  } else {
+    // Open panel and start a one-shot scan
+    openScanPanel();
+    startScan();
+  }
+}
+
+updateRunnerStatus();
+setInterval(updateRunnerStatus, 10000);
+
+// ── Scan progress panel ─────────────────────────────────────────────────────
+
+let _scanPollTimer = null;
+let _scanOffset    = 0;
+
+function openScanPanel() {
+  document.getElementById('scan-overlay').classList.add('open');
+  document.getElementById('scan-panel').classList.add('open');
+}
+
+function closeScanPanel() {
+  document.getElementById('scan-overlay').classList.remove('open');
+  document.getElementById('scan-panel').classList.remove('open');
+}
+
+function clearScanLog() {
+  document.getElementById('scan-log').innerHTML = '';
+  document.getElementById('scan-summary').textContent = '';
+}
+
+async function startScan() {
+  clearScanLog();
+  _scanOffset = 0;
+  document.getElementById('scan-status-label').textContent = 'Running…';
+  document.getElementById('scan-status-label').style.color = 'var(--cyan)';
+  document.getElementById('scan-again-btn').style.display  = 'none';
+  appendScanLine('Starting scanner…', 'mute');
+  try {
+    await fetch('/api/scan/start', { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
+  } catch(e) {
+    appendScanLine('Failed to start scan: ' + e.message, 'error');
+    return;
+  }
+  if (_scanPollTimer) clearInterval(_scanPollTimer);
+  _scanPollTimer = setInterval(pollScanOutput, 800);
+}
+
+async function pollScanOutput() {
+  try {
+    const r = await fetch('/api/scan/output?offset=' + _scanOffset);
+    const d = await r.json();
+    d.lines.forEach(line => appendScanLine(line, classifyLine(line)));
+    _scanOffset = d.offset;
+    if (!d.running) {
+      clearInterval(_scanPollTimer);
+      _scanPollTimer = null;
+      finaliseScan();
+    }
+  } catch {}
+}
+
+function classifyLine(line) {
+  const l = line.toLowerCase();
+  if (/error|exception|traceback|failed/.test(l))  return 'error';
+  if (/warn|warning|skip|no data/.test(l))          return 'warn';
+  if (/candidate|score|buy|trade|placed/.test(l))   return 'good';
+  if (/^\s*$/.test(line))                            return 'mute';
+  return 'info';
+}
+
+function appendScanLine(text, cls) {
+  const log  = document.getElementById('scan-log');
+  const line = document.createElement('div');
+  line.className = 'scan-log-line ' + (cls || 'info');
+  // Strip ANSI colour codes
+  line.textContent = text.replace(/\x1b\[[0-9;]*m/g, '');
+  log.appendChild(line);
+  log.scrollTop = log.scrollHeight;
+}
+
+function finaliseScan() {
+  const log      = document.getElementById('scan-log');
+  const lines    = log.querySelectorAll('.scan-log-line');
+  const errors   = log.querySelectorAll('.scan-log-line.error').length;
+  const warnings = log.querySelectorAll('.scan-log-line.warn').length;
+  const trades   = [...lines].filter(l => l.classList.contains('good')).length;
+  document.getElementById('scan-status-label').textContent = 'Done';
+  document.getElementById('scan-status-label').style.color = 'var(--green)';
+  document.getElementById('scan-again-btn').style.display  = '';
+  const parts = [];
+  if (trades)   parts.push(trades   + ' signal' + (trades   > 1 ? 's' : ''));
+  if (warnings) parts.push(warnings + ' warning' + (warnings > 1 ? 's' : ''));
+  if (errors)   parts.push(errors   + ' error'   + (errors   > 1 ? 's' : ''));
+  document.getElementById('scan-summary').textContent = parts.join(' · ') || 'Completed';
+  // Refresh dashboard to show new candidates
+  loadDashboard(todayStr());
+}
+
 // ── Config ─────────────────────────────────────────────────────────────────
 
 async function loadConfig() {
@@ -896,10 +1057,6 @@ async function loadConfig() {
 }
 
 function populateConfig(data) {
-  // Exclusions only — fallback symbols loaded separately via /api/symbols/fallback
-  exclusionList = data.SYMBOL_EXCLUSIONS ? data.SYMBOL_EXCLUSIONS.split(',').map(s => s.trim()).filter(Boolean) : [];
-  renderChips('exclusion-chips', exclusionList, removeExclusion);
-
   // Simple text/number inputs
   const fields = [
     'BREAKOUT_MIN_PRICE','BREAKOUT_MIN_AVG_VOLUME','BREAKOUT_VOLUME_SURGE_MULT',
@@ -936,8 +1093,6 @@ function populateConfig(data) {
 
 function collectConfig() {
   const cfg = {};
-
-  cfg.SYMBOL_EXCLUSIONS = exclusionList.join(',');
 
   // Text/number inputs
   const fields = [
@@ -1073,22 +1228,6 @@ async function resetFallbackSymbols() {
   }
 }
 
-function addExclusion() {
-  const input = document.getElementById('exclusion-input');
-  const sym   = input.value.trim().toUpperCase();
-  if (!sym) return;
-  if (exclusionList.includes(sym)) { showToast(sym + ' already excluded', 'error'); return; }
-  exclusionList.push(sym);
-  renderChips('exclusion-chips', exclusionList, removeExclusion);
-  input.value = '';
-  input.focus();
-}
-
-function removeExclusion(sym) {
-  exclusionList = exclusionList.filter(s => s !== sym);
-  renderChips('exclusion-chips', exclusionList, removeExclusion);
-}
-
 
 // ── Paper/Live toggle ──────────────────────────────────────────────────────
 function onPaperToggle(cb) {
@@ -1125,7 +1264,17 @@ function showToast(msg, type='success') {
 }
 
 // ── Boot ───────────────────────────────────────────────────────────────────
-loadDashboard(todayStr());
+async function bootLoadLatest() {
+  try {
+    const res  = await fetch('/api/history?days=30');
+    const rows = await res.json();
+    const latest = rows.find(r => (r.symbols_scanned || 0) > 0);
+    loadDashboard(latest ? latest.date : todayStr());
+  } catch {
+    loadDashboard(todayStr());
+  }
+}
+bootLoadLatest();
 </script>
 </body>
 </html>

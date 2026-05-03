@@ -16,6 +16,7 @@ Usage:
 
 from __future__ import annotations
 
+import subprocess
 import sys
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -81,7 +82,6 @@ CONFIG_DEFAULTS = {
     "ALPACA_BASE_URL":                 "https://paper-api.alpaca.markets",
     "IS_PAPER":                        "true",
     "SYMBOLS":                         "AAPL,MSFT,GOOGL",
-    "SYMBOL_EXCLUSIONS":               "",
     "TIMEFRAME":                       "1Min",
     "MAX_POSITION_SIZE":               "0.10",
     "MAX_PORTFOLIO_RISK":              "0.01",
@@ -233,6 +233,90 @@ def save_config(body: dict = Body(...)):
         return {"ok": True}
     except Exception as exc:
         return JSONResponse(status_code=500, content={"ok": False, "error": str(exc)})
+
+
+# ── Scan API ─────────────────────────────────────────────────────────────────
+
+import threading
+
+_scan_proc:    subprocess.Popen | None = None
+_scan_lines:   list[str] = []
+_scan_running: bool      = False
+
+
+@app.post("/api/scan/start")
+def scan_start():
+    global _scan_proc, _scan_lines, _scan_running
+    if _scan_running:
+        return {"ok": False, "message": "scan already running"}
+    _scan_lines   = []
+    _scan_running = True
+    _scan_proc    = subprocess.Popen(
+        [sys.executable, str(ROOT / "scanner.py")],
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        text=True, cwd=str(ROOT),
+        encoding="utf-8", errors="replace",
+    )
+
+    def _reader():
+        global _scan_running
+        for line in _scan_proc.stdout:
+            _scan_lines.append(line.rstrip())
+        _scan_proc.wait()
+        _scan_running = False
+
+    threading.Thread(target=_reader, daemon=True).start()
+    return {"ok": True}
+
+
+@app.get("/api/scan/output")
+def scan_output(offset: int = Query(default=0)):
+    return {
+        "lines":   _scan_lines[offset:],
+        "offset":  len(_scan_lines),
+        "running": _scan_running,
+    }
+
+
+# ── Runner API ───────────────────────────────────────────────────────────────
+
+_runner_proc: subprocess.Popen | None = None
+
+
+def _runner_alive() -> bool:
+    return _runner_proc is not None and _runner_proc.poll() is None
+
+
+@app.get("/api/runner/status")
+def runner_status():
+    return {"running": _runner_alive()}
+
+
+@app.post("/api/runner/start")
+def runner_start(body: dict = Body(default={})):
+    global _runner_proc
+    if _runner_alive():
+        return {"ok": True, "running": True, "message": "already running"}
+    dry_run = body.get("dry_run", False)
+    cmd = [sys.executable, str(ROOT / "runner.py")]
+    if dry_run:
+        cmd.append("--dry-run")
+    _runner_proc = subprocess.Popen(cmd, cwd=str(ROOT))
+    return {"ok": True, "running": True, "message": "runner started"}
+
+
+@app.post("/api/runner/stop")
+def runner_stop():
+    global _runner_proc
+    if not _runner_alive():
+        return {"ok": True, "running": False, "message": "not running"}
+    _runner_proc.terminate()
+    try:
+        _runner_proc.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        _runner_proc.kill()
+    _runner_proc = None
+    return {"ok": True, "running": False, "message": "runner stopped"}
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
