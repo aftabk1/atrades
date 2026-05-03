@@ -39,10 +39,21 @@
   /* ── Controls ── */
   input[type=date] { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 6px 10px; border-radius: 6px; font-size: 13px; cursor: pointer; }
   input[type=date]:focus { outline: none; border-color: var(--accent); }
+  input[type=text], input[type=number], input[type=password], select {
+    background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+    padding: 6px 10px; border-radius: 6px; font-size: 12px; width: 100%;
+  }
+  input[type=text]:focus, input[type=number]:focus, input[type=password]:focus, select:focus {
+    outline: none; border-color: var(--accent);
+  }
+  input[type=range] { width: 100%; accent-color: var(--cyan); cursor: pointer; }
   button { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px; transition: background .15s; }
   button:hover { background: var(--border); }
-  .btn-primary { background: var(--accent); border-color: var(--accent); }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
   .btn-primary:hover { opacity: .85; }
+  .btn-danger  { background: rgba(239,68,68,.15); border-color: rgba(239,68,68,.4); color: var(--red); }
+  .btn-danger:hover { background: rgba(239,68,68,.25); }
+  .btn-sm { padding: 4px 10px; font-size: 11px; }
 
   /* ── Stats bar ── */
   .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
@@ -113,15 +124,72 @@
 
   /* ── Scrollable tables ── */
   .table-scroll { overflow-x: auto; }
+
+  /* ── Config tab ──────────────────────────────────────────────────────────── */
+  .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  @media (max-width: 900px) { .config-grid { grid-template-columns: 1fr; } }
+
+  .cfg-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .cfg-card-header { padding: 11px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+  .cfg-card-icon { font-size: 14px; }
+  .cfg-card-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
+  .cfg-card-body  { padding: 4px 16px 12px; }
+
+  .form-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 9px 0; border-bottom: 1px solid var(--border); }
+  .form-row:last-child { border-bottom: none; }
+  .form-label { color: var(--text); font-size: 12px; flex: 1; min-width: 0; }
+  .form-hint  { color: var(--muted); font-size: 10px; margin-top: 2px; }
+  .form-control { flex: 0 0 140px; }
+
+  /* toggle switch */
+  .toggle-wrap { display: flex; align-items: center; gap: 8px; }
+  .toggle { position: relative; display: inline-block; width: 36px; height: 20px; flex-shrink: 0; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider { position: absolute; inset: 0; background: var(--border); border-radius: 20px; cursor: pointer; transition: .2s; }
+  .toggle-slider:before { content: ''; position: absolute; width: 14px; height: 14px; left: 3px; bottom: 3px; background: var(--muted); border-radius: 50%; transition: .2s; }
+  .toggle input:checked + .toggle-slider { background: var(--accent); }
+  .toggle input:checked + .toggle-slider:before { background: #fff; transform: translateX(16px); }
+
+  /* symbol chips */
+  .chip-area { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 0 6px; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 3px 8px; font-size: 12px; font-weight: 600; font-family: 'Consolas', monospace; }
+  .chip-x { cursor: pointer; color: var(--muted); font-size: 14px; line-height: 1; padding: 0 1px; }
+  .chip-x:hover { color: var(--red); }
+  .chip-add-row { display: flex; gap: 8px; padding-top: 8px; }
+  .chip-add-row input { flex: 1; text-transform: uppercase; }
+  .scan-mode-row { display: flex; gap: 24px; padding: 10px 0 12px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .scan-mode-label { display: flex; align-items: center; gap: 7px; cursor: pointer; font-size: 12px; }
+  .scan-mode-label input[type=radio] { accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer; }
+  .universe-container { max-height: 180px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; padding: 8px; margin-top: 4px; }
+
+  /* save bar */
+  .save-bar { position: sticky; bottom: 0; background: var(--surface); border-top: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; gap: 12px; margin: 0 -24px; z-index: 10; }
+  .save-status { font-size: 12px; color: var(--muted); flex: 1; }
+
+  /* toast */
+  .toast { position: fixed; bottom: 72px; right: 24px; padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 500; z-index: 999; opacity: 0; transition: opacity .25s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+  .toast.success { background: rgba(34,197,94,.2); border: 1px solid rgba(34,197,94,.4); color: var(--green); }
+  .toast.error   { background: rgba(239,68,68,.2); border: 1px solid rgba(239,68,68,.4); color: var(--red); }
+
+  /* live mode warning */
+  .live-warning { background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.3); color: var(--red); border-radius: 6px; padding: 8px 12px; font-size: 11px; margin-top: 8px; display: none; }
+
+  /* refresh countdown */
+  .refresh-info { font-size: 11px; color: var(--muted); }
 </style>
 </head>
 <body>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
 
 <!-- Header -->
 <div class="header">
   <div class="logo">&#9650; ATRADES</div>
   <div id="regime-badge" class="regime"><span class="regime-dot" id="regime-dot"></span><span id="regime-text">Loading...</span></div>
   <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
+    <span class="refresh-info" id="refresh-countdown"></span>
     <input type="date" id="date-picker">
     <button onclick="loadToday()">Today</button>
     <button onclick="refresh()" id="refresh-btn">&#8635; Refresh</button>
@@ -135,6 +203,7 @@
   <div class="tabs">
     <div class="tab active" onclick="switchTab('today', this)">Today</div>
     <div class="tab" onclick="switchTab('history', this)">Last 30 Days</div>
+    <div class="tab" onclick="switchTab('config', this)">&#9881; Config</div>
   </div>
 
   <!-- ── TODAY TAB ── -->
@@ -247,13 +316,11 @@
   <!-- ── HISTORY TAB ── -->
   <div class="tab-panel" id="tab-history">
 
-    <!-- Chart -->
     <div class="card">
       <div class="card-header"><span class="card-title">Daily Candidates Found — Last 30 Days</span></div>
       <div class="chart-wrap"><canvas id="history-chart"></canvas></div>
     </div>
 
-    <!-- History Table -->
     <div class="card">
       <div class="card-header"><span class="card-title">Daily Summary</span></div>
       <div class="card-body table-scroll">
@@ -274,12 +341,294 @@
 
   </div><!-- /tab-history -->
 
+  <!-- ── CONFIG TAB ── -->
+  <div class="tab-panel" id="tab-config">
+
+    <!-- Symbol Watchlist -->
+    <div class="cfg-card" style="margin-bottom:16px;">
+      <div class="cfg-card-header">
+        <span class="cfg-card-icon">&#128202;</span>
+        <span class="cfg-card-title">Scanner Universe — Fallback Symbols</span>
+        <span id="symbol-count-badge" style="margin-left:auto;font-size:11px;color:var(--cyan);background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.25);border-radius:12px;padding:2px 10px;"></span>
+        <button class="btn-sm" onclick="resetFallbackSymbols()" style="margin-left:8px;" id="reset-universe-btn">Reset to defaults</button>
+      </div>
+      <div class="cfg-card-body">
+        <div style="color:var(--muted);font-size:11px;padding:8px 0 8px;">
+          The scanner uses this list as its universe. Add any ticker — S&amp;P 500 stocks, ETFs, ADRs, or anything else.
+        </div>
+        <input type="text" id="symbol-filter" placeholder="&#128269; Filter symbols..." oninput="filterSymbols(this.value)" style="margin-bottom:8px;">
+        <div class="chip-area" id="symbol-chips" style="max-height:220px;overflow-y:auto;padding-right:4px;"></div>
+        <div class="chip-add-row" style="margin-top:8px;">
+          <input type="text" id="symbol-input" placeholder="Add symbol (e.g. NVDA, QQQ, BRK.B)" maxlength="10" onkeydown="if(event.key==='Enter') addSymbol()">
+          <button onclick="addSymbol()">+ Add</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Symbol Exclusions -->
+    <div class="cfg-card" style="margin-bottom:16px;">
+      <div class="cfg-card-header">
+        <span class="cfg-card-icon">&#128683;</span>
+        <span class="cfg-card-title">Symbol Exclusions</span>
+      </div>
+      <div class="cfg-card-body">
+        <div style="color:var(--muted);font-size:11px;padding-top:8px;">Always skip these symbols regardless of score.</div>
+        <div class="chip-area" id="exclusion-chips"></div>
+        <div class="chip-add-row">
+          <input type="text" id="exclusion-input" placeholder="e.g. GME" maxlength="10" onkeydown="if(event.key==='Enter') addExclusion()">
+          <button onclick="addExclusion()">+ Add</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2-col grid -->
+    <div class="config-grid">
+
+      <!-- Scanner Thresholds -->
+      <div class="cfg-card">
+        <div class="cfg-card-header"><span class="cfg-card-icon">&#128269;</span><span class="cfg-card-title">Scanner Thresholds</span></div>
+        <div class="cfg-card-body">
+          <div class="form-row">
+            <div class="form-label">Min Price ($)<div class="form-hint">Ignore stocks below this price</div></div>
+            <div class="form-control"><input type="number" id="cfg-BREAKOUT_MIN_PRICE" step="1" min="1"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-label">Min Avg Volume<div class="form-hint">Daily average volume floor</div></div>
+            <div class="form-control"><input type="number" id="cfg-BREAKOUT_MIN_AVG_VOLUME" step="100000" min="0"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-label">Volume Surge Multiplier<div class="form-hint">Today vs avg (e.g. 1.5 = 50% above avg)</div></div>
+            <div class="form-control"><input type="number" id="cfg-BREAKOUT_VOLUME_SURGE_MULT" step="0.1" min="1"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-label">RSI Low Zone<div class="form-hint">RSI must be above this</div></div>
+            <div class="form-control"><input type="number" id="cfg-BREAKOUT_RSI_LOW" step="1" min="1" max="100"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-label">RSI High Zone<div class="form-hint">RSI must be below this</div></div>
+            <div class="form-control"><input type="number" id="cfg-BREAKOUT_RSI_HIGH" step="1" min="1" max="100"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-label">ATR Expansion Threshold<div class="form-hint">Today ATR vs avg ATR ratio</div></div>
+            <div class="form-control"><input type="number" id="cfg-BREAKOUT_ATR_EXPANSION_THRESHOLD" step="0.05" min="1"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-label">Consolidation Lookback (days)</div>
+            <div class="form-control"><input type="number" id="cfg-BREAKOUT_CONSOLIDATION_LOOKBACK" step="1" min="3"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-label">Higher Lows Lookback (days)</div>
+            <div class="form-control"><input type="number" id="cfg-BREAKOUT_HIGHER_LOWS_LOOKBACK" step="1" min="3"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-label">Min Score (0–100)<div class="form-hint">Candidates below this are dropped</div></div>
+            <div class="form-control">
+              <input type="number" id="cfg-BREAKOUT_MIN_SCORE" step="1" min="0" max="100">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Risk Management -->
+      <div class="cfg-card">
+        <div class="cfg-card-header"><span class="cfg-card-icon">&#128737;</span><span class="cfg-card-title">Risk Management</span></div>
+        <div class="cfg-card-body">
+          <div class="form-row">
+            <div class="form-label">Max Position Size<div class="form-hint">Fraction of portfolio per trade (0.10 = 10%)</div></div>
+            <div class="form-control"><input type="number" id="cfg-MAX_POSITION_SIZE" step="0.01" min="0.01" max="1"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-label">Max Portfolio Risk<div class="form-hint">Max loss per trade as fraction (0.01 = 1%)</div></div>
+            <div class="form-control"><input type="number" id="cfg-MAX_PORTFOLIO_RISK" step="0.005" min="0.001" max="0.1"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-label">Max Concurrent Trades<div class="form-hint">Open positions allowed at once</div></div>
+            <div class="form-control"><input type="number" id="cfg-MAX_CONCURRENT_TRADES" step="1" min="1" max="20"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Trade Setup -->
+      <div class="cfg-card">
+        <div class="cfg-card-header"><span class="cfg-card-icon">&#127919;</span><span class="cfg-card-title">Trade Setup</span></div>
+        <div class="cfg-card-body">
+          <div class="form-row">
+            <div class="form-label">ATR Stop Multiplier<div class="form-hint">Stop = Entry − (N × ATR)</div></div>
+            <div class="form-control"><input type="number" id="cfg-BREAKOUT_ATR_STOP_MULT" step="0.1" min="0.5"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-label">Max Stop %<div class="form-hint">Stop never below entry × (1 − this)</div></div>
+            <div class="form-control"><input type="number" id="cfg-BREAKOUT_MAX_STOP_PCT" step="0.01" min="0.01" max="0.5"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-label">R:R Ratio<div class="form-hint">Minimum risk-to-reward required</div></div>
+            <div class="form-control"><input type="number" id="cfg-BREAKOUT_RR_RATIO" step="0.1" min="1"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-label">Partial Exit R Multiple<div class="form-hint">Take partial profit at this R</div></div>
+            <div class="form-control"><input type="number" id="cfg-PARTIAL_EXIT_R" step="0.1" min="1"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-label">Partial Exit Fraction<div class="form-hint">Portion of position to exit (0.50 = 50%)</div></div>
+            <div class="form-control"><input type="number" id="cfg-PARTIAL_EXIT_PCT" step="0.05" min="0.1" max="0.9"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-label">Trail ATR Multiplier<div class="form-hint">Trailing stop = N × ATR14</div></div>
+            <div class="form-control"><input type="number" id="cfg-TRAIL_ATR_MULT" step="0.1" min="0.5"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bull Trap & Accumulation -->
+      <div class="cfg-card">
+        <div class="cfg-card-header"><span class="cfg-card-icon">&#128248;</span><span class="cfg-card-title">Bull Trap &amp; Accumulation</span></div>
+        <div class="cfg-card-body">
+          <div class="form-row">
+            <div class="form-label">Bull Trap Score Threshold<div class="form-hint">Score needed to flag a setup as a trap</div></div>
+            <div class="form-control"><input type="number" id="cfg-BULL_TRAP_SCORE_THRESHOLD" step="1" min="0" max="100"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-label">Accumulation Lookback (days)<div class="form-hint">Window for OBV / CMF signals</div></div>
+            <div class="form-control"><input type="number" id="cfg-ACCUM_LOOKBACK_DAYS" step="1" min="5"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Market Regime -->
+      <div class="cfg-card">
+        <div class="cfg-card-header"><span class="cfg-card-icon">&#127758;</span><span class="cfg-card-title">Market Regime</span></div>
+        <div class="cfg-card-body">
+          <div class="form-row">
+            <div class="form-label">Regime-Aware Scanning<div class="form-hint">Gate scanner output by market regime</div></div>
+            <div class="form-control">
+              <label class="toggle"><input type="checkbox" id="cfg-REGIME_AWARE_SCANNING"><span class="toggle-slider"></span></label>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-label">Regime Override<div class="form-hint">Force a regime (auto = detect from SPY)</div></div>
+            <div class="form-control">
+              <select id="cfg-REGIME_OVERRIDE">
+                <option value="">Auto (detect)</option>
+                <option value="BULL_TREND">Bull Trend</option>
+                <option value="SIDEWAYS">Sideways</option>
+                <option value="BEAR_TREND">Bear Trend</option>
+                <option value="HIGH_VOLATILITY">High Volatility</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scanner Schedule -->
+      <div class="cfg-card">
+        <div class="cfg-card-header"><span class="cfg-card-icon">&#9201;</span><span class="cfg-card-title">Scanner Schedule</span></div>
+        <div class="cfg-card-body">
+          <div class="form-row">
+            <div class="form-label">Scan Interval<div class="form-hint">How often the intraday scanner runs</div></div>
+            <div class="form-control">
+              <select id="cfg-SCANNER_INTERVAL_MINUTES">
+                <option value="1">Every 1 minute</option>
+                <option value="5">Every 5 minutes</option>
+                <option value="15">Every 15 minutes</option>
+                <option value="30">Every 30 minutes</option>
+                <option value="60">Every 60 minutes</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-label">Timeframe<div class="form-hint">Bar resolution for intraday data</div></div>
+            <div class="form-control">
+              <select id="cfg-TIMEFRAME">
+                <option value="1Min">1 Min</option>
+                <option value="5Min">5 Min</option>
+                <option value="15Min">15 Min</option>
+                <option value="1Hour">1 Hour</option>
+                <option value="1Day">1 Day</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Backtest Settings -->
+      <div class="cfg-card">
+        <div class="cfg-card-header"><span class="cfg-card-icon">&#128200;</span><span class="cfg-card-title">Backtest Settings</span></div>
+        <div class="cfg-card-body">
+          <div class="form-row">
+            <div class="form-label">Initial Capital ($)</div>
+            <div class="form-control"><input type="number" id="cfg-BACKTEST_INITIAL_CAPITAL" step="1000" min="1000"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-label">Max Hold Days<div class="form-hint">Force-close trade after this many days</div></div>
+            <div class="form-control"><input type="number" id="cfg-BACKTEST_MAX_HOLD_DAYS" step="1" min="1"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-label">Slippage %<div class="form-hint">Simulated fill cost (0.0005 = 0.05%)</div></div>
+            <div class="form-control"><input type="number" id="cfg-BACKTEST_SLIPPAGE_PCT" step="0.0001" min="0"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Trading Mode -->
+      <div class="cfg-card">
+        <div class="cfg-card-header"><span class="cfg-card-icon">&#9889;</span><span class="cfg-card-title">Trading Mode</span></div>
+        <div class="cfg-card-body">
+          <div class="form-row">
+            <div class="form-label">Paper Trading<div class="form-hint">Disable to use real money — use with extreme caution</div></div>
+            <div class="form-control">
+              <label class="toggle"><input type="checkbox" id="cfg-IS_PAPER" onchange="onPaperToggle(this)"><span class="toggle-slider"></span></label>
+            </div>
+          </div>
+          <div class="live-warning" id="live-warning">
+            &#9888; Live trading mode uses real money. Make sure your Alpaca account is funded and you have tested your strategy thoroughly.
+          </div>
+          <div class="form-row">
+            <div class="form-label">Alpaca Base URL</div>
+            <div class="form-control" style="flex: 0 0 260px;"><input type="text" id="cfg-ALPACA_BASE_URL"></div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /config-grid -->
+
+    <!-- Alpaca Credentials -->
+    <div class="cfg-card" style="margin-bottom:80px;">
+      <div class="cfg-card-header"><span class="cfg-card-icon">&#128273;</span><span class="cfg-card-title">Alpaca Credentials</span></div>
+      <div class="cfg-card-body">
+        <div class="form-row">
+          <div class="form-label">API Key</div>
+          <div class="form-control" style="flex: 0 0 340px;"><input type="text" id="cfg-ALPACA_API_KEY" autocomplete="off"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-label">Secret Key</div>
+          <div class="form-control" style="flex: 0 0 340px; display:flex; gap:6px;">
+            <input type="password" id="cfg-ALPACA_SECRET_KEY" autocomplete="off" style="flex:1;">
+            <button class="btn-sm" onclick="toggleSecretVisibility()" id="secret-eye">Show</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Save bar -->
+    <div class="save-bar">
+      <span class="save-status" id="save-status">Unsaved changes will be lost on page reload.</span>
+      <button onclick="loadConfig()" style="min-width:90px;">&#8635; Reload</button>
+      <button class="btn-primary" onclick="saveConfig()" style="min-width:120px;" id="save-btn">&#10003; Save Config</button>
+    </div>
+
+  </div><!-- /tab-config -->
+
 </div><!-- /main -->
 
 <script>
 // ── State ──────────────────────────────────────────────────────────────────
-let historyChart = null;
-let currentDate  = todayStr();
+let historyChart  = null;
+let currentDate   = todayStr();
+let fallbackSymbols = [];
+let symbolFilter    = '';
+let exclusionList   = [];
+let refreshTimer    = null;
+let countdown     = 15 * 60; // seconds
 
 // ── Utilities ──────────────────────────────────────────────────────────────
 function todayStr() {
@@ -298,9 +647,6 @@ function fmtTime(ts) {
   const d = new Date(ts);
   return d.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit', hour12:false});
 }
-function colorClass(val) {
-  return val > 0 ? 'green' : val < 0 ? 'red' : 'muted';
-}
 
 // ── Tab switching ──────────────────────────────────────────────────────────
 function switchTab(name, el) {
@@ -309,6 +655,7 @@ function switchTab(name, el) {
   el.classList.add('active');
   document.getElementById('tab-' + name).classList.add('active');
   if (name === 'history') loadHistory();
+  if (name === 'config')  loadConfig();
 }
 
 // ── Dashboard (today / selected date) ─────────────────────────────────────
@@ -316,7 +663,6 @@ async function loadDashboard(dateStr) {
   currentDate = dateStr;
   document.getElementById('date-picker').value = dateStr;
   document.getElementById('refresh-btn').innerHTML = '<span class="spin"></span>';
-
   try {
     const res  = await fetch('/api/dashboard?date=' + dateStr);
     const data = await res.json();
@@ -326,12 +672,10 @@ async function loadDashboard(dateStr) {
   } finally {
     document.getElementById('refresh-btn').innerHTML = '&#8635; Refresh';
   }
-
   loadPositions();
 }
 
 function renderDashboard(d) {
-  // Regime
   const regimeMap = {
     'BULL_TREND':      ['bull',  'BULL TREND'],
     'BEAR_TREND':      ['bear',  'BEAR TREND'],
@@ -344,7 +688,6 @@ function renderDashboard(d) {
     label + (d.adx ? '  ADX ' + fmt(d.adx, 1) : '') +
     (d.spy_above_200ma ? '  SPY > 200MA' : '');
 
-  // Stats
   document.getElementById('stat-scanned').textContent    = d.symbols_scanned || '—';
   document.getElementById('stat-candidates').textContent = d.candidates_found || '0';
   document.getElementById('stat-trades').textContent     = d.trades_placed    || '0';
@@ -352,7 +695,6 @@ function renderDashboard(d) {
   document.getElementById('stat-adx').textContent        = d.adx ? fmt(d.adx, 1) : '—';
   document.getElementById('stat-mult').textContent       = d.score_multiplier ? fmt(d.score_multiplier, 2) + 'x' : '—';
 
-  // Candidates
   const cb = document.getElementById('candidates-body');
   if (!d.candidates || d.candidates.length === 0) {
     cb.innerHTML = '<tr><td colspan="14" class="empty muted">No candidates found for this date</td></tr>';
@@ -381,7 +723,6 @@ function renderDashboard(d) {
       </tr>`).join('');
   }
 
-  // Trades
   const tb = document.getElementById('trades-body');
   if (!d.trades || d.trades.length === 0) {
     tb.innerHTML = '<tr><td colspan="10" class="empty muted">No trades placed this date</td></tr>';
@@ -407,7 +748,6 @@ async function loadPositions() {
   try {
     const res  = await fetch('/api/positions');
     const data = await res.json();
-
     const banner = document.getElementById('closed-banner');
     if (!data.market_open && data.next_open) {
       const next = new Date(data.next_open).toLocaleString('en-US', {timeZone:'America/New_York',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
@@ -416,7 +756,6 @@ async function loadPositions() {
     } else {
       banner.style.display = 'none';
     }
-
     const pb = document.getElementById('positions-body');
     if (data.error) {
       pb.innerHTML = `<tr><td colspan="7" class="empty muted">Alpaca error: ${data.error}</td></tr>`;
@@ -452,17 +791,13 @@ async function loadHistory() {
     const res  = await fetch('/api/history?days=30');
     const rows = await res.json();
     renderHistory(rows);
-  } catch(e) {
-    console.error(e);
-  }
+  } catch(e) { console.error(e); }
 }
 
 function renderHistory(rows) {
-  // Chart
   const labels   = rows.map(r => r.date).reverse();
   const candData = rows.map(r => r.candidates_found || 0).reverse();
   const tradData = rows.map(r => r.trades_placed    || 0).reverse();
-
   if (historyChart) historyChart.destroy();
   const ctx = document.getElementById('history-chart').getContext('2d');
   historyChart = new Chart(ctx, {
@@ -470,46 +805,28 @@ function renderHistory(rows) {
     data: {
       labels,
       datasets: [
-        {
-          label: 'Candidates',
-          data: candData,
-          backgroundColor: 'rgba(6,182,212,.35)',
-          borderColor: 'rgba(6,182,212,.8)',
-          borderWidth: 1,
-          borderRadius: 3,
-        },
-        {
-          label: 'Trades',
-          data: tradData,
-          backgroundColor: 'rgba(99,102,241,.5)',
-          borderColor: 'rgba(99,102,241,.9)',
-          borderWidth: 1,
-          borderRadius: 3,
-        },
+        { label:'Candidates', data:candData, backgroundColor:'rgba(6,182,212,.35)', borderColor:'rgba(6,182,212,.8)', borderWidth:1, borderRadius:3 },
+        { label:'Trades',     data:tradData, backgroundColor:'rgba(99,102,241,.5)',  borderColor:'rgba(99,102,241,.9)', borderWidth:1, borderRadius:3 },
       ],
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
+      responsive:true, maintainAspectRatio:false,
       plugins: {
-        legend: { labels: { color: '#94a3b8', boxWidth: 12, font: { size: 11 } } },
-        tooltip: { backgroundColor: '#1a2236', titleColor: '#e2e8f0', bodyColor: '#94a3b8' },
+        legend:  { labels:{ color:'#94a3b8', boxWidth:12, font:{size:11} } },
+        tooltip: { backgroundColor:'#1a2236', titleColor:'#e2e8f0', bodyColor:'#94a3b8' },
       },
       scales: {
-        x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#1f2d45' } },
-        y: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#1f2d45' }, beginAtZero: true },
+        x: { ticks:{color:'#64748b',font:{size:10}}, grid:{color:'#1f2d45'} },
+        y: { ticks:{color:'#64748b',font:{size:10}}, grid:{color:'#1f2d45'}, beginAtZero:true },
       },
     },
   });
-
-  // Table
   const regimePill = r => {
     if (!r) return '<span class="muted">—</span>';
     const map = { BULL_TREND:'bull-pill', BEAR_TREND:'bear-pill', SIDEWAYS:'side-pill', HIGH_VOLATILITY:'side-pill' };
     const lbl = { BULL_TREND:'BULL', BEAR_TREND:'BEAR', SIDEWAYS:'SIDE', HIGH_VOLATILITY:'HVOL' };
     return `<span class="regime-pill ${map[r]||'side-pill'}">${lbl[r]||r}</span>`;
   };
-
   const hb = document.getElementById('history-body');
   if (!rows || rows.length === 0) {
     hb.innerHTML = '<tr><td colspan="7" class="empty muted">No history yet — run the scanner to populate data</td></tr>';
@@ -533,20 +850,279 @@ function jumpToDate(d) {
 }
 
 // ── Controls ───────────────────────────────────────────────────────────────
-function loadToday() {
-  loadDashboard(todayStr());
-}
+function loadToday() { loadDashboard(todayStr()); }
 function refresh() {
   loadDashboard(currentDate);
   if (document.getElementById('tab-history').classList.contains('active')) loadHistory();
+  resetCountdown();
+}
+document.getElementById('date-picker').addEventListener('change', e => loadDashboard(e.target.value));
+
+// ── Auto-refresh every 15 min with countdown ───────────────────────────────
+function resetCountdown() {
+  countdown = 15 * 60;
+}
+function tickCountdown() {
+  countdown--;
+  if (countdown <= 0) {
+    refresh();
+  } else {
+    const m = Math.floor(countdown / 60);
+    const s = String(countdown % 60).padStart(2, '0');
+    document.getElementById('refresh-countdown').textContent = `Auto-refresh in ${m}:${s}`;
+  }
+}
+setInterval(tickCountdown, 1000);
+resetCountdown();
+
+// ── Config ─────────────────────────────────────────────────────────────────
+
+async function loadConfig() {
+  try {
+    const [cfgRes, symRes] = await Promise.all([
+      fetch('/api/config'),
+      fetch('/api/symbols/fallback'),
+    ]);
+    const data = await cfgRes.json();
+    const syms = await symRes.json();
+    fallbackSymbols = syms.symbols || [];
+    renderSymbolChips();
+    updateSymbolBadge();
+    populateConfig(data);
+    document.getElementById('save-status').textContent = 'Loaded from .env — edit and save to apply changes.';
+  } catch(e) {
+    showToast('Failed to load config', 'error');
+  }
 }
 
-document.getElementById('date-picker').addEventListener('change', e => {
-  loadDashboard(e.target.value);
-});
+function populateConfig(data) {
+  // Exclusions only — fallback symbols loaded separately via /api/symbols/fallback
+  exclusionList = data.SYMBOL_EXCLUSIONS ? data.SYMBOL_EXCLUSIONS.split(',').map(s => s.trim()).filter(Boolean) : [];
+  renderChips('exclusion-chips', exclusionList, removeExclusion);
 
-// ── Auto-refresh every 5 min ───────────────────────────────────────────────
-setInterval(() => refresh(), 5 * 60 * 1000);
+  // Simple text/number inputs
+  const fields = [
+    'BREAKOUT_MIN_PRICE','BREAKOUT_MIN_AVG_VOLUME','BREAKOUT_VOLUME_SURGE_MULT',
+    'BREAKOUT_RSI_LOW','BREAKOUT_RSI_HIGH','BREAKOUT_ATR_EXPANSION_THRESHOLD',
+    'BREAKOUT_CONSOLIDATION_LOOKBACK','BREAKOUT_HIGHER_LOWS_LOOKBACK','BREAKOUT_MIN_SCORE',
+    'BREAKOUT_ATR_STOP_MULT','BREAKOUT_MAX_STOP_PCT','BREAKOUT_RR_RATIO',
+    'PARTIAL_EXIT_R','PARTIAL_EXIT_PCT','TRAIL_ATR_MULT',
+    'ACCUM_LOOKBACK_DAYS','BULL_TRAP_SCORE_THRESHOLD',
+    'MAX_POSITION_SIZE','MAX_PORTFOLIO_RISK','MAX_CONCURRENT_TRADES',
+    'BACKTEST_INITIAL_CAPITAL','BACKTEST_MAX_HOLD_DAYS','BACKTEST_SLIPPAGE_PCT',
+    'ALPACA_API_KEY','ALPACA_SECRET_KEY','ALPACA_BASE_URL',
+  ];
+  fields.forEach(k => {
+    const el = document.getElementById('cfg-' + k);
+    if (el && data[k] !== undefined) el.value = data[k];
+  });
+
+  // Toggles (boolean)
+  const boolFields = ['IS_PAPER', 'REGIME_AWARE_SCANNING'];
+  boolFields.forEach(k => {
+    const el = document.getElementById('cfg-' + k);
+    if (el) el.checked = (data[k] === 'true' || data[k] === true);
+  });
+  document.getElementById('live-warning').style.display =
+    (data.IS_PAPER === 'false' || data.IS_PAPER === false) ? 'block' : 'none';
+
+  // Selects
+  const selectFields = ['TIMEFRAME', 'SCANNER_INTERVAL_MINUTES', 'REGIME_OVERRIDE'];
+  selectFields.forEach(k => {
+    const el = document.getElementById('cfg-' + k);
+    if (el && data[k] !== undefined) el.value = data[k];
+  });
+}
+
+function collectConfig() {
+  const cfg = {};
+
+  cfg.SYMBOL_EXCLUSIONS = exclusionList.join(',');
+
+  // Text/number inputs
+  const fields = [
+    'BREAKOUT_MIN_PRICE','BREAKOUT_MIN_AVG_VOLUME','BREAKOUT_VOLUME_SURGE_MULT',
+    'BREAKOUT_RSI_LOW','BREAKOUT_RSI_HIGH','BREAKOUT_ATR_EXPANSION_THRESHOLD',
+    'BREAKOUT_CONSOLIDATION_LOOKBACK','BREAKOUT_HIGHER_LOWS_LOOKBACK','BREAKOUT_MIN_SCORE',
+    'BREAKOUT_ATR_STOP_MULT','BREAKOUT_MAX_STOP_PCT','BREAKOUT_RR_RATIO',
+    'PARTIAL_EXIT_R','PARTIAL_EXIT_PCT','TRAIL_ATR_MULT',
+    'ACCUM_LOOKBACK_DAYS','BULL_TRAP_SCORE_THRESHOLD',
+    'MAX_POSITION_SIZE','MAX_PORTFOLIO_RISK','MAX_CONCURRENT_TRADES',
+    'BACKTEST_INITIAL_CAPITAL','BACKTEST_MAX_HOLD_DAYS','BACKTEST_SLIPPAGE_PCT',
+    'ALPACA_API_KEY','ALPACA_SECRET_KEY','ALPACA_BASE_URL',
+  ];
+  fields.forEach(k => {
+    const el = document.getElementById('cfg-' + k);
+    if (el) cfg[k] = el.value.trim();
+  });
+
+  // Booleans
+  cfg.IS_PAPER              = document.getElementById('cfg-IS_PAPER').checked              ? 'true' : 'false';
+  cfg.REGIME_AWARE_SCANNING = document.getElementById('cfg-REGIME_AWARE_SCANNING').checked ? 'true' : 'false';
+
+  // Selects
+  ['TIMEFRAME','SCANNER_INTERVAL_MINUTES','REGIME_OVERRIDE'].forEach(k => {
+    const el = document.getElementById('cfg-' + k);
+    if (el) cfg[k] = el.value;
+  });
+
+  return cfg;
+}
+
+async function saveConfig() {
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  try {
+    const [r1, r2] = await Promise.all([
+      fetch('/api/config', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(collectConfig()),
+      }),
+      fetch('/api/symbols/fallback', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({symbols: fallbackSymbols}),
+      }),
+    ]);
+    const [d1, d2] = await Promise.all([r1.json(), r2.json()]);
+    if (d1.ok && d2.ok) {
+      showToast('Configuration saved', 'success');
+      document.getElementById('save-status').textContent = 'Saved at ' + new Date().toLocaleTimeString();
+    } else {
+      showToast('Save failed: ' + (d1.error || d2.error || 'unknown error'), 'error');
+    }
+  } catch(e) {
+    showToast('Save failed: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '&#10003; Save Config';
+  }
+}
+
+// ── Symbol chips ───────────────────────────────────────────────────────────
+function renderChips(containerId, list, removeFn) {
+  const el = document.getElementById(containerId);
+  if (list.length === 0) {
+    el.innerHTML = '<span class="muted" style="font-size:11px;padding:4px 0;">None added yet</span>';
+    return;
+  }
+  el.innerHTML = list.map(sym => `
+    <span class="chip">${sym}<span class="chip-x" onclick="${removeFn.name}('${sym}')">&times;</span></span>
+  `).join('');
+}
+
+function updateSymbolBadge() {
+  const badge = document.getElementById('symbol-count-badge');
+  if (badge) badge.textContent = fallbackSymbols.length + ' symbols';
+}
+
+function renderSymbolChips() {
+  const el     = document.getElementById('symbol-chips');
+  const query  = symbolFilter.toLowerCase();
+  const list   = query ? fallbackSymbols.filter(s => s.toLowerCase().includes(query)) : fallbackSymbols;
+  if (list.length === 0) {
+    el.innerHTML = '<span class="muted" style="font-size:11px;padding:4px 0;">'
+      + (query ? 'No symbols match "' + symbolFilter + '"' : 'No symbols in list') + '</span>';
+    return;
+  }
+  el.innerHTML = list.map(sym =>
+    `<span class="chip">${sym}<span class="chip-x" onclick="removeSymbol('${sym}')">&times;</span></span>`
+  ).join('');
+}
+
+function filterSymbols(query) {
+  symbolFilter = query;
+  renderSymbolChips();
+}
+
+function addSymbol() {
+  const input = document.getElementById('symbol-input');
+  const sym   = input.value.trim().toUpperCase();
+  if (!sym) return;
+  if (fallbackSymbols.includes(sym)) { showToast(sym + ' already in list', 'error'); return; }
+  fallbackSymbols.push(sym);
+  renderSymbolChips();
+  updateSymbolBadge();
+  input.value = '';
+  input.focus();
+}
+
+function removeSymbol(sym) {
+  fallbackSymbols = fallbackSymbols.filter(s => s !== sym);
+  renderSymbolChips();
+  updateSymbolBadge();
+}
+
+async function resetFallbackSymbols() {
+  if (!confirm('Reset to the default S&P 500 fallback list? All custom changes will be lost.')) return;
+  try {
+    const res  = await fetch('/api/symbols/fallback/reset', {method: 'DELETE'});
+    const data = await res.json();
+    if (data.ok) {
+      const symRes = await fetch('/api/symbols/fallback');
+      const syms   = await symRes.json();
+      fallbackSymbols = syms.symbols || [];
+      symbolFilter    = '';
+      document.getElementById('symbol-filter').value = '';
+      renderSymbolChips();
+      updateSymbolBadge();
+      showToast('Reset to ' + data.count + ' default symbols', 'success');
+    }
+  } catch(e) {
+    showToast('Reset failed', 'error');
+  }
+}
+
+function addExclusion() {
+  const input = document.getElementById('exclusion-input');
+  const sym   = input.value.trim().toUpperCase();
+  if (!sym) return;
+  if (exclusionList.includes(sym)) { showToast(sym + ' already excluded', 'error'); return; }
+  exclusionList.push(sym);
+  renderChips('exclusion-chips', exclusionList, removeExclusion);
+  input.value = '';
+  input.focus();
+}
+
+function removeExclusion(sym) {
+  exclusionList = exclusionList.filter(s => s !== sym);
+  renderChips('exclusion-chips', exclusionList, removeExclusion);
+}
+
+
+// ── Paper/Live toggle ──────────────────────────────────────────────────────
+function onPaperToggle(cb) {
+  const warning = document.getElementById('live-warning');
+  if (!cb.checked) {
+    if (!confirm('Switch to LIVE trading mode? This will use real money from your Alpaca account.')) {
+      cb.checked = true;
+      return;
+    }
+    warning.style.display = 'block';
+    document.getElementById('cfg-ALPACA_BASE_URL').value = 'https://api.alpaca.markets';
+  } else {
+    warning.style.display = 'none';
+    document.getElementById('cfg-ALPACA_BASE_URL').value = 'https://paper-api.alpaca.markets';
+  }
+}
+
+// ── Secret key visibility ──────────────────────────────────────────────────
+function toggleSecretVisibility() {
+  const inp = document.getElementById('cfg-ALPACA_SECRET_KEY');
+  const btn = document.getElementById('secret-eye');
+  if (inp.type === 'password') { inp.type = 'text';     btn.textContent = 'Hide'; }
+  else                         { inp.type = 'password'; btn.textContent = 'Show'; }
+}
+
+// ── Toast notification ─────────────────────────────────────────────────────
+let toastTimer = null;
+function showToast(msg, type='success') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className   = 'toast ' + type + ' show';
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
 
 // ── Boot ───────────────────────────────────────────────────────────────────
 loadDashboard(todayStr());

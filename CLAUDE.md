@@ -29,6 +29,13 @@ python runner.py --interval 30      # rescan every 30 min
 # Run the web dashboard
 python -m webapp.app                # http://localhost:8000
 
+# Run regression tests
+python run_tests.py                 # run all 104 tests
+python run_tests.py -k TestConfig   # run one test class
+python run_tests.py -k "e2e"        # run E2E tests only
+python run_tests.py --cov           # with coverage report
+python run_tests.py -v              # verbose output
+
 # Backtest on ~50 symbols (1 year)
 python scanner.py --backtest
 
@@ -91,7 +98,7 @@ The scanner checks SPY daily before scanning. In `HIGH_VOLATILITY` (realised vol
 - Max loss per trade: 1% of portfolio ($1,000 on $100k)
 - Max position size: 10% of portfolio
 - Max concurrent open trades: 4
-- Universe: 503 S&P 500 symbols, min price $25, min avg volume 1M shares/day
+- Universe: 503 S&P 500 symbols by default (customisable via Config tab → Fallback Symbols), min price $25, min avg volume 1M shares/day
 
 ## Architecture
 
@@ -99,7 +106,7 @@ The scanner checks SPY daily before scanning. In `HIGH_VOLATILITY` (realised vol
 
 `scanner.py` is the entry point for everything. One full scan pass:
 
-1. **Universe** (`data/universe.py`) — returns the hardcoded list of 503 S&P 500 symbols.
+1. **Universe** (`data/universe.py`) — returns the active symbol list. Checks `data/universe_override.json` first; falls back to the hardcoded 503 S&P 500 symbols.
 2. **Market data** (`data/market_data.py`) — fetches OHLCV via yfinance.
 3. **Regime gate** (`strategy/market_regime.py`) — classifies SPY into `BULL_TREND / SIDEWAYS / BEAR_TREND / HIGH_VOLATILITY` using ADX(14) and 200MA. Applies a `score_multiplier` to all candidates and raises the `min_score` floor in bad regimes.
 4. **Signal detection** (`strategy/breakout_signals.py`) — `detect_all()` returns a `BreakoutSignals` dataclass per symbol with 9 factor signals. Symbols failing base filters (price, volume, missing data) return `None`.
@@ -124,9 +131,91 @@ Key config values live in `config.py` (all overridable via `.env`): `BREAKOUT_AT
 
 `data/store.py` — SQLite at `data/atrades.db`. Tables: `scan_runs`, `scan_candidates`, `trades`. `init_db()` is idempotent. `save_scan()` writes one run and all its candidates; `save_trade()` writes one placed order.
 
-`webapp/app.py` — FastAPI server. Three API endpoints: `/api/dashboard?date=` (single day), `/api/history?days=30` (30-day summary), `/api/positions` (live Alpaca positions). Static files served from `webapp/static/`.
+`webapp/app.py` — FastAPI server. Static files served from `webapp/static/`. API endpoints:
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/dashboard?date=` | Single-day scan results |
+| `GET /api/history?days=30` | 30-day summary |
+| `GET /api/positions` | Live Alpaca positions |
+| `GET /api/config` | All config settings merged with defaults |
+| `POST /api/config` | Write settings back to `.env` |
+| `GET /api/symbols/fallback` | Returns custom override list or default 503 S&P 500 symbols |
+| `POST /api/symbols/fallback` | Saves a custom symbol list to `data/universe_override.json` |
+| `DELETE /api/symbols/fallback/reset` | Deletes the override file, restoring S&P 500 defaults |
+
+The web dashboard (`webapp/static/index.html`) has three tabs:
+- **Today** — latest scan results with signal breakdown
+- **Last 30 Days** — historical summary table
+- **Config** — editable configuration (see Config Tab below)
+
+The dashboard auto-refreshes every **15 minutes** with a live countdown timer in the header.
+
+### Config Tab
+
+The Config tab in the web UI exposes all system settings. Sections:
+
+- **Scanner Universe (Fallback Symbols)** — view all fallback symbols as chips, filter, add new, remove individual, or reset to S&P 500 defaults. Saves to `data/universe_override.json`.
+- **Symbol Exclusions** — comma-separated list of tickers to always skip
+- **Scanner Thresholds** — min score, min price, min volume, ATR multipliers, RSI zone bounds
+- **Risk Management** — max portfolio risk %, max position size %, max open trades
+- **Trade Setup** — partial exit R, partial exit %, trailing stop ATR multiplier
+- **Bull Trap & Accumulation** — individual penalty/bonus weights
+- **Market Regime** — ADX threshold, regime penalty multiplier
+- **Scanner Schedule** — scan interval, market open buffer
+- **Backtest Settings** — max hold days, slippage
+- **Trading Mode** — `SCAN_MODE` (custom / sp500), dry run toggle
+- **Alpaca Credentials** — API key, secret, base URL (paper vs live)
+
+Clicking "Save Configuration" POSTs to both `/api/config` and `/api/symbols/fallback` in parallel.
+
+### Symbol Universe Management
+
+`data/universe.py` — `get_symbols()` first checks for `data/universe_override.json`. If the file exists it returns those symbols; otherwise it returns the hardcoded `_FALLBACK_SYMBOLS` list (503 S&P 500 tickers). This lets the Config tab persist a custom list without modifying source code.
+
+- Override file is created/updated by `POST /api/symbols/fallback`
+- Override file is deleted by `DELETE /api/symbols/fallback/reset`
+- Absence of the file = use S&P 500 defaults (no override in effect)
 
 `runner.py` — autonomous daemon. Polls Alpaca clock, sleeps until market open, scans 5 min after open, then rescans on `--interval` cadence. Writes logs to `logs/runner_YYYY-MM-DD.log`.
+
+### Regression Test Suite
+
+`tests/test_regression.py` — 104 tests across 10 test classes. `tests/conftest.py` holds shared fixtures. `run_tests.py` is a convenience runner.
+
+Test classes:
+- `TestConfig` (9) — config/env loading
+- `TestUniverse` (9) — symbol universe and override file
+- `TestStore` (8) — SQLite persistence
+- `TestBreakoutSignals` (13) — signal detection pipeline
+- `TestBreakoutScorer` (10) — scoring engine
+- `TestMarketRegime` (11) — regime classification
+- `TestTradeSetup` (11) — trade setup calculation
+- `TestRiskManager` (8) — risk approval logic
+- `TestWebappAPI` (15) — REST API endpoints
+- `TestE2EPipeline` (10) — full end-to-end pipeline
+
+Key test fixtures (in `conftest.py`):
+- `make_ohlcv()`, `make_breakout_df()`, `make_spy_df()`, `make_bull_spy_df()`, `make_bear_spy_df()` — OHLCV data generators
+- `mock_alpaca` — MagicMock Alpaca client
+- `temp_db` — monkeypatches `store.DB_PATH` to a temp file
+- `temp_universe` — monkeypatches `universe._OVERRIDE_PATH` to a temp dir
+- `api_client` — FastAPI `TestClient` with isolated DB and universe
+
+### Server restart after code changes
+
+If the server is already running and you change `webapp/app.py` or other modules, you must kill the old process and start a new one:
+
+```powershell
+# Find the PID listening on port 8000
+netstat -ano | findstr :8000
+
+# Kill it (replace 12345 with actual PID)
+Stop-Process -Id 12345 -Force
+
+# Start fresh
+Start-Process python -ArgumentList "-m webapp.app" -NoNewWindow
+```
 
 ### Backtest and optimiser
 

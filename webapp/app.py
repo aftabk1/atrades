@@ -2,10 +2,12 @@
 ATrades Web Dashboard — FastAPI backend.
 
 Endpoints:
-  GET /                       → dashboard HTML
-  GET /api/dashboard?date=    → scan + trade data for one day
-  GET /api/history            → last 30 days summary
-  GET /api/positions          → live Alpaca open positions
+  GET  /                        → dashboard HTML
+  GET  /api/dashboard?date=     → scan + trade data for one day
+  GET  /api/history             → last 30 days summary
+  GET  /api/positions           → live Alpaca open positions
+  GET  /api/config              → read .env configuration
+  POST /api/config              → write .env configuration
 
 Usage:
   python -m webapp.app
@@ -21,15 +23,97 @@ from pathlib import Path
 import uvicorn
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Body
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-# Add project root to path so imports work when run from any directory
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
 from data.store import init_db, query_day, query_history
+
+ENV_PATH = ROOT / ".env"
+
+# ── .env helpers ──────────────────────────────────────────────────────────────
+
+def _read_env_lines() -> list[str]:
+    if not ENV_PATH.exists():
+        return []
+    return ENV_PATH.read_text(encoding="utf-8").splitlines()
+
+def _parse_env(lines: list[str]) -> dict:
+    result = {}
+    for line in lines:
+        s = line.strip()
+        if not s or s.startswith("#"):
+            continue
+        if "=" in s:
+            key, _, val = s.partition("=")
+            result[key.strip()] = val.strip()
+    return result
+
+def _write_env(updates: dict) -> None:
+    lines     = _read_env_lines()
+    updated   = set()
+    new_lines = []
+    for line in lines:
+        s = line.strip()
+        if not s or s.startswith("#"):
+            new_lines.append(line)
+            continue
+        if "=" in s:
+            key = s.split("=", 1)[0].strip()
+            if key in updates:
+                new_lines.append(f"{key}={updates[key]}")
+                updated.add(key)
+            else:
+                new_lines.append(line)
+        else:
+            new_lines.append(line)
+    for key, val in updates.items():
+        if key not in updated:
+            new_lines.append(f"{key}={val}")
+    ENV_PATH.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+
+CONFIG_DEFAULTS = {
+    "ALPACA_API_KEY":                  "",
+    "ALPACA_SECRET_KEY":               "",
+    "ALPACA_BASE_URL":                 "https://paper-api.alpaca.markets",
+    "IS_PAPER":                        "true",
+    "SYMBOLS":                         "AAPL,MSFT,GOOGL",
+    "SYMBOL_EXCLUSIONS":               "",
+    "TIMEFRAME":                       "1Min",
+    "MAX_POSITION_SIZE":               "0.10",
+    "MAX_PORTFOLIO_RISK":              "0.01",
+    "MAX_CONCURRENT_TRADES":           "4",
+    "BREAKOUT_MIN_PRICE":              "25.0",
+    "BREAKOUT_MIN_AVG_VOLUME":         "1000000",
+    "BREAKOUT_VOLUME_SURGE_MULT":      "1.5",
+    "BREAKOUT_RSI_LOW":                "55.0",
+    "BREAKOUT_RSI_HIGH":               "70.0",
+    "BREAKOUT_ATR_EXPANSION_THRESHOLD":"1.2",
+    "BREAKOUT_CONSOLIDATION_LOOKBACK": "15",
+    "BREAKOUT_HIGHER_LOWS_LOOKBACK":   "15",
+    "BREAKOUT_MIN_SCORE":              "60.0",
+    "BREAKOUT_ATR_STOP_MULT":          "2.0",
+    "BREAKOUT_MAX_STOP_PCT":           "0.20",
+    "BREAKOUT_RR_RATIO":               "2.0",
+    "PARTIAL_EXIT_R":                  "2.0",
+    "PARTIAL_EXIT_PCT":                "0.50",
+    "TRAIL_ATR_MULT":                  "2.0",
+    "ACCUM_LOOKBACK_DAYS":             "20",
+    "BULL_TRAP_SCORE_THRESHOLD":       "40.0",
+    "REGIME_AWARE_SCANNING":           "true",
+    "REGIME_OVERRIDE":                 "",
+    "SCAN_MODE":                        "custom",
+    "SCANNER_INTERVAL_MINUTES":        "5",
+    "BACKTEST_MAX_HOLD_DAYS":          "20",
+    "BACKTEST_SLIPPAGE_PCT":           "0.0005",
+    "BACKTEST_INITIAL_CAPITAL":        "100000",
+}
+
+
+# ── App setup ─────────────────────────────────────────────────────────────────
 
 @asynccontextmanager
 async def lifespan(app):
@@ -49,7 +133,7 @@ def index():
     return FileResponse(str(STATIC / "index.html"))
 
 
-# ── API ───────────────────────────────────────────────────────────────────────
+# ── Dashboard API ─────────────────────────────────────────────────────────────
 
 @app.get("/api/dashboard")
 def api_dashboard(date_str: str = Query(default=None, alias="date")):
@@ -79,20 +163,76 @@ def api_positions():
             "next_open":   clock.next_open.isoformat() if not clock.is_open else None,
             "positions": [
                 {
-                    "symbol":       p.symbol,
-                    "qty":          float(p.qty),
-                    "avg_entry":    float(p.avg_entry_price),
-                    "current":      float(p.current_price),
-                    "market_value": float(p.market_value),
-                    "unrealized_pl": float(p.unrealized_pl),
+                    "symbol":          p.symbol,
+                    "qty":             float(p.qty),
+                    "avg_entry":       float(p.avg_entry_price),
+                    "current":         float(p.current_price),
+                    "market_value":    float(p.market_value),
+                    "unrealized_pl":   float(p.unrealized_pl),
                     "unrealized_plpc": float(p.unrealized_plpc) * 100,
-                    "side":         p.side.value,
+                    "side":            p.side.value,
                 }
                 for p in positions
             ],
         }
     except Exception as exc:
         return JSONResponse(status_code=200, content={"error": str(exc), "positions": []})
+
+
+# ── Config API ────────────────────────────────────────────────────────────────
+
+@app.get("/api/config")
+def get_config():
+    env = _parse_env(_read_env_lines())
+    return {k: env.get(k, v) for k, v in CONFIG_DEFAULTS.items()}
+
+
+@app.get("/api/symbols/fallback")
+def get_fallback_symbols():
+    try:
+        from data.universe import _FALLBACK_SYMBOLS, _OVERRIDE_PATH
+        if _OVERRIDE_PATH.exists():
+            import json as _json
+            symbols = _json.loads(_OVERRIDE_PATH.read_text(encoding="utf-8"))
+            return {"symbols": symbols, "is_custom": True, "default_count": len(_FALLBACK_SYMBOLS)}
+        return {"symbols": list(_FALLBACK_SYMBOLS), "is_custom": False, "default_count": len(_FALLBACK_SYMBOLS)}
+    except Exception as exc:
+        return JSONResponse(status_code=500, content={"error": str(exc), "symbols": []})
+
+
+@app.post("/api/symbols/fallback")
+def save_fallback_symbols(body: dict = Body(...)):
+    try:
+        import json as _json
+        from data.universe import _OVERRIDE_PATH
+        symbols = body.get("symbols", [])
+        if not isinstance(symbols, list):
+            return JSONResponse(status_code=400, content={"ok": False, "error": "symbols must be a list"})
+        _OVERRIDE_PATH.write_text(_json.dumps(symbols), encoding="utf-8")
+        return {"ok": True, "count": len(symbols)}
+    except Exception as exc:
+        return JSONResponse(status_code=500, content={"ok": False, "error": str(exc)})
+
+
+@app.delete("/api/symbols/fallback/reset")
+def reset_fallback_symbols():
+    try:
+        from data.universe import _OVERRIDE_PATH, _FALLBACK_SYMBOLS
+        if _OVERRIDE_PATH.exists():
+            _OVERRIDE_PATH.unlink()
+        return {"ok": True, "count": len(_FALLBACK_SYMBOLS)}
+    except Exception as exc:
+        return JSONResponse(status_code=500, content={"ok": False, "error": str(exc)})
+
+
+@app.post("/api/config")
+def save_config(body: dict = Body(...)):
+    try:
+        safe = {k: str(v) for k, v in body.items() if k in CONFIG_DEFAULTS}
+        _write_env(safe)
+        return {"ok": True}
+    except Exception as exc:
+        return JSONResponse(status_code=500, content={"ok": False, "error": str(exc)})
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────

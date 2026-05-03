@@ -1,6 +1,10 @@
 """Stock universe: S&P 500 symbols."""
 
+import json
+from pathlib import Path
 from loguru import logger
+
+_OVERRIDE_PATH = Path(__file__).parent / "universe_override.json"
 
 # Full S&P 500 constituent list
 _FALLBACK_SYMBOLS: list[str] = [
@@ -63,5 +67,9 @@ class StockUniverse:
         pass
 
     def get_symbols(self, force_refresh: bool = False) -> list[str]:
-        logger.info(f"Universe: {len(_FALLBACK_SYMBOLS)} symbols")
+        if _OVERRIDE_PATH.exists():
+            symbols = json.loads(_OVERRIDE_PATH.read_text(encoding="utf-8"))
+            logger.info(f"Universe: {len(symbols)} symbols (custom override)")
+            return symbols
+        logger.info(f"Universe: {len(_FALLBACK_SYMBOLS)} symbols (default)")
         return list(_FALLBACK_SYMBOLS)
