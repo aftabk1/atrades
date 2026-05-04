@@ -188,7 +188,12 @@ def main() -> None:
     _configure_logging()
 
     execute = not args.dry_run
-    mode    = "DRY RUN (no orders)" if args.dry_run else f"LIVE (paper={config.IS_PAPER})"
+    if args.dry_run:
+        mode = "DRY RUN (no orders)"
+    elif config.IS_PAPER:
+        mode = "PAPER TRADING"
+    else:
+        mode = "*** REAL MONEY TRADING — LIVE ACCOUNT ***"
     rescan  = f"every {args.interval} min" if args.interval > 0 else "once at open"
 
     logger.info("=" * 58)
@@ -198,6 +203,14 @@ def main() -> None:
     logger.info(f"  Universe : {config.MAX_CONCURRENT_TRADES} max positions | "
                 f"risk {config.MAX_PORTFOLIO_RISK:.0%}/trade")
     logger.info("=" * 58)
+
+    if execute and not config.IS_PAPER:
+        logger.warning("!" * 58)
+        logger.warning("  LIVE TRADING ACTIVE — orders will use REAL MONEY")
+        logger.warning(f"  Account: {config.ALPACA_BASE_URL}")
+        logger.warning("  Starting in 10 seconds. Press Ctrl+C to abort.")
+        logger.warning("!" * 58)
+        time.sleep(10)
 
     # Create logs directory and initialise DB
     import os

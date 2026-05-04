@@ -186,6 +186,9 @@
   /* live mode warning */
   .live-warning { background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.3); color: var(--red); border-radius: 6px; padding: 8px 12px; font-size: 11px; margin-top: 8px; display: none; }
 
+  /* live trading banner */
+  #live-trading-banner { display:none; background: rgba(239,68,68,.12); border-bottom: 2px solid rgba(239,68,68,.5); color: var(--red); font-size: 12px; font-weight: 700; text-align: center; padding: 5px 16px; letter-spacing: .04em; }
+
   /* refresh countdown */
   .refresh-info { font-size: 11px; color: var(--muted); }
 
@@ -234,6 +237,9 @@
 
 <!-- Toast -->
 <div class="toast" id="toast"></div>
+
+<!-- Live Trading Banner -->
+<div id="live-trading-banner">&#9888; LIVE TRADING ACTIVE — orders placed will use REAL MONEY from your Alpaca account</div>
 
 <!-- Header -->
 <div class="header">
@@ -926,6 +932,10 @@ async function updateRunnerStatus() {
     const r = await fetch('/api/runner/status');
     const d = await r.json();
     setRunnerUI(d.running);
+    if (typeof d.is_paper !== 'undefined') {
+      _isLiveAccount = d.is_paper === false || d.is_paper === 'false';
+      applyTradingModeBanner();
+    }
   } catch {}
 }
 
@@ -972,16 +982,34 @@ setInterval(updateRunnerStatus, 10000);
 let _scanPollTimer  = null;
 let _scanOffset     = 0;
 let _scanExecute    = false;
+let _isLiveAccount  = false;  // true when IS_PAPER=false in .env
+
+async function fetchTradingMode() {
+  try {
+    const r = await fetch('/api/trading-mode');
+    const d = await r.json();
+    _isLiveAccount = d.is_paper === false || d.is_paper === 'false';
+    applyTradingModeBanner();
+  } catch {}
+}
+
+function applyTradingModeBanner() {
+  const banner = document.getElementById('live-trading-banner');
+  if (banner) banner.style.display = _isLiveAccount ? 'block' : 'none';
+}
 
 function toggleExecuteMode() {
   _scanExecute = !_scanExecute;
   const el = document.getElementById('execute-toggle');
   if (_scanExecute) {
-    if (!confirm('Switch to LIVE mode? Scan Now will place real orders on your Alpaca account.')) {
+    const msg = _isLiveAccount
+      ? 'Switch to EXECUTE mode?\n\nWARNING: IS_PAPER is OFF — Scan Now will place REAL MONEY orders on your live Alpaca account.'
+      : 'Switch to EXECUTE mode? Scan Now will place orders on your Alpaca paper account.';
+    if (!confirm(msg)) {
       _scanExecute = false;
       return;
     }
-    el.textContent = 'LIVE';
+    el.textContent = _isLiveAccount ? '⚠ REAL MONEY' : 'EXECUTE';
     el.classList.add('live');
   } else {
     el.textContent = 'DRY RUN';
@@ -1010,7 +1038,9 @@ async function startScan() {
   document.getElementById('scan-status-label').textContent = 'Running…';
   document.getElementById('scan-status-label').style.color = 'var(--cyan)';
   document.getElementById('scan-again-btn').style.display  = 'none';
-  const modeLabel = _scanExecute ? '⚡ LIVE — orders will be placed' : 'Dry run — no orders';
+  const modeLabel = _scanExecute
+    ? (_isLiveAccount ? '⚠ REAL MONEY — orders placed on live Alpaca account' : '⚡ EXECUTE — paper orders will be placed')
+    : 'Dry run — no orders';
   const modeCls   = _scanExecute ? 'error' : 'mute';
   appendScanLine(modeLabel, modeCls);
   appendScanLine('Starting scanner…', 'mute');
@@ -1272,15 +1302,19 @@ async function resetFallbackSymbols() {
 function onPaperToggle(cb) {
   const warning = document.getElementById('live-warning');
   if (!cb.checked) {
-    if (!confirm('Switch to LIVE trading mode? This will use real money from your Alpaca account.')) {
+    if (!confirm('Switch to LIVE trading mode?\n\nThis will use REAL MONEY from your Alpaca live account. Make sure you have tested your strategy and your live credentials are configured.')) {
       cb.checked = true;
       return;
     }
+    _isLiveAccount = true;
+    applyTradingModeBanner();
     warning.style.display = 'block';
     document.getElementById('cfg-ALPACA_BASE_URL').value = 'https://api.alpaca.markets';
   } else {
     warning.style.display = 'none';
     document.getElementById('cfg-ALPACA_BASE_URL').value = 'https://paper-api.alpaca.markets';
+    _isLiveAccount = false;
+    applyTradingModeBanner();
   }
 }
 
@@ -1314,6 +1348,7 @@ async function bootLoadLatest() {
   }
 }
 bootLoadLatest();
+fetchTradingMode();
 </script>
 </body>
 </html>

@@ -16,6 +16,7 @@ Usage:
 
 from __future__ import annotations
 
+import importlib
 import subprocess
 import sys
 from datetime import date, datetime, timezone
@@ -290,9 +291,25 @@ def _runner_alive() -> bool:
     return _runner_proc is not None and _runner_proc.poll() is None
 
 
+@app.get("/api/trading-mode")
+def trading_mode():
+    try:
+        import config as _cfg
+        importlib.reload(_cfg)
+        return {"is_paper": _cfg.IS_PAPER, "base_url": _cfg.ALPACA_BASE_URL}
+    except Exception as exc:
+        return JSONResponse(status_code=500, content={"error": str(exc)})
+
+
 @app.get("/api/runner/status")
 def runner_status():
-    return {"running": _runner_alive()}
+    try:
+        import config as _cfg
+        importlib.reload(_cfg)
+        is_paper = _cfg.IS_PAPER
+    except Exception:
+        is_paper = True
+    return {"running": _runner_alive(), "is_paper": is_paper}
 
 
 @app.post("/api/runner/start")

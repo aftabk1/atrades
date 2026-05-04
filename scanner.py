@@ -308,6 +308,8 @@ class BreakoutScanner:
     # ── Private ───────────────────────────────────────────────────────────────
 
     def _place_orders(self, candidates: list[dict], open_positions: set[str]) -> list[dict]:
+        mode_label = "PAPER" if config.IS_PAPER else "*** REAL MONEY ***"
+        logger.info(f"Placing orders [{mode_label}] — {len(candidates)} candidate(s), {len(open_positions)} already open")
         slots   = config.MAX_CONCURRENT_TRADES - len(open_positions)
         placed  = []
         for c in candidates[:max(slots, 0)]:
@@ -516,7 +518,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     p.add_argument("--symbols", nargs="+", metavar="SYM",
                    help="Specific tickers (default: full S&P 500)")
     p.add_argument("--execute", action="store_true",
-                   help="Place Alpaca bracket orders (paper trading)")
+                   help="Place Alpaca bracket orders (paper or real money depending on IS_PAPER in .env)")
     p.add_argument("--intraday", action="store_true",
                    help="Recurring scan on a schedule")
     p.add_argument("--interval", type=int, default=5, metavar="MINS",

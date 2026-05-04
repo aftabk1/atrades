@@ -951,6 +951,19 @@ class TestRunnerAndScanAPI:
         assert "running" in r.json()
         assert isinstance(r.json()["running"], bool)
 
+    def test_runner_status_includes_is_paper(self, api_client):
+        r = api_client.get("/api/runner/status")
+        assert r.status_code == 200
+        assert "is_paper" in r.json()
+
+    def test_trading_mode_endpoint_returns_is_paper(self, api_client):
+        r = api_client.get("/api/trading-mode")
+        assert r.status_code == 200
+        data = r.json()
+        assert "is_paper" in data
+        assert "base_url" in data
+        assert isinstance(data["is_paper"], bool)
+
     def test_runner_not_running_by_default(self, api_client):
         r = api_client.get("/api/runner/status")
         assert r.json()["running"] is False
