@@ -249,44 +249,40 @@ def _rows(cur) -> list[dict]:
 
 
 def query_day(day: str) -> dict:
-    """All scan runs, candidates and trades for a given date (YYYY-MM-DD)."""
+    """Scan runs, latest-run candidates, and trades for a given date (YYYY-MM-DD)."""
     with _conn() as con:
         runs = _rows(con.execute(
             "SELECT * FROM scan_runs WHERE date=? ORDER BY ts DESC", (day,)
         ))
+        latest_run    = runs[0] if runs else {}
+        latest_run_id = latest_run.get("id")
+
+        # Only show candidates from the most recent scan run
         candidates = _rows(con.execute(
             """SELECT sc.*, sr.regime as run_regime
                FROM scan_candidates sc
                JOIN scan_runs sr ON sc.scan_run_id = sr.id
-               WHERE sc.date=?
+               WHERE sc.scan_run_id=?
                ORDER BY sc.score DESC""",
-            (day,),
-        ))
+            (latest_run_id,),
+        )) if latest_run_id else []
+
         trades = _rows(con.execute(
             "SELECT * FROM trades WHERE date=? ORDER BY ts", (day,)
         ))
 
-    # deduplicate candidates — keep best score per symbol per day
-    seen: dict[str, dict] = {}
-    for c in candidates:
-        sym = c["symbol"]
-        if sym not in seen or c["score"] > seen[sym]["score"]:
-            seen[sym] = c
-    unique_candidates = sorted(seen.values(), key=lambda x: x["score"], reverse=True)
-
-    latest_run = runs[0] if runs else {}
     return {
         "date":             day,
         "scan_count":       len(runs),
         "symbols_scanned":  latest_run.get("symbols_scanned", 0),
-        "candidates_found": len(unique_candidates),
+        "candidates_found": len(candidates),
         "trades_placed":    len(trades),
         "regime":           latest_run.get("regime"),
         "adx":              latest_run.get("adx"),
         "spy_above_200ma":  bool(latest_run.get("spy_above_200ma")),
         "slope_20d":        latest_run.get("slope_20d"),
         "score_multiplier": latest_run.get("score_multiplier"),
-        "candidates":       unique_candidates,
+        "candidates":       candidates,
         "trades":           trades,
     }
 

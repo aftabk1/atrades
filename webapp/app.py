@@ -32,7 +32,8 @@ from fastapi.staticfiles import StaticFiles
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
-from data.store import init_db, query_day, query_history
+from datetime import date as _date
+from data.store import init_db, query_day, query_history, get_open_trades
 
 ENV_PATH = ROOT / ".env"
 
@@ -179,6 +180,76 @@ def api_positions():
         }
     except Exception as exc:
         return JSONResponse(status_code=200, content={"error": str(exc), "positions": []})
+
+
+# ── Live Trades API ───────────────────────────────────────────────────────────
+
+@app.get("/api/live-trades")
+def api_live_trades():
+    try:
+        import config as _cfg
+        importlib.reload(_cfg)
+        from alpaca.trading.client import TradingClient
+        tc = TradingClient(
+            api_key=_cfg.ALPACA_API_KEY,
+            secret_key=_cfg.ALPACA_SECRET_KEY,
+            paper=_cfg.IS_PAPER,
+        )
+
+        # Live positions from Alpaca, keyed by symbol
+        alpaca_pos = {p.symbol: p for p in tc.get_all_positions()}
+
+        # DB open trades
+        db_trades = {t["symbol"]: t for t in get_open_trades()}
+
+        # Merge: start from Alpaca positions (source of truth), enrich with DB
+        merged = []
+        today = _date.today().isoformat()
+
+        for symbol, pos in alpaca_pos.items():
+            db = db_trades.get(symbol, {})
+            fill_px   = db.get("fill_price") or float(pos.avg_entry_price)
+            stop_loss = db.get("stop_loss") or 0.0
+            target    = db.get("partial_target") or 0.0
+            risk_per  = (fill_px - stop_loss) if stop_loss else 0.0
+            current   = float(pos.current_price)
+            unreal_pl = float(pos.unrealized_pl)
+            unreal_r  = ((current - fill_px) / risk_per) if risk_per > 0 else None
+
+            trade_date = db.get("date") or today
+            try:
+                from datetime import date as _d
+                days_held = (_d.fromisoformat(today) - _d.fromisoformat(trade_date)).days
+            except Exception:
+                days_held = 0
+
+            stop_dist_pct   = ((current - stop_loss) / current * 100) if stop_loss and current else None
+            target_dist_pct = ((target - current) / current * 100) if target and current else None
+
+            merged.append({
+                "symbol":          symbol,
+                "qty":             float(pos.qty),
+                "fill_price":      round(fill_px, 2),
+                "current_price":   round(current, 2),
+                "unrealized_pl":   round(unreal_pl, 2),
+                "unrealized_plpc": round(float(pos.unrealized_plpc) * 100, 2),
+                "unrealized_r":    round(unreal_r, 2) if unreal_r is not None else None,
+                "stop_loss":       round(stop_loss, 2) if stop_loss else None,
+                "partial_target":  round(target, 2) if target else None,
+                "stop_dist_pct":   round(stop_dist_pct, 1) if stop_dist_pct is not None else None,
+                "target_dist_pct": round(target_dist_pct, 1) if target_dist_pct is not None else None,
+                "days_held":       days_held,
+                "status":          db.get("status", "open"),
+                "score":           db.get("score"),
+                "in_db":           bool(db),
+            })
+
+        # Sort by unrealized R descending
+        merged.sort(key=lambda x: x["unrealized_r"] or -99, reverse=True)
+        return {"trades": merged, "count": len(merged)}
+
+    except Exception as exc:
+        return JSONResponse(status_code=200, content={"error": str(exc), "trades": []})
 
 
 # ── Config API ────────────────────────────────────────────────────────────────

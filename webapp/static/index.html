@@ -269,6 +269,7 @@
   <!-- Tabs -->
   <div class="tabs">
     <div class="tab active" onclick="switchTab('today', this)">Today</div>
+    <div class="tab" onclick="switchTab('trades', this)" id="tab-btn-trades">Trades <span id="open-trades-badge" style="display:none;background:var(--cyan);color:#0d1117;border-radius:9px;padding:1px 6px;font-size:10px;font-weight:700;margin-left:3px;">0</span></div>
     <div class="tab" onclick="switchTab('history', this)">Last 30 Days</div>
     <div class="tab" onclick="switchTab('config', this)">&#9881; Config</div>
   </div>
@@ -339,10 +340,12 @@
           <thead>
             <tr>
               <th>Time</th><th>Symbol</th>
-              <th class="num">Total&nbsp;Sh</th><th class="num">Partial&nbsp;Sh</th><th class="num">Trail&nbsp;Sh</th>
-              <th class="num">Entry</th><th class="num">Stop</th>
-              <th class="num">Partial&nbsp;Target</th><th class="num">Trail&nbsp;ATR</th>
+              <th class="num">Shares</th>
+              <th class="num">Fill&nbsp;$</th>
+              <th class="num">Stop&nbsp;$</th>
+              <th class="num">Target&nbsp;$</th>
               <th class="num">Score</th>
+              <th>Status</th>
             </tr>
           </thead>
           <tbody id="trades-body">
@@ -379,6 +382,67 @@
     </div>
 
   </div><!-- /tab-today -->
+
+  <!-- ── TRADES TAB ── -->
+  <div class="tab-panel" id="tab-trades">
+
+    <!-- Live open positions enriched with trade metadata -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Open Positions</span>
+        <button onclick="loadLiveTrades()" style="font-size:11px;padding:3px 10px;">&#8635;</button>
+      </div>
+      <div class="card-body table-scroll">
+        <table id="live-trades-table">
+          <thead>
+            <tr>
+              <th>Symbol</th>
+              <th class="num">Qty</th>
+              <th class="num">Fill&nbsp;$</th>
+              <th class="num">Current&nbsp;$</th>
+              <th class="num">Unreal&nbsp;P&amp;L</th>
+              <th class="num">Unreal&nbsp;R</th>
+              <th class="num">Stop&nbsp;$</th>
+              <th class="num">Stop&nbsp;Dist</th>
+              <th class="num">Target&nbsp;$</th>
+              <th class="num">Target&nbsp;Dist</th>
+              <th class="num">Days</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="live-trades-body">
+            <tr><td colspan="12" class="empty"><span class="spin"></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Trades placed today (from DB) -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Trades Placed Today</span>
+      </div>
+      <div class="card-body table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th><th>Symbol</th>
+              <th class="num">Shares</th>
+              <th class="num">Fill&nbsp;$</th>
+              <th class="num">Stop&nbsp;$</th>
+              <th class="num">Target&nbsp;$</th>
+              <th class="num">Score</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="trades-today-body">
+            <tr><td colspan="8" class="empty muted">No trades placed today</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /tab-trades -->
 
   <!-- ── HISTORY TAB ── -->
   <div class="tab-panel" id="tab-history">
@@ -474,6 +538,10 @@
           <div class="form-row">
             <div class="form-label">Max Concurrent Trades<div class="form-hint">Open positions allowed at once</div></div>
             <div class="form-control"><input type="number" id="cfg-MAX_CONCURRENT_TRADES" step="1" min="1" max="20"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-label">Daily Loss Circuit Breaker<div class="form-hint">Halt new trades if portfolio drops this % in a day (0.04 = 4%)</div></div>
+            <div class="form-control"><input type="number" id="cfg-MAX_DAILY_LOSS_PCT" step="0.005" min="0.01" max="0.20"></div>
           </div>
         </div>
       </div>
@@ -706,6 +774,7 @@ function switchTab(name, el) {
   document.getElementById('tab-' + name).classList.add('active');
   if (name === 'history') loadHistory();
   if (name === 'config')  loadConfig();
+  if (name === 'trades')  loadLiveTrades();
 }
 
 // ── Dashboard (today / selected date) ─────────────────────────────────────
@@ -775,20 +844,18 @@ function renderDashboard(d) {
 
   const tb = document.getElementById('trades-body');
   if (!d.trades || d.trades.length === 0) {
-    tb.innerHTML = '<tr><td colspan="10" class="empty muted">No trades placed this date</td></tr>';
+    tb.innerHTML = '<tr><td colspan="8" class="empty muted">No trades placed this date</td></tr>';
   } else {
     tb.innerHTML = d.trades.map(t => `
       <tr>
         <td class="muted">${fmtTime(t.ts)}</td>
         <td><strong>${t.symbol}</strong></td>
         <td class="num">${t.shares}</td>
-        <td class="num">${t.partial_shares}</td>
-        <td class="num">${t.trail_shares}</td>
-        <td class="num mono">$${fmt(t.entry)}</td>
+        <td class="num mono">${t.fill_price ? '$' + fmt(t.fill_price) : '<span class="muted">$' + fmt(t.entry) + '</span>'}</td>
         <td class="num mono red">$${fmt(t.stop_loss)}</td>
-        <td class="num mono green">$${fmt(t.partial_target)}</td>
-        <td class="num mono muted">$${fmt(t.trail_atr)}</td>
+        <td class="num mono green">${t.partial_target ? '$' + fmt(t.partial_target) : '—'}</td>
         <td class="num">${fmt(t.score,0)}</td>
+        <td>${statusBadge(t.status)}</td>
       </tr>`).join('');
   }
 }
@@ -899,11 +966,102 @@ function jumpToDate(d) {
   loadDashboard(d);
 }
 
+// ── Live Trades tab ────────────────────────────────────────────────────────
+async function loadLiveTrades() {
+  document.getElementById('live-trades-body').innerHTML =
+    '<tr><td colspan="12" class="empty"><span class="spin"></span></td></tr>';
+  try {
+    const [liveRes, todayRes] = await Promise.all([
+      fetch('/api/live-trades'),
+      fetch('/api/dashboard?date=' + todayStr()),
+    ]);
+    const live  = await liveRes.json();
+    const today = await todayRes.json();
+    renderLiveTrades(live.trades || []);
+    renderTradesToday(today.trades || []);
+    // update badge on tab button
+    const n = (live.trades || []).length;
+    const badge = document.getElementById('open-trades-badge');
+    badge.textContent = n;
+    badge.style.display = n > 0 ? '' : 'none';
+  } catch(e) {
+    document.getElementById('live-trades-body').innerHTML =
+      '<tr><td colspan="12" class="empty muted">Error loading trades</td></tr>';
+  }
+}
+
+function statusBadge(s) {
+  const map = {
+    open:         ['var(--cyan)',   'OPEN'],
+    partial_exit: ['var(--green)',  'PARTIAL'],
+    closed:       ['var(--muted)',  'CLOSED'],
+    fill_timeout: ['var(--yellow)', 'TIMEOUT'],
+  };
+  const [color, label] = map[s] || ['var(--muted)', s || '—'];
+  return `<span style="font-size:10px;font-weight:700;color:${color};letter-spacing:.04em;">${label}</span>`;
+}
+
+function rColor(r) {
+  if (r == null) return '';
+  if (r >= 1)    return 'green';
+  if (r >= 0)    return '';
+  return 'red';
+}
+
+function renderLiveTrades(trades) {
+  const tb = document.getElementById('live-trades-body');
+  if (!trades.length) {
+    tb.innerHTML = '<tr><td colspan="12" class="empty muted">No open positions</td></tr>';
+    return;
+  }
+  tb.innerHTML = trades.map(t => {
+    const pl    = t.unrealized_pl;
+    const plCls = pl > 0 ? 'green' : pl < 0 ? 'red' : '';
+    const rVal  = t.unrealized_r;
+    const rStr  = rVal != null ? (rVal >= 0 ? '+' : '') + fmt(rVal, 2) + 'R' : '—';
+    const noDb  = !t.in_db ? ' title="Position not in DB — placed outside runner"' : '';
+    return `<tr${noDb}>
+      <td><strong>${t.symbol}</strong>${!t.in_db ? ' <span style="color:var(--yellow);font-size:10px;">⚠</span>' : ''}</td>
+      <td class="num">${t.qty}</td>
+      <td class="num mono">$${fmt(t.fill_price)}</td>
+      <td class="num mono">$${fmt(t.current_price)}</td>
+      <td class="num ${plCls}">${pl >= 0 ? '+' : ''}$${fmt(Math.abs(pl))} (${pl >= 0 ? '+' : ''}${fmt(t.unrealized_plpc, 1)}%)</td>
+      <td class="num ${rColor(rVal)}" style="font-weight:700">${rStr}</td>
+      <td class="num mono red">${t.stop_loss ? '$' + fmt(t.stop_loss) : '—'}</td>
+      <td class="num ${t.stop_dist_pct != null && t.stop_dist_pct < 5 ? 'yellow' : 'muted'}">${t.stop_dist_pct != null ? fmt(t.stop_dist_pct, 1) + '%' : '—'}</td>
+      <td class="num mono green">${t.partial_target ? '$' + fmt(t.partial_target) : '—'}</td>
+      <td class="num muted">${t.target_dist_pct != null ? '+' + fmt(t.target_dist_pct, 1) + '%' : '—'}</td>
+      <td class="num muted">${t.days_held}d</td>
+      <td>${statusBadge(t.status)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderTradesToday(trades) {
+  const tb = document.getElementById('trades-today-body');
+  if (!trades.length) {
+    tb.innerHTML = '<tr><td colspan="8" class="empty muted">No trades placed today</td></tr>';
+    return;
+  }
+  tb.innerHTML = trades.map(t => `
+    <tr>
+      <td class="muted">${fmtTime(t.ts)}</td>
+      <td><strong>${t.symbol}</strong></td>
+      <td class="num">${t.shares}</td>
+      <td class="num mono">${t.fill_price ? '$' + fmt(t.fill_price) : '<span class="muted">$' + fmt(t.entry) + '</span>'}</td>
+      <td class="num mono red">$${fmt(t.stop_loss)}</td>
+      <td class="num mono green">${t.partial_target ? '$' + fmt(t.partial_target) : '—'}</td>
+      <td class="num">${fmt(t.score, 0)}</td>
+      <td>${statusBadge(t.status)}</td>
+    </tr>`).join('');
+}
+
 // ── Controls ───────────────────────────────────────────────────────────────
 function loadToday() { loadDashboard(todayStr()); }
 function refresh() {
   loadDashboard(currentDate);
   if (document.getElementById('tab-history').classList.contains('active')) loadHistory();
+  if (document.getElementById('tab-trades').classList.contains('active'))  loadLiveTrades();
   resetCountdown();
 }
 document.getElementById('date-picker').addEventListener('change', e => loadDashboard(e.target.value));
@@ -1134,7 +1292,7 @@ function populateConfig(data) {
     'BREAKOUT_ATR_STOP_MULT','BREAKOUT_MAX_STOP_PCT','BREAKOUT_RR_RATIO',
     'PARTIAL_EXIT_R','PARTIAL_EXIT_PCT','TRAIL_ATR_MULT',
     'ACCUM_LOOKBACK_DAYS','BULL_TRAP_SCORE_THRESHOLD',
-    'MAX_POSITION_SIZE','MAX_PORTFOLIO_RISK','MAX_CONCURRENT_TRADES',
+    'MAX_POSITION_SIZE','MAX_PORTFOLIO_RISK','MAX_CONCURRENT_TRADES','MAX_DAILY_LOSS_PCT',
     'BACKTEST_INITIAL_CAPITAL','BACKTEST_MAX_HOLD_DAYS','BACKTEST_SLIPPAGE_PCT',
     'ALPACA_API_KEY','ALPACA_SECRET_KEY','ALPACA_BASE_URL',
   ];
@@ -1171,7 +1329,7 @@ function collectConfig() {
     'BREAKOUT_ATR_STOP_MULT','BREAKOUT_MAX_STOP_PCT','BREAKOUT_RR_RATIO',
     'PARTIAL_EXIT_R','PARTIAL_EXIT_PCT','TRAIL_ATR_MULT',
     'ACCUM_LOOKBACK_DAYS','BULL_TRAP_SCORE_THRESHOLD',
-    'MAX_POSITION_SIZE','MAX_PORTFOLIO_RISK','MAX_CONCURRENT_TRADES',
+    'MAX_POSITION_SIZE','MAX_PORTFOLIO_RISK','MAX_CONCURRENT_TRADES','MAX_DAILY_LOSS_PCT',
     'BACKTEST_INITIAL_CAPITAL','BACKTEST_MAX_HOLD_DAYS','BACKTEST_SLIPPAGE_PCT',
     'ALPACA_API_KEY','ALPACA_SECRET_KEY','ALPACA_BASE_URL',
   ];
@@ -1349,6 +1507,7 @@ async function bootLoadLatest() {
 }
 bootLoadLatest();
 fetchTradingMode();
+loadLiveTrades();
 </script>
 </body>
 </html>
