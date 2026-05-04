@@ -35,6 +35,11 @@ from loguru import logger
 
 import config
 from data.store import init_db, save_scan, save_trade
+from execution.position_monitor import (
+    check_circuit_breaker,
+    ratchet_trailing_stops,
+    sync_open_trades,
+)
 from scanner import BreakoutScanner
 
 # ── Constants ─────────────────────────────────────────────────────────────────
@@ -114,13 +119,14 @@ def run_session(scanner: BreakoutScanner, rescan_interval: int) -> None:
     time.sleep(SCAN_AFTER_OPEN_MINS * 60)
 
     scan_count = 0
-    last_scan  = datetime.min
+    last_scan  = datetime.min.replace(tzinfo=NY)
 
     while True:
         clock = _get_clock(scanner)
 
         if not clock.is_open:
             logger.info(f"Market closed after {scan_count} scan(s) today")
+            _end_of_day(scanner)
             return
 
         now            = datetime.now(NY)
@@ -139,6 +145,7 @@ def run_session(scanner: BreakoutScanner, rescan_interval: int) -> None:
             if rescan_interval == 0:
                 # one scan per session — wait for close
                 _wait_for_close(scanner)
+                _end_of_day(scanner)
                 return
 
         # Sleep until next poll or next scheduled scan
@@ -153,6 +160,26 @@ def _run_scan(scanner: BreakoutScanner, scan_num: int) -> None:
     now_ny = datetime.now(NY)
     label  = "Opening scan" if scan_num == 0 else f"Re-scan #{scan_num}"
     logger.info(f"--- {label}  {now_ny.strftime('%H:%M ET')} ---")
+
+    # Sync position state before scanning
+    if scanner._execute:
+        try:
+            sync_open_trades(scanner._broker)
+        except Exception as exc:
+            logger.warning(f"Position sync error (non-fatal): {exc}")
+
+        # Circuit breaker — skip new trades if daily loss limit hit
+        if check_circuit_breaker(scanner._broker):
+            logger.warning("Circuit breaker active — scan runs but no new orders")
+            scanner_execute_orig = scanner._execute
+            scanner._execute = False
+            candidates = scanner.scan()
+            scanner.print_table(candidates)
+            scanner._execute = scanner_execute_orig
+            universe_size = len(scanner._universe.get_symbols())
+            save_scan(candidates, universe_size, scanner._last_regime)
+            return
+
     candidates = scanner.scan()
     scanner.print_table(candidates)
 
@@ -173,6 +200,17 @@ def _wait_for_close(scanner: BreakoutScanner) -> None:
         time.sleep(300)
         if not _get_clock(scanner).is_open:
             return
+
+
+def _end_of_day(scanner: BreakoutScanner) -> None:
+    """Post-close housekeeping: sync positions and ratchet trailing stops."""
+    if not scanner._execute:
+        return
+    try:
+        sync_open_trades(scanner._broker)
+        ratchet_trailing_stops(scanner._broker)
+    except Exception as exc:
+        logger.warning(f"End-of-day monitor error (non-fatal): {exc}")
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────

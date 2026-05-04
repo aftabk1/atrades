@@ -79,20 +79,40 @@ def init_db() -> None:
                 buy_order_id     TEXT,
                 partial_order_id TEXT,
                 trail_order_id   TEXT,
+                stop_order_id    TEXT,
                 shares           INTEGER,
                 partial_shares   INTEGER,
                 trail_shares     INTEGER,
                 entry            REAL,
+                fill_price       REAL,
+                fill_ts          TEXT,
                 stop_loss        REAL,
                 partial_target   REAL,
                 trail_atr        REAL,
-                score            REAL
+                score            REAL,
+                status           TEXT DEFAULT 'open',
+                exit_price       REAL,
+                exit_ts          TEXT,
+                exit_reason      TEXT
             );
 
             CREATE INDEX IF NOT EXISTS idx_scan_runs_date        ON scan_runs(date);
             CREATE INDEX IF NOT EXISTS idx_scan_candidates_date  ON scan_candidates(date);
             CREATE INDEX IF NOT EXISTS idx_trades_date           ON trades(date);
         """)
+        # Migrate existing DB: add new columns if absent
+        existing = {r[1] for r in con.execute("PRAGMA table_info(trades)").fetchall()}
+        for col, defn in [
+            ("stop_order_id", "TEXT"),
+            ("fill_price",    "REAL"),
+            ("fill_ts",       "TEXT"),
+            ("status",        "TEXT DEFAULT 'open'"),
+            ("exit_price",    "REAL"),
+            ("exit_ts",       "TEXT"),
+            ("exit_reason",   "TEXT"),
+        ]:
+            if col not in existing:
+                con.execute(f"ALTER TABLE trades ADD COLUMN {col} {defn}")
 
 
 # ── Writes ────────────────────────────────────────────────────────────────────
@@ -151,24 +171,74 @@ def save_trade(order_result: dict) -> None:
         con.execute(
             """INSERT INTO trades
                (ts, date, symbol, buy_order_id, partial_order_id, trail_order_id,
-                shares, partial_shares, trail_shares, entry, stop_loss,
-                partial_target, trail_atr, score)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                stop_order_id, shares, partial_shares, trail_shares,
+                entry, fill_price, fill_ts, stop_loss,
+                partial_target, trail_atr, score, status)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 now, day,
                 order_result.get("symbol"),
                 order_result.get("buy_order_id"),
                 order_result.get("partial_order_id"),
                 order_result.get("trail_order_id"),
+                order_result.get("stop_order_id"),
                 order_result.get("shares", 0),
                 order_result.get("partial_shares", 0),
                 order_result.get("trail_shares", 0),
                 order_result.get("entry", 0),
+                order_result.get("fill_price"),
+                order_result.get("fill_ts"),
                 order_result.get("stop_loss", 0),
                 order_result.get("partial_target", 0),
                 order_result.get("trail_atr", 0),
                 order_result.get("score", 0),
+                "open",
             ),
+        )
+
+
+def get_open_trades() -> list[dict]:
+    """Return all trades with status 'open' or 'partial_exit'."""
+    with _conn() as con:
+        return _rows(con.execute(
+            "SELECT * FROM trades WHERE status IN ('open','partial_exit') ORDER BY ts"
+        ))
+
+
+def update_trade_fill(buy_order_id: str, fill_price: float, fill_ts: str,
+                      stop_order_id: str | None = None) -> None:
+    """Record actual fill details after buy order confirms."""
+    with _conn() as con:
+        con.execute(
+            """UPDATE trades
+               SET fill_price=?, fill_ts=?, stop_order_id=COALESCE(?,stop_order_id)
+               WHERE buy_order_id=?""",
+            (fill_price, fill_ts, stop_order_id, buy_order_id),
+        )
+
+
+def upgrade_to_trailing(buy_order_id: str, trail_order_id: str,
+                        stop_order_id_cleared: str) -> None:
+    """After partial limit fills: record trail order, clear old stop, set status."""
+    with _conn() as con:
+        con.execute(
+            """UPDATE trades
+               SET trail_order_id=?, stop_order_id=NULL, status='partial_exit'
+               WHERE buy_order_id=?""",
+            (trail_order_id, buy_order_id),
+        )
+
+
+def close_trade(buy_order_id: str, exit_price: float,
+                exit_reason: str) -> None:
+    """Mark a trade closed with exit details."""
+    now = datetime.now(timezone.utc).isoformat()
+    with _conn() as con:
+        con.execute(
+            """UPDATE trades
+               SET status='closed', exit_price=?, exit_ts=?, exit_reason=?
+               WHERE buy_order_id=?""",
+            (exit_price, now, exit_reason, buy_order_id),
         )
 
 

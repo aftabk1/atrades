@@ -87,6 +87,7 @@ CONFIG_DEFAULTS = {
     "MAX_POSITION_SIZE":               "0.10",
     "MAX_PORTFOLIO_RISK":              "0.01",
     "MAX_CONCURRENT_TRADES":           "4",
+    "MAX_DAILY_LOSS_PCT":              "0.04",
     "BREAKOUT_MIN_PRICE":              "25.0",
     "BREAKOUT_MIN_AVG_VOLUME":         "1000000",
     "BREAKOUT_VOLUME_SURGE_MULT":      "1.5",

@@ -49,6 +49,9 @@ ACCUM_LOOKBACK_DAYS = int(os.getenv("ACCUM_LOOKBACK_DAYS", "20"))
 # ── Breakout scanner — bull trap detection ────────────────────────────────────
 BULL_TRAP_SCORE_THRESHOLD = float(os.getenv("BULL_TRAP_SCORE_THRESHOLD", "40.0"))
 
+# ── Risk circuit breaker ──────────────────────────────────────────────────────
+MAX_DAILY_LOSS_PCT = float(os.getenv("MAX_DAILY_LOSS_PCT", "0.04"))  # halt if down 4% on the day
+
 # ── Market regime ─────────────────────────────────────────────────────────────
 REGIME_AWARE_SCANNING = os.getenv("REGIME_AWARE_SCANNING", "true").lower() == "true"
 
