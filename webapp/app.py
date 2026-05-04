@@ -33,7 +33,7 @@ ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
 from datetime import date as _date
-from data.store import init_db, query_day, query_history, get_open_trades
+from data.store import init_db, query_day, query_history, get_open_trades, query_performance
 
 ENV_PATH = ROOT / ".env"
 
@@ -180,6 +180,13 @@ def api_positions():
         }
     except Exception as exc:
         return JSONResponse(status_code=200, content={"error": str(exc), "positions": []})
+
+
+# ── Performance API ───────────────────────────────────────────────────────────
+
+@app.get("/api/performance")
+def api_performance(days: int = Query(default=90, ge=1, le=365)):
+    return query_performance(days)
 
 
 # ── Live Trades API ───────────────────────────────────────────────────────────

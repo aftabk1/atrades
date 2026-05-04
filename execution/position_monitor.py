@@ -276,6 +276,79 @@ def check_circuit_breaker(client: AlpacaClient) -> bool:
     return False
 
 
+# ── reconcile_orphans ─────────────────────────────────────────────────────────
+
+def reconcile_orphans(client: AlpacaClient) -> None:
+    """
+    For every open Alpaca position, verify that sell-side orders cover the
+    full qty. If a position has no open sell orders at all, place a market
+    stop at the DB stop_loss price (or a 5% floor) so it is never naked.
+    """
+    try:
+        tc        = client.trading_client
+        positions = {p.symbol: p for p in tc.get_all_positions()}
+    except Exception as exc:
+        logger.warning(f"reconcile_orphans: could not fetch positions — {exc}")
+        return
+
+    if not positions:
+        return
+
+    # Fetch all open sell orders keyed by symbol
+    try:
+        open_orders = tc.get_orders(filter=GetOrdersRequest(
+            status=QueryOrderStatus.OPEN,
+            side=OrderSide.SELL,
+            limit=500,
+        ))
+    except Exception as exc:
+        logger.warning(f"reconcile_orphans: could not fetch orders — {exc}")
+        return
+
+    sell_qty: dict[str, float] = {}
+    for o in open_orders:
+        sell_qty[o.symbol] = sell_qty.get(o.symbol, 0) + float(o.qty or 0)
+
+    db_trades = {t["symbol"]: t for t in get_open_trades()}
+
+    for symbol, pos in positions.items():
+        pos_qty = float(pos.qty)
+        covered = sell_qty.get(symbol, 0)
+
+        if covered >= pos_qty:
+            continue  # fully covered
+
+        uncovered = pos_qty - covered
+        logger.warning(
+            f"reconcile_orphans: {symbol} has {pos_qty} shares but only "
+            f"{covered} covered by sell orders — placing emergency stop for {uncovered}"
+        )
+
+        # Determine stop price: use DB stop_loss if available, else 5% below current
+        db = db_trades.get(symbol, {})
+        stop_price = db.get("stop_loss") or 0
+        current    = float(pos.current_price or pos.avg_entry_price)
+        if not stop_price or stop_price <= 0:
+            stop_price = round(current * 0.95, 2)
+
+        try:
+            from alpaca.trading.requests import StopOrderRequest
+            stop_req = StopOrderRequest(
+                symbol=symbol,
+                qty=uncovered,
+                side=OrderSide.SELL,
+                time_in_force=TimeInForce.GTC,
+                stop_price=round(stop_price, 2),
+            )
+            order = tc.submit_order(stop_req)
+            logger.info(
+                f"reconcile_orphans: emergency stop placed for {symbol} "
+                f"— {uncovered} sh @ stop ${stop_price:.2f} | id={order.id}"
+            )
+        except Exception as exc:
+            logger.error(f"reconcile_orphans: failed to place stop for {symbol}: {exc}")
+
+
 # ── helpers ───────────────────────────────────────────────────────────────────
 
 def _fetch_daily(symbol: str, days: int = 30) -> pd.DataFrame | None:

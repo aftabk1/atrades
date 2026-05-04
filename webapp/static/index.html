@@ -371,7 +371,7 @@
               <th class="num">Shares</th><th class="num">R:R</th>
               <th class="num">$&nbsp;Risk</th>
               <th class="num">RSI</th><th class="num">RS/SPY</th>
-              <th class="num">Vol</th><th>Trap</th>
+              <th class="num">Vol</th><th class="num">Gap</th><th>Trap</th>
             </tr>
           </thead>
           <tbody id="candidates-body">
@@ -439,6 +439,17 @@
             <tr><td colspan="8" class="empty muted">No trades placed today</td></tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- P&L Performance summary -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Closed Trade Performance</span>
+        <span class="muted" style="font-size:11px;">last 90 days</span>
+      </div>
+      <div class="card-body" id="perf-card-body">
+        <span class="muted">Loading...</span>
       </div>
     </div>
 
@@ -838,6 +849,7 @@ function renderDashboard(d) {
         <td class="num ${c.rsi > 70 ? 'yellow' : ''}">${fmt(c.rsi,0)}</td>
         <td class="num ${c.rs_vs_spy > 0 ? 'green' : 'red'}">${c.rs_vs_spy > 0 ? '+' : ''}${fmt(c.rs_vs_spy,1)}%</td>
         <td class="num ${c.volume_ratio >= 1.5 ? 'green' : c.volume_ratio < 0.8 ? 'muted' : ''}">${fmt(c.volume_ratio,1)}x</td>
+        <td class="num ${c.gap_pct >= 8 ? 'green' : 'muted'}">${c.gap_pct ? (c.gap_pct > 0 ? '+' : '') + fmt(c.gap_pct,1) + '%' : '—'}</td>
         <td>${c.is_trap ? '<span class="trap-badge">TRAP</span>' : '<span class="muted">—</span>'}</td>
       </tr>`).join('');
   }
@@ -971,14 +983,17 @@ async function loadLiveTrades() {
   document.getElementById('live-trades-body').innerHTML =
     '<tr><td colspan="12" class="empty"><span class="spin"></span></td></tr>';
   try {
-    const [liveRes, todayRes] = await Promise.all([
+    const [liveRes, todayRes, perfRes] = await Promise.all([
       fetch('/api/live-trades'),
       fetch('/api/dashboard?date=' + todayStr()),
+      fetch('/api/performance?days=90'),
     ]);
     const live  = await liveRes.json();
     const today = await todayRes.json();
+    const perf  = await perfRes.json();
     renderLiveTrades(live.trades || []);
     renderTradesToday(today.trades || []);
+    renderPerf(perf);
     // update badge on tab button
     const n = (live.trades || []).length;
     const badge = document.getElementById('open-trades-badge');
@@ -1054,6 +1069,46 @@ function renderTradesToday(trades) {
       <td class="num">${fmt(t.score, 0)}</td>
       <td>${statusBadge(t.status)}</td>
     </tr>`).join('');
+}
+
+function renderPerf(p) {
+  const el = document.getElementById('perf-card-body');
+  if (!p || p.total === 0) {
+    el.innerHTML = '<span class="muted">No closed trades in the last 90 days.</span>';
+    return;
+  }
+  const pf   = p.profit_factor != null ? fmt(p.profit_factor, 2) + 'x' : '—';
+  const wr   = p.win_rate      != null ? fmt(p.win_rate, 1) + '%'       : '—';
+  const avgR = p.avg_r         != null ? (p.avg_r >= 0 ? '+' : '') + fmt(p.avg_r, 2) + 'R' : '—';
+  const best = p.best_r        != null ? '+' + fmt(p.best_r, 2) + 'R'  : '—';
+  const worst= p.worst_r       != null ? fmt(p.worst_r, 2) + 'R'       : '—';
+  const hold = p.avg_hold_days != null ? fmt(p.avg_hold_days, 1) + 'd'  : '—';
+  el.innerHTML = `
+    <div style="display:flex;flex-wrap:wrap;gap:18px 32px;margin-bottom:12px;">
+      <div><div class="muted" style="font-size:10px;">TRADES</div><div style="font-size:20px;font-weight:700;">${p.total}</div></div>
+      <div><div class="muted" style="font-size:10px;">WIN RATE</div><div style="font-size:20px;font-weight:700;color:var(--green)">${wr}</div></div>
+      <div><div class="muted" style="font-size:10px;">AVG R</div><div style="font-size:20px;font-weight:700;color:${p.avg_r>=0?'var(--green)':'var(--red)'}">${avgR}</div></div>
+      <div><div class="muted" style="font-size:10px;">PROFIT FACTOR</div><div style="font-size:20px;font-weight:700;color:${p.profit_factor>=1?'var(--green)':'var(--red)'}">${pf}</div></div>
+      <div><div class="muted" style="font-size:10px;">BEST R</div><div style="font-size:20px;font-weight:700;color:var(--green)">${best}</div></div>
+      <div><div class="muted" style="font-size:10px;">WORST R</div><div style="font-size:20px;font-weight:700;color:var(--red)">${worst}</div></div>
+      <div><div class="muted" style="font-size:10px;">AVG HOLD</div><div style="font-size:20px;font-weight:700;">${hold}</div></div>
+      <div><div class="muted" style="font-size:10px;">W / L</div><div style="font-size:20px;font-weight:700;">${p.wins} <span class="muted">/</span> ${p.losses}</div></div>
+    </div>
+    ${p.recent && p.recent.length ? `
+    <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Recent closed trades</div>
+    <div class="table-scroll"><table style="font-size:12px;">
+      <thead><tr><th>Symbol</th><th class="num">Fill $</th><th class="num">Exit $</th><th class="num">R</th><th class="num">Hold</th><th>Reason</th></tr></thead>
+      <tbody>${[...p.recent].reverse().map(r => `
+        <tr>
+          <td><strong>${r.symbol}</strong></td>
+          <td class="num mono">$${fmt(r.fill_price)}</td>
+          <td class="num mono">$${fmt(r.exit_price)}</td>
+          <td class="num ${r.actual_r>=0?'green':'red'}" style="font-weight:700;">${r.actual_r>=0?'+':''}${fmt(r.actual_r,2)}R</td>
+          <td class="num muted">${r.hold_days||0}d</td>
+          <td class="muted">${r.exit_reason||'—'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table></div>` : ''}`;
 }
 
 // ── Controls ───────────────────────────────────────────────────────────────

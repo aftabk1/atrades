@@ -52,6 +52,8 @@ class BreakoutSignals:
     atr_expansion:      SignalResult = field(default_factory=_default_signal)
     earnings_proximity: SignalResult = field(default_factory=_default_signal)
 
+    gap_pct: float = 0.0   # today open vs prior close; ≥0.08 = gap-up breakout
+
     # ── Enhancement modules (populated after price-breakout gate) ─────────────
     # Type hints use strings to avoid circular imports at module load time.
     # Both are set by detect_all via lazy local imports.
@@ -89,6 +91,10 @@ def detect_all(
     atr14_val      = float(_atr(df, 14).iloc[-1])
     support        = _find_support(df)
 
+    gap_pct = 0.0
+    if len(df) >= 2:
+        gap_pct = round(float(df["open"].iloc[-1] / df["close"].iloc[-2] - 1), 4)
+
     sig = BreakoutSignals(
         symbol=symbol,
         current_price=current_price,
@@ -96,6 +102,7 @@ def detect_all(
         avg_volume_20d=avg_vol_20d,
         atr_14=atr14_val,
         support_level=support,
+        gap_pct=gap_pct,
     )
 
     sig.breakout_20d      = _check_price_breakout(df, 20)

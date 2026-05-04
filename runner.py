@@ -38,14 +38,16 @@ from data.store import init_db, save_scan, save_trade
 from execution.position_monitor import (
     check_circuit_breaker,
     ratchet_trailing_stops,
+    reconcile_orphans,
     sync_open_trades,
 )
 from scanner import BreakoutScanner
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 NY = pytz.timezone("America/New_York")
-SCAN_AFTER_OPEN_MINS = 5    # wait this long after open before first scan
-POLL_SECS            = 30   # how often to check the clock while waiting
+SCAN_AFTER_OPEN_MINS  = 5   # wait this long after open before first scan
+POLL_SECS             = 30  # how often to check the clock while waiting
+POSITION_CHECK_MINS   = 10  # intraday position sync interval (between scans)
 
 
 # ── Logging setup ─────────────────────────────────────────────────────────────
@@ -118,8 +120,9 @@ def run_session(scanner: BreakoutScanner, rescan_interval: int) -> None:
     logger.info(f"Market open -- waiting {SCAN_AFTER_OPEN_MINS} min for prices to settle")
     time.sleep(SCAN_AFTER_OPEN_MINS * 60)
 
-    scan_count = 0
-    last_scan  = datetime.min.replace(tzinfo=NY)
+    scan_count          = 0
+    last_scan           = datetime.min.replace(tzinfo=NY)
+    last_position_check = datetime.min.replace(tzinfo=NY)
 
     while True:
         clock = _get_clock(scanner)
@@ -134,11 +137,23 @@ def run_session(scanner: BreakoutScanner, rescan_interval: int) -> None:
         due_for_rescan = (rescan_interval > 0 and mins_since >= rescan_interval)
         first_scan     = scan_count == 0
 
+        # Intraday position monitor — runs every POSITION_CHECK_MINS between scans
+        if scanner._execute:
+            mins_since_check = (now - last_position_check).total_seconds() / 60
+            if mins_since_check >= POSITION_CHECK_MINS and not (first_scan or due_for_rescan):
+                try:
+                    sync_open_trades(scanner._broker)
+                    reconcile_orphans(scanner._broker)
+                    last_position_check = datetime.now(NY)
+                except Exception as exc:
+                    logger.warning(f"Position monitor error (non-fatal): {exc}")
+
         if first_scan or due_for_rescan:
             try:
                 _run_scan(scanner, scan_count)
-                scan_count += 1
-                last_scan   = datetime.now(NY)
+                scan_count          += 1
+                last_scan            = datetime.now(NY)
+                last_position_check  = last_scan
             except Exception as exc:
                 logger.error(f"Scan error (will retry next interval): {exc}")
 

@@ -424,6 +424,7 @@ def _build_candidate(signals, setup: TradeSetup, scorer: BreakoutScorer, regime:
         "dollar_reward":  setup.dollar_reward,
         "risk_reward":    setup.risk_reward,
         "portfolio_pct":  setup.portfolio_pct,
+        "gap_pct":      round(signals.gap_pct * 100, 2),
         "volume_ratio": round(signals.volume_surge.value, 2),
         "rsi":          round(signals.rsi_zone.value, 1),
         "rs_vs_spy":    round(signals.relative_strength.value, 2),
