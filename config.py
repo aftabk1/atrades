@@ -55,6 +55,19 @@ MAX_DAILY_LOSS_PCT = float(os.getenv("MAX_DAILY_LOSS_PCT", "0.04"))  # halt if d
 # ── Gap-up detection ──────────────────────────────────────────────────────────
 GAP_UP_THRESHOLD = float(os.getenv("GAP_UP_THRESHOLD", "0.08"))  # ≥8% open vs prior close = gap-up
 
+# ── Signal score weights (must sum to 100 for a clean score scale) ────────────
+SCORE_VOLUME_SURGE       = float(os.getenv("SCORE_VOLUME_SURGE",       "20.0"))
+SCORE_BREAKOUT_20D       = float(os.getenv("SCORE_BREAKOUT_20D",       "16.0"))
+SCORE_RELATIVE_STRENGTH  = float(os.getenv("SCORE_RELATIVE_STRENGTH",  "12.0"))
+SCORE_RSI_ZONE           = float(os.getenv("SCORE_RSI_ZONE",           "12.0"))
+SCORE_BREAKOUT_50D       = float(os.getenv("SCORE_BREAKOUT_50D",       "12.0"))
+SCORE_ATR_EXPANSION      = float(os.getenv("SCORE_ATR_EXPANSION",       "8.0"))
+SCORE_CONSOLIDATION      = float(os.getenv("SCORE_CONSOLIDATION",       "8.0"))
+SCORE_HIGHER_LOWS        = float(os.getenv("SCORE_HIGHER_LOWS",         "8.0"))
+SCORE_EARNINGS_PROXIMITY = float(os.getenv("SCORE_EARNINGS_PROXIMITY",  "4.0"))
+SCORE_ACCUM_MAX_BONUS    = float(os.getenv("SCORE_ACCUM_MAX_BONUS",    "12.0"))
+SCORE_TRAP_MAX_PENALTY   = float(os.getenv("SCORE_TRAP_MAX_PENALTY",   "32.0"))
+
 # ── Market regime ─────────────────────────────────────────────────────────────
 REGIME_AWARE_SCANNING = os.getenv("REGIME_AWARE_SCANNING", "true").lower() == "true"
 

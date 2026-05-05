@@ -514,11 +514,11 @@
             <div class="form-control"><input type="number" id="cfg-BREAKOUT_MIN_AVG_VOLUME" step="100000" min="0"></div>
           </div>
           <div class="form-row">
-            <div class="form-label">Volume Surge Multiplier<span class="wt-badge wt-pos">25 pts</span><div class="form-hint">Today vs avg (e.g. 1.5 = 50% above avg)</div></div>
+            <div class="form-label">Volume Surge Multiplier<span class="wt-badge wt-pos">20 pts</span><div class="form-hint">Today vs avg (e.g. 1.5 = 50% above avg)</div></div>
             <div class="form-control"><input type="number" id="cfg-BREAKOUT_VOLUME_SURGE_MULT" step="0.1" min="1"></div>
           </div>
           <div class="form-row">
-            <div class="form-label">RSI Low Zone<span class="wt-badge wt-pos">15 pts</span><div class="form-hint">RSI band lower bound &mdash; RSI Low &amp; High together = one 15-pt signal</div></div>
+            <div class="form-label">RSI Low Zone<span class="wt-badge wt-pos">12 pts</span><div class="form-hint">RSI band lower bound &mdash; RSI Low &amp; High together = one 15-pt signal</div></div>
             <div class="form-control"><input type="number" id="cfg-BREAKOUT_RSI_LOW" step="1" min="1" max="100"></div>
           </div>
           <div class="form-row">
@@ -526,15 +526,15 @@
             <div class="form-control"><input type="number" id="cfg-BREAKOUT_RSI_HIGH" step="1" min="1" max="100"></div>
           </div>
           <div class="form-row">
-            <div class="form-label">ATR Expansion Threshold<span class="wt-badge wt-pos">10 pts</span><div class="form-hint">Short-term ATR must exceed long-term ATR by this ratio</div></div>
+            <div class="form-label">ATR Expansion Threshold<span class="wt-badge wt-pos">8 pts</span><div class="form-hint">Short-term ATR must exceed long-term ATR by this ratio</div></div>
             <div class="form-control"><input type="number" id="cfg-BREAKOUT_ATR_EXPANSION_THRESHOLD" step="0.05" min="1"></div>
           </div>
           <div class="form-row">
-            <div class="form-label">Consolidation Lookback (days)<span class="wt-badge wt-pos">10 pts</span><div class="form-hint">Low daily volatility in this window = tight base</div></div>
+            <div class="form-label">Consolidation Lookback (days)<span class="wt-badge wt-pos">8 pts</span><div class="form-hint">Low daily volatility in this window = tight base</div></div>
             <div class="form-control"><input type="number" id="cfg-BREAKOUT_CONSOLIDATION_LOOKBACK" step="1" min="3"></div>
           </div>
           <div class="form-row">
-            <div class="form-label">Higher Lows Lookback (days)<span class="wt-badge wt-pos">10 pts</span><div class="form-hint">Ascending swing lows over this window = demand building</div></div>
+            <div class="form-label">Higher Lows Lookback (days)<span class="wt-badge wt-pos">8 pts</span><div class="form-hint">Ascending swing lows over this window = demand building</div></div>
             <div class="form-control"><input type="number" id="cfg-BREAKOUT_HIGHER_LOWS_LOOKBACK" step="1" min="3"></div>
           </div>
           <div class="form-row">
@@ -544,26 +544,6 @@
             </div>
           </div>
 
-          <!-- Score reference -->
-          <div style="margin-top:14px;padding:10px 12px;background:var(--surface2);border-radius:6px;border:1px solid var(--border)">
-            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:8px;">Full Score Breakdown (125 raw pts → normalised to 100)</div>
-            <table style="width:100%;font-size:11px;border-collapse:collapse;">
-              <tbody>
-                <tr><td style="padding:3px 0;color:var(--text);">Volume Surge</td><td style="text-align:right;"><span class="wt-badge wt-pos">25 pts</span></td><td style="padding-left:8px;color:var(--muted);font-size:10px;">configurable threshold above</td></tr>
-                <tr><td style="padding:3px 0;color:var(--text);">20-Day Breakout</td><td style="text-align:right;"><span class="wt-badge wt-pos">20 pts</span></td><td style="padding-left:8px;color:var(--muted);font-size:10px;">mandatory anchor — no threshold to tune</td></tr>
-                <tr><td style="padding:3px 0;color:var(--text);">Relative Strength vs SPY</td><td style="text-align:right;"><span class="wt-badge wt-pos">15 pts</span></td><td style="padding-left:8px;color:var(--muted);font-size:10px;">fixed 20-day window</td></tr>
-                <tr><td style="padding:3px 0;color:var(--text);">RSI Zone</td><td style="text-align:right;"><span class="wt-badge wt-pos">15 pts</span></td><td style="padding-left:8px;color:var(--muted);font-size:10px;">configurable band above</td></tr>
-                <tr><td style="padding:3px 0;color:var(--text);">50-Day Breakout</td><td style="text-align:right;"><span class="wt-badge wt-pos">15 pts</span></td><td style="padding-left:8px;color:var(--muted);font-size:10px;">no threshold to tune</td></tr>
-                <tr><td style="padding:3px 0;color:var(--text);">ATR Expansion</td><td style="text-align:right;"><span class="wt-badge wt-pos">10 pts</span></td><td style="padding-left:8px;color:var(--muted);font-size:10px;">configurable ratio above</td></tr>
-                <tr><td style="padding:3px 0;color:var(--text);">Consolidation</td><td style="text-align:right;"><span class="wt-badge wt-pos">10 pts</span></td><td style="padding-left:8px;color:var(--muted);font-size:10px;">configurable lookback above</td></tr>
-                <tr><td style="padding:3px 0;color:var(--text);">Higher Lows</td><td style="text-align:right;"><span class="wt-badge wt-pos">10 pts</span></td><td style="padding-left:8px;color:var(--muted);font-size:10px;">configurable lookback above</td></tr>
-                <tr><td style="padding:3px 0;color:var(--text);">Earnings Proximity</td><td style="text-align:right;"><span class="wt-badge wt-pos">5 pts</span></td><td style="padding-left:8px;color:var(--muted);font-size:10px;">±5 days to earnings</td></tr>
-                <tr style="border-top:1px solid var(--border)">
-                  <td style="padding:5px 0 3px;color:var(--muted);">Accumulation bonus</td><td style="text-align:right;"><span class="wt-badge wt-pos">+15 pts</span></td><td style="padding-left:8px;color:var(--muted);font-size:10px;">OBV / CMF / block days</td></tr>
-                <tr><td style="padding:3px 0;color:var(--muted);">Bull trap penalty</td><td style="text-align:right;"><span class="wt-badge wt-neg">−40 pts</span></td><td style="padding-left:8px;color:var(--muted);font-size:10px;">reversal candles, gap-and-fade, etc.</td></tr>
-              </tbody>
-            </table>
-          </div>
 
         </div>
       </div>
@@ -633,6 +613,59 @@
           <div class="form-row">
             <div class="form-label">Accumulation Lookback (days)<div class="form-hint">Window for OBV / CMF signals</div></div>
             <div class="form-control"><input type="number" id="cfg-ACCUM_LOOKBACK_DAYS" step="1" min="5"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Signal Weights -->
+      <div class="cfg-card" style="grid-column: 1 / -1">
+        <div class="cfg-card-header"><span class="cfg-card-icon">&#9878;</span><span class="cfg-card-title">Signal Weights</span><span style="color:var(--muted);font-size:10px;margin-left:8px;">base signals must sum to 100 for a clean score</span><span id="weights-total-badge" style="margin-left:auto;font-size:11px;font-weight:700;"></span></div>
+        <div class="cfg-card-body">
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:0 24px;">
+            <div class="form-row">
+              <div class="form-label">Volume Surge<div class="form-hint">Strongest confirmation signal</div></div>
+              <div class="form-control"><input type="number" id="cfg-SCORE_VOLUME_SURGE" step="0.5" min="0" max="40" oninput="updateWeightsTotal()"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-label">20-Day Breakout<div class="form-hint">Mandatory anchor — must trigger</div></div>
+              <div class="form-control"><input type="number" id="cfg-SCORE_BREAKOUT_20D" step="0.5" min="0" max="40" oninput="updateWeightsTotal()"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-label">Relative Strength vs SPY<div class="form-hint">Outperforming the market</div></div>
+              <div class="form-control"><input type="number" id="cfg-SCORE_RELATIVE_STRENGTH" step="0.5" min="0" max="40" oninput="updateWeightsTotal()"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-label">RSI Zone<div class="form-hint">Momentum sweet spot (RSI band)</div></div>
+              <div class="form-control"><input type="number" id="cfg-SCORE_RSI_ZONE" step="0.5" min="0" max="40" oninput="updateWeightsTotal()"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-label">50-Day Breakout<div class="form-hint">Multi-month high conviction</div></div>
+              <div class="form-control"><input type="number" id="cfg-SCORE_BREAKOUT_50D" step="0.5" min="0" max="40" oninput="updateWeightsTotal()"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-label">ATR Expansion<div class="form-hint">Volatility expanding into the move</div></div>
+              <div class="form-control"><input type="number" id="cfg-SCORE_ATR_EXPANSION" step="0.5" min="0" max="30" oninput="updateWeightsTotal()"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-label">Consolidation<div class="form-hint">Tight base preceding breakout</div></div>
+              <div class="form-control"><input type="number" id="cfg-SCORE_CONSOLIDATION" step="0.5" min="0" max="30" oninput="updateWeightsTotal()"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-label">Higher Lows<div class="form-hint">Demand building under price</div></div>
+              <div class="form-control"><input type="number" id="cfg-SCORE_HIGHER_LOWS" step="0.5" min="0" max="30" oninput="updateWeightsTotal()"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-label">Earnings Proximity<div class="form-hint">Catalyst within ±5 days</div></div>
+              <div class="form-control"><input type="number" id="cfg-SCORE_EARNINGS_PROXIMITY" step="0.5" min="0" max="20" oninput="updateWeightsTotal()"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-label">Accumulation Bonus (max)<div class="form-hint">OBV / CMF / block days bonus</div></div>
+              <div class="form-control"><input type="number" id="cfg-SCORE_ACCUM_MAX_BONUS" step="0.5" min="0" max="30"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-label">Trap Max Penalty<div class="form-hint">Max pts deducted for bull-trap signals</div></div>
+              <div class="form-control"><input type="number" id="cfg-SCORE_TRAP_MAX_PENALTY" step="0.5" min="0" max="50"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -1467,6 +1500,10 @@ function populateConfig(data) {
     'BREAKOUT_ATR_STOP_MULT','BREAKOUT_MAX_STOP_PCT','BREAKOUT_RR_RATIO',
     'PARTIAL_EXIT_R','PARTIAL_EXIT_PCT','TRAIL_ATR_MULT',
     'ACCUM_LOOKBACK_DAYS','BULL_TRAP_SCORE_THRESHOLD',
+    'SCORE_VOLUME_SURGE','SCORE_BREAKOUT_20D','SCORE_RELATIVE_STRENGTH',
+    'SCORE_RSI_ZONE','SCORE_BREAKOUT_50D','SCORE_ATR_EXPANSION',
+    'SCORE_CONSOLIDATION','SCORE_HIGHER_LOWS','SCORE_EARNINGS_PROXIMITY',
+    'SCORE_ACCUM_MAX_BONUS','SCORE_TRAP_MAX_PENALTY',
     'MAX_POSITION_SIZE','MAX_PORTFOLIO_RISK','MAX_CONCURRENT_TRADES','MAX_DAILY_LOSS_PCT',
     'BACKTEST_INITIAL_CAPITAL','BACKTEST_MAX_HOLD_DAYS','BACKTEST_SLIPPAGE_PCT',
     'ALPACA_API_KEY','ALPACA_SECRET_KEY','ALPACA_BASE_URL',
@@ -1491,6 +1528,31 @@ function populateConfig(data) {
     const el = document.getElementById('cfg-' + k);
     if (el && data[k] !== undefined) el.value = data[k];
   });
+
+  updateWeightsTotal();
+}
+
+const _WEIGHT_FIELDS = [
+  'SCORE_VOLUME_SURGE','SCORE_BREAKOUT_20D','SCORE_RELATIVE_STRENGTH',
+  'SCORE_RSI_ZONE','SCORE_BREAKOUT_50D','SCORE_ATR_EXPANSION',
+  'SCORE_CONSOLIDATION','SCORE_HIGHER_LOWS','SCORE_EARNINGS_PROXIMITY',
+];
+
+function updateWeightsTotal() {
+  const total = _WEIGHT_FIELDS.reduce((s, k) => {
+    const v = parseFloat(document.getElementById('cfg-' + k)?.value) || 0;
+    return s + v;
+  }, 0);
+  const badge = document.getElementById('weights-total-badge');
+  if (!badge) return;
+  const diff = Math.round((total - 100) * 10) / 10;
+  if (Math.abs(diff) < 0.01) {
+    badge.style.color = 'var(--green)';
+    badge.textContent = 'Total: 100 ✓';
+  } else {
+    badge.style.color = diff > 0 ? 'var(--red)' : 'var(--yellow)';
+    badge.textContent = `Total: ${Math.round(total * 10) / 10} (${diff > 0 ? '+' : ''}${diff} from 100)`;
+  }
 }
 
 function collectConfig() {
@@ -1504,6 +1566,10 @@ function collectConfig() {
     'BREAKOUT_ATR_STOP_MULT','BREAKOUT_MAX_STOP_PCT','BREAKOUT_RR_RATIO',
     'PARTIAL_EXIT_R','PARTIAL_EXIT_PCT','TRAIL_ATR_MULT',
     'ACCUM_LOOKBACK_DAYS','BULL_TRAP_SCORE_THRESHOLD',
+    'SCORE_VOLUME_SURGE','SCORE_BREAKOUT_20D','SCORE_RELATIVE_STRENGTH',
+    'SCORE_RSI_ZONE','SCORE_BREAKOUT_50D','SCORE_ATR_EXPANSION',
+    'SCORE_CONSOLIDATION','SCORE_HIGHER_LOWS','SCORE_EARNINGS_PROXIMITY',
+    'SCORE_ACCUM_MAX_BONUS','SCORE_TRAP_MAX_PENALTY',
     'MAX_POSITION_SIZE','MAX_PORTFOLIO_RISK','MAX_CONCURRENT_TRADES','MAX_DAILY_LOSS_PCT',
     'BACKTEST_INITIAL_CAPITAL','BACKTEST_MAX_HOLD_DAYS','BACKTEST_SLIPPAGE_PCT',
     'ALPACA_API_KEY','ALPACA_SECRET_KEY','ALPACA_BASE_URL',
