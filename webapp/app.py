@@ -253,6 +253,48 @@ def api_performance(days: int = Query(default=90, ge=1, le=365)):
     return query_performance(days)
 
 
+# ── Account API ───────────────────────────────────────────────────────────────
+
+@app.get("/api/account")
+def api_account():
+    try:
+        env = _parse_env(_read_env_lines())
+        from alpaca.trading.client import TradingClient
+        tc = TradingClient(
+            api_key=env.get("ALPACA_API_KEY", ""),
+            secret_key=env.get("ALPACA_SECRET_KEY", ""),
+            paper=(env.get("IS_PAPER", "true") or "true").lower() != "false",
+        )
+        acct      = tc.get_account()
+        positions = tc.get_all_positions()
+
+        equity       = float(acct.equity)
+        last_equity  = float(acct.last_equity)
+        cash         = float(acct.cash)
+        buying_power = float(acct.buying_power)
+        today_pnl    = round(equity - last_equity, 2)
+        today_pnl_pct = round((today_pnl / last_equity * 100) if last_equity else 0, 2)
+
+        unrealized_pl  = sum(float(p.unrealized_pl)   for p in positions)
+        open_exposure  = sum(float(p.market_value)     for p in positions)
+        exposure_pct   = round(open_exposure / equity * 100, 1) if equity else 0
+
+        return {
+            "equity":              round(equity, 2),
+            "cash":                round(cash, 2),
+            "buying_power":        round(buying_power, 2),
+            "today_pnl":           today_pnl,
+            "today_pnl_pct":       today_pnl_pct,
+            "unrealized_pl":       round(unrealized_pl, 2),
+            "open_exposure":       round(open_exposure, 2),
+            "open_exposure_pct":   exposure_pct,
+            "open_positions_count": len(positions),
+            "is_paper":            (env.get("IS_PAPER", "true") or "true").lower() != "false",
+        }
+    except Exception as exc:
+        return JSONResponse(status_code=200, content={"error": str(exc)})
+
+
 # ── Live Trades API ───────────────────────────────────────────────────────────
 
 @app.get("/api/live-trades")

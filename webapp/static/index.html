@@ -198,6 +198,24 @@
   .scan-next-info { font-size: 11px; padding: 3px 8px; border-radius: 4px; background: var(--surface2); border: 1px solid var(--border); white-space: nowrap; }
   .scan-next-info.imminent { color: var(--cyan); border-color: var(--cyan); }
 
+  /* ── KPI tiles (portfolio + performance) ── */
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; padding: 16px; }
+  .kpi { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px; }
+  .kpi.highlight { border-color: rgba(59,130,246,.3); background: rgba(59,130,246,.05); }
+  .kpi-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+  .kpi-value { font-size: 22px; font-weight: 700; line-height: 1.1; }
+  .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .section-label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 16px 16px 8px; font-weight: 600; }
+  .perf-hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+  .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; padding: 0 16px; }
+  .bar-label { width: 110px; font-size: 12px; color: var(--text); flex-shrink: 0; }
+  .bar-track { flex: 1; height: 8px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; }
+  .bar-count { width: 28px; text-align: right; font-size: 12px; color: var(--muted); flex-shrink: 0; }
+  .bar-r { width: 62px; text-align: right; font-size: 12px; font-weight: 600; flex-shrink: 0; }
+  .period-btn { font-size:11px; padding:2px 10px; border-radius:10px; cursor:pointer; transition: background .12s; }
+  .period-btn.active { background: rgba(59,130,246,.15); border-color: rgba(59,130,246,.4); color: var(--blue); }
+
   /* execute mode toggle */
   #execute-toggle { transition: background .15s, color .15s; }
   #execute-toggle.live { background: rgba(239,68,68,.15); color: var(--red); font-weight: 700; }
@@ -275,14 +293,14 @@
 
   <!-- Tabs -->
   <div class="tabs">
-    <div class="tab active" onclick="switchTab('today', this)">Today</div>
-    <div class="tab" onclick="switchTab('trades', this)" id="tab-btn-trades">Trades <span id="open-trades-badge" style="display:none;background:var(--cyan);color:#0d1117;border-radius:9px;padding:1px 6px;font-size:10px;font-weight:700;margin-left:3px;">0</span></div>
+    <div class="tab active" onclick="switchTab('trades', this)" id="tab-btn-trades">Overview <span id="open-trades-badge" style="display:none;background:var(--cyan);color:#0d1117;border-radius:9px;padding:1px 6px;font-size:10px;font-weight:700;margin-left:3px;">0</span></div>
+    <div class="tab" onclick="switchTab('today', this)" id="tab-btn-today">Today</div>
     <div class="tab" onclick="switchTab('history', this)">Last 30 Days</div>
     <div class="tab" onclick="switchTab('config', this)">&#9881; Config</div>
   </div>
 
   <!-- ── TODAY TAB ── -->
-  <div class="tab-panel active" id="tab-today">
+  <div class="tab-panel" id="tab-today">
 
     <div id="closed-banner" class="closed-banner" style="display:none"></div>
 
@@ -311,29 +329,6 @@
       <div class="stat">
         <div class="stat-label">Regime Mult</div>
         <div class="stat-value" id="stat-mult">—</div>
-      </div>
-    </div>
-
-    <!-- Open Positions -->
-    <div class="card">
-      <div class="card-header">
-        <span class="card-title">Open Positions (Live)</span>
-        <button onclick="loadPositions()" style="font-size:11px;padding:3px 10px;">&#8635;</button>
-      </div>
-      <div class="card-body table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>Symbol</th><th class="num">Qty</th>
-              <th class="num">Avg&nbsp;Entry</th><th class="num">Current</th>
-              <th class="num">Market&nbsp;Value</th>
-              <th class="num">Unrealized&nbsp;P&amp;L</th><th class="num">%</th>
-            </tr>
-          </thead>
-          <tbody id="positions-body">
-            <tr><td colspan="7" class="empty"><span class="spin"></span></td></tr>
-          </tbody>
-        </table>
       </div>
     </div>
 
@@ -390,8 +385,36 @@
 
   </div><!-- /tab-today -->
 
-  <!-- ── TRADES TAB ── -->
-  <div class="tab-panel" id="tab-trades">
+  <!-- ── OVERVIEW TAB ── -->
+  <div class="tab-panel active" id="tab-trades">
+
+    <!-- Portfolio card -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Portfolio</span>
+        <span class="muted" id="portfolio-mode-label" style="font-size:11px;">loading…</span>
+      </div>
+      <div id="portfolio-body">
+        <div class="kpi-grid" id="portfolio-kpi-grid">
+          <div class="kpi"><div class="kpi-label">Equity</div><div class="kpi-value muted">—</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Performance card -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Performance</span>
+        <span style="display:flex;gap:6px;margin-left:auto;">
+          <button class="period-btn active" id="perf-btn-30"  onclick="loadPerf(30)">30d</button>
+          <button class="period-btn"        id="perf-btn-90"  onclick="loadPerf(90)">90d</button>
+          <button class="period-btn"        id="perf-btn-all" onclick="loadPerf(365)">All</button>
+        </span>
+      </div>
+      <div id="perf-card-body">
+        <div style="padding:16px;"><span class="muted">Loading...</span></div>
+      </div>
+    </div>
 
     <!-- Live open positions enriched with trade metadata -->
     <div class="card">
@@ -454,17 +477,6 @@
             <tr><td colspan="8" class="empty muted">No trades placed today</td></tr>
           </tbody>
         </table>
-      </div>
-    </div>
-
-    <!-- P&L Performance summary -->
-    <div class="card">
-      <div class="card-header">
-        <span class="card-title">Closed Trade Performance</span>
-        <span class="muted" style="font-size:11px;">last 90 days</span>
-      </div>
-      <div class="card-body" id="perf-card-body">
-        <span class="muted">Loading...</span>
       </div>
     </div>
 
@@ -892,7 +904,6 @@ async function loadDashboard(dateStr) {
   } finally {
     document.getElementById('refresh-btn').innerHTML = '&#8635; Refresh';
   }
-  loadPositions();
 }
 
 function renderDashboard(d) {
@@ -1139,26 +1150,31 @@ async function toggleHistoryDetail(date, srcRow) {
 }
 
 function jumpToDate(d) {
-  switchTab('today', document.querySelectorAll('.tab')[0]);
+  switchTab('today', document.getElementById('tab-btn-today'));
   loadDashboard(d);
 }
 
 // ── Live Trades tab ────────────────────────────────────────────────────────
+let _perfDays = 90;
+
 async function loadLiveTrades() {
   document.getElementById('live-trades-body').innerHTML =
     '<tr><td colspan="12" class="empty"><span class="spin"></span></td></tr>';
   try {
-    const [liveRes, todayRes, perfRes] = await Promise.all([
+    const [liveRes, todayRes, perfRes, acctRes] = await Promise.all([
       fetch('/api/live-trades'),
       fetch('/api/dashboard?date=' + todayStr()),
-      fetch('/api/performance?days=90'),
+      fetch('/api/performance?days=' + _perfDays),
+      fetch('/api/account'),
     ]);
     const live  = await liveRes.json();
     const today = await todayRes.json();
     const perf  = await perfRes.json();
+    const acct  = await acctRes.json();
     renderLiveTrades(live.trades || []);
     renderTradesToday(today.trades || []);
     renderPerf(perf);
+    renderPortfolio(acct);
     // update badge on tab button
     const n = (live.trades || []).length;
     const badge = document.getElementById('open-trades-badge');
@@ -1168,6 +1184,19 @@ async function loadLiveTrades() {
     document.getElementById('live-trades-body').innerHTML =
       '<tr><td colspan="12" class="empty muted">Error loading trades</td></tr>';
   }
+}
+
+async function loadPerf(days) {
+  _perfDays = days;
+  // update period button styles
+  [30, 90, 365].forEach(d => {
+    const btn = document.getElementById(d === 365 ? 'perf-btn-all' : `perf-btn-${d}`);
+    if (btn) btn.classList.toggle('active', d === days);
+  });
+  try {
+    const perf = await fetch('/api/performance?days=' + days).then(r => r.json());
+    renderPerf(perf);
+  } catch(e) {}
 }
 
 function statusBadge(s) {
@@ -1250,44 +1279,146 @@ function renderTradesToday(trades) {
     </tr>`).join('');
 }
 
-function renderPerf(p) {
-  const el = document.getElementById('perf-card-body');
-  if (!p || p.total === 0) {
-    el.innerHTML = '<span class="muted">No closed trades in the last 90 days.</span>';
+function renderPortfolio(acct) {
+  const modeEl = document.getElementById('portfolio-mode-label');
+  const gridEl = document.getElementById('portfolio-kpi-grid');
+  if (!acct || acct.error) {
+    if (modeEl) modeEl.textContent = acct && acct.error ? 'Alpaca error' : 'unavailable';
+    if (gridEl) gridEl.innerHTML = `<div class="kpi"><div class="kpi-label">Status</div><div class="kpi-value muted" style="font-size:13px;">${acct && acct.error ? acct.error : 'Could not load'}</div></div>`;
     return;
   }
-  const pf   = p.profit_factor != null ? fmt(p.profit_factor, 2) + 'x' : '—';
-  const wr   = p.win_rate      != null ? fmt(p.win_rate, 1) + '%'       : '—';
-  const avgR = p.avg_r         != null ? (p.avg_r >= 0 ? '+' : '') + fmt(p.avg_r, 2) + 'R' : '—';
-  const best = p.best_r        != null ? '+' + fmt(p.best_r, 2) + 'R'  : '—';
-  const worst= p.worst_r       != null ? fmt(p.worst_r, 2) + 'R'       : '—';
-  const hold = p.avg_hold_days != null ? fmt(p.avg_hold_days, 1) + 'd'  : '—';
-  el.innerHTML = `
-    <div style="display:flex;flex-wrap:wrap;gap:18px 32px;margin-bottom:12px;">
-      <div><div class="muted" style="font-size:10px;">TRADES</div><div style="font-size:20px;font-weight:700;">${p.total}</div></div>
-      <div><div class="muted" style="font-size:10px;">WIN RATE</div><div style="font-size:20px;font-weight:700;color:var(--green)">${wr}</div></div>
-      <div><div class="muted" style="font-size:10px;">AVG R</div><div style="font-size:20px;font-weight:700;color:${p.avg_r>=0?'var(--green)':'var(--red)'}">${avgR}</div></div>
-      <div><div class="muted" style="font-size:10px;">PROFIT FACTOR</div><div style="font-size:20px;font-weight:700;color:${p.profit_factor>=1?'var(--green)':'var(--red)'}">${pf}</div></div>
-      <div><div class="muted" style="font-size:10px;">BEST R</div><div style="font-size:20px;font-weight:700;color:var(--green)">${best}</div></div>
-      <div><div class="muted" style="font-size:10px;">WORST R</div><div style="font-size:20px;font-weight:700;color:var(--red)">${worst}</div></div>
-      <div><div class="muted" style="font-size:10px;">AVG HOLD</div><div style="font-size:20px;font-weight:700;">${hold}</div></div>
-      <div><div class="muted" style="font-size:10px;">W / L</div><div style="font-size:20px;font-weight:700;">${p.wins} <span class="muted">/</span> ${p.losses}</div></div>
+  if (modeEl) modeEl.textContent = (acct.is_paper ? 'paper account' : 'LIVE account');
+  const todayPnlCls = acct.today_pnl >= 0 ? 'green' : 'red';
+  const unrCls      = acct.unrealized_pl >= 0 ? 'green' : 'red';
+  const sign = v => v >= 0 ? '+' : '';
+  if (gridEl) gridEl.innerHTML = `
+    <div class="kpi highlight">
+      <div class="kpi-label">Equity</div>
+      <div class="kpi-value cyan">${fmtDollar(acct.equity)}</div>
+      <div class="kpi-sub">portfolio value</div>
     </div>
-    ${p.recent && p.recent.length ? `
-    <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Recent closed trades</div>
-    <div class="table-scroll"><table style="font-size:12px;">
-      <thead><tr><th>Symbol</th><th class="num">Fill $</th><th class="num">Exit $</th><th class="num">R</th><th class="num">Hold</th><th>Reason</th></tr></thead>
-      <tbody>${[...p.recent].reverse().map(r => `
-        <tr>
-          <td><strong>${r.symbol}</strong></td>
-          <td class="num mono">$${fmt(r.fill_price)}</td>
-          <td class="num mono">$${fmt(r.exit_price)}</td>
-          <td class="num ${r.actual_r>=0?'green':'red'}" style="font-weight:700;">${r.actual_r>=0?'+':''}${fmt(r.actual_r,2)}R</td>
-          <td class="num muted">${r.hold_days||0}d</td>
-          <td class="muted">${r.exit_reason||'—'}</td>
-        </tr>`).join('')}
-      </tbody>
-    </table></div>` : ''}`;
+    <div class="kpi">
+      <div class="kpi-label">Cash</div>
+      <div class="kpi-value">${fmtDollar(acct.cash)}</div>
+      <div class="kpi-sub">available</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Today's P&amp;L</div>
+      <div class="kpi-value ${todayPnlCls}">${sign(acct.today_pnl)}${fmtDollar(acct.today_pnl)}</div>
+      <div class="kpi-sub ${todayPnlCls}">${sign(acct.today_pnl_pct)}${fmt(acct.today_pnl_pct,2)}%</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Unrealized P&amp;L</div>
+      <div class="kpi-value ${unrCls}">${sign(acct.unrealized_pl)}${fmtDollar(acct.unrealized_pl)}</div>
+      <div class="kpi-sub">${acct.open_positions_count} open position${acct.open_positions_count !== 1 ? 's' : ''}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Open Exposure</div>
+      <div class="kpi-value">${fmtDollar(acct.open_exposure)}</div>
+      <div class="kpi-sub">${fmt(acct.open_exposure_pct,1)}% of equity</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Buying Power</div>
+      <div class="kpi-value">${fmtDollar(acct.buying_power)}</div>
+      <div class="kpi-sub">&nbsp;</div>
+    </div>`;
+}
+
+function renderPerf(p) {
+  const el = document.getElementById('perf-card-body');
+  const daysLabel = _perfDays >= 365 ? 'all time' : `last ${_perfDays} days`;
+  if (!p || p.total === 0) {
+    el.innerHTML = `<div style="padding:16px;"><span class="muted">No closed trades (${daysLabel}).</span></div>`;
+    return;
+  }
+
+  const wr   = p.win_rate      != null ? fmt(p.win_rate, 1) + '%'      : '—';
+  const hold = p.avg_hold_days != null ? fmt(p.avg_hold_days, 1) + 'd' : '—';
+  const pnl  = p.total_pnl_dollars;
+  const pnlCls = pnl != null ? (pnl >= 0 ? 'green' : 'red') : '';
+  const pnlStr = pnl != null ? (pnl >= 0 ? '+' : '') + fmtDollar(Math.abs(pnl)) : '—';
+
+  // Exit breakdown bars
+  const reasons = p.by_exit_reason || {};
+  const total   = p.total || 1;
+  const maxCount = Math.max(...Object.values(reasons).map(v => v.count || 0), 1);
+  const EXIT_STYLES = {
+    'target':       { color: '#22c55e', label: 'Target hit' },
+    'target_hit':   { color: '#22c55e', label: 'Target hit' },
+    'trailing':     { color: '#3b82f6', label: 'Trailing stop' },
+    'trailing_stop':{ color: '#3b82f6', label: 'Trailing stop' },
+    'stop':         { color: '#ef4444', label: 'Stop loss' },
+    'stop_loss':    { color: '#ef4444', label: 'Stop loss' },
+    'timeout':      { color: '#eab308', label: 'Timeout' },
+  };
+  const barRows = Object.entries(reasons).map(([reason, v]) => {
+    const style  = EXIT_STYLES[reason] || { color: '#64748b', label: reason };
+    const pct    = Math.round(v.count / maxCount * 100);
+    const avgR   = v.avg_r != null ? v.avg_r : null;
+    const rCls   = avgR != null ? (avgR >= 0 ? 'green' : 'red') : 'muted';
+    const rStr   = avgR != null ? (avgR >= 0 ? '+' : '') + fmt(avgR, 1) + 'R avg' : '—';
+    return `<div class="bar-row">
+      <div class="bar-label">${style.label}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${style.color};"></div></div>
+      <div class="bar-count">${v.count}</div>
+      <div class="bar-r ${rCls}">${rStr}</div>
+    </div>`;
+  }).join('');
+
+  // Recent trades table
+  const recentRows = p.recent && p.recent.length ? [...p.recent].reverse().map(r => {
+    const plVal = r.fill_price && r.exit_price && r.shares
+      ? (r.exit_price - r.fill_price) * r.shares : null;
+    const plCls = r.actual_r >= 0 ? 'green' : 'red';
+    const plStr = plVal != null
+      ? `<span class="${plCls}">${plVal >= 0 ? '+' : ''}${fmtDollar(Math.abs(plVal))}</span>`
+      : '—';
+    return `<tr>
+      <td><strong>${r.symbol}</strong></td>
+      <td class="muted">${r.exit_date || ''}</td>
+      <td class="num mono">$${fmt(r.fill_price)}</td>
+      <td class="num mono">$${fmt(r.exit_price)}</td>
+      <td class="num">${plStr}</td>
+      <td class="num ${plCls}" style="font-weight:700;">${r.actual_r>=0?'+':''}${fmt(r.actual_r,2)}R</td>
+      <td class="num muted">${r.hold_days||0}d</td>
+      <td class="muted">${r.exit_reason||'—'}</td>
+    </tr>`;
+  }).join('') : '';
+
+  el.innerHTML = `
+    <div class="section-label">Realized · ${daysLabel} · ${p.total} closed trade${p.total !== 1 ? 's' : ''}</div>
+    <div class="kpi-grid" style="padding-top:0;">
+      <div class="kpi highlight">
+        <div class="kpi-label">Total P&amp;L</div>
+        <div class="kpi-value ${pnlCls}">${pnlStr}</div>
+        <div class="kpi-sub">&nbsp;</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Win Rate</div>
+        <div class="kpi-value ${p.win_rate >= 50 ? 'green' : 'red'}">${wr}</div>
+        <div class="kpi-sub">${p.wins}W / ${p.losses}L</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Avg Hold</div>
+        <div class="kpi-value">${hold}</div>
+        <div class="kpi-sub">days per trade</div>
+      </div>
+    </div>
+    ${barRows ? `<hr class="perf-hr"><div class="section-label">Exit Breakdown</div>${barRows}` : ''}
+    ${recentRows ? `
+    <hr class="perf-hr">
+    <div class="section-label">Recent Closed Trades</div>
+    <div class="table-scroll" style="padding:0 0 8px;">
+      <table style="font-size:12px;">
+        <thead><tr>
+          <th>Symbol</th><th>Date</th>
+          <th class="num">Fill $</th><th class="num">Exit $</th>
+          <th class="num">P&amp;L $</th><th class="num">R</th>
+          <th class="num">Hold</th><th>Reason</th>
+        </tr></thead>
+        <tbody>${recentRows}</tbody>
+      </table>
+    </div>` : ''}`;
 }
 
 // ── Controls ───────────────────────────────────────────────────────────────

@@ -277,7 +277,7 @@ def query_performance(days: int = 90) -> dict:
     with _conn() as con:
         rows = _rows(con.execute(
             """SELECT actual_r, hold_days, exit_reason, exit_price, fill_price,
-                      stop_loss, symbol, ts
+                      stop_loss, symbol, ts, exit_ts, shares
                FROM trades
                WHERE status='closed'
                  AND exit_ts >= datetime('now', ?)
@@ -288,39 +288,53 @@ def query_performance(days: int = 90) -> dict:
     if not rows:
         return {
             "total": 0, "wins": 0, "losses": 0, "win_rate": None,
-            "avg_r": None, "avg_win_r": None, "avg_loss_r": None,
-            "profit_factor": None, "avg_hold_days": None,
-            "best_r": None, "worst_r": None,
-            "by_exit_reason": {},
-            "recent": [],
+            "avg_hold_days": None, "total_pnl_dollars": None,
+            "by_exit_reason": {}, "recent": [],
         }
 
-    total   = len(rows)
-    wins    = [r for r in rows if r["actual_r"] > 0]
-    losses  = [r for r in rows if r["actual_r"] <= 0]
-    all_r   = [r["actual_r"] for r in rows]
-    gain_r  = sum(r["actual_r"] for r in wins)
-    loss_r  = abs(sum(r["actual_r"] for r in losses)) or 1e-9
+    total  = len(rows)
+    wins   = [r for r in rows if r["actual_r"] > 0]
+    losses = [r for r in rows if r["actual_r"] <= 0]
 
-    by_reason: dict[str, int] = {}
+    # Dollar P&L: actual_r × risk_per_share × shares
+    # = (exit - fill) / (fill - stop) × (fill - stop) × shares
+    # = (exit - fill) × shares
+    def _pnl(r):
+        return (r["exit_price"] - r["fill_price"]) * (r["shares"] or 0) if r["fill_price"] else 0
+
+    total_pnl = round(sum(_pnl(r) for r in rows), 2)
+
+    # Per-reason: count + avg R
+    reason_data: dict[str, dict] = {}
     for r in rows:
-        reason = r["exit_reason"] or "unknown"
-        by_reason[reason] = by_reason.get(reason, 0) + 1
+        key = r["exit_reason"] or "unknown"
+        if key not in reason_data:
+            reason_data[key] = {"count": 0, "r_sum": 0.0}
+        reason_data[key]["count"]  += 1
+        reason_data[key]["r_sum"]  += r["actual_r"]
+    by_reason = {
+        k: {"count": v["count"], "avg_r": round(v["r_sum"] / v["count"], 2)}
+        for k, v in reason_data.items()
+    }
+
+    # Recent trades — add friendly date
+    recent = rows[-10:]
+    for r in recent:
+        try:
+            r["exit_date"] = r["exit_ts"][:10] if r.get("exit_ts") else ""
+        except Exception:
+            r["exit_date"] = ""
 
     return {
-        "total":          total,
-        "wins":           len(wins),
-        "losses":         len(losses),
-        "win_rate":       round(len(wins) / total * 100, 1) if total else None,
-        "avg_r":          round(sum(all_r) / total, 2) if total else None,
-        "avg_win_r":      round(sum(r["actual_r"] for r in wins) / len(wins), 2) if wins else None,
-        "avg_loss_r":     round(sum(r["actual_r"] for r in losses) / len(losses), 2) if losses else None,
-        "profit_factor":  round(gain_r / loss_r, 2),
-        "avg_hold_days":  round(sum(r["hold_days"] or 0 for r in rows) / total, 1) if total else None,
-        "best_r":         round(max(all_r), 2),
-        "worst_r":        round(min(all_r), 2),
-        "by_exit_reason": by_reason,
-        "recent":         rows[-10:],
+        "total":            total,
+        "wins":             len(wins),
+        "losses":           len(losses),
+        "win_rate":         round(len(wins) / total * 100, 1) if total else None,
+        "avg_hold_days":    round(sum(r["hold_days"] or 0 for r in rows) / total, 1) if total else None,
+        "total_pnl_dollars": total_pnl,
+        "by_exit_reason":   by_reason,
+        "recent":           recent,
+        "days":             days,
     }
 
 
