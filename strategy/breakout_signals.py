@@ -43,6 +43,7 @@ class BreakoutSignals:
     support_level: float = 0.0
 
     breakout_20d:       SignalResult = field(default_factory=_default_signal)
+    breakout_10d:       SignalResult = field(default_factory=_default_signal)
     breakout_50d:       SignalResult = field(default_factory=_default_signal)
     consolidation:      SignalResult = field(default_factory=_default_signal)
     higher_lows:        SignalResult = field(default_factory=_default_signal)
@@ -106,17 +107,28 @@ def detect_all(
     )
 
     sig.breakout_20d      = _check_price_breakout(df, 20)
-    sig.breakout_50d      = _check_price_breakout(df, 50)
+    sig.breakout_10d      = _check_price_breakout(df, 10)
+    sig.volume_surge      = _check_volume_surge(df)
+    sig.relative_strength = _check_relative_strength(df, spy_df)
 
-    # Require at least a 20-day high breakout — it is the anchor for every setup
-    if not sig.breakout_20d.triggered:
+    # Three-way entry gate — any one trigger qualifies the symbol:
+    #   A: classic 20-day high breakout
+    #   B: 10-day breakout + volume surge + relative strength (tight base thrust)
+    #   C: earnings/news gap-up (≥ GAP_UP_THRESHOLD) + volume surge
+    trigger_a = sig.breakout_20d.triggered
+    trigger_b = (sig.breakout_10d.triggered
+                 and sig.volume_surge.triggered
+                 and sig.relative_strength.triggered)
+    trigger_c = (gap_pct >= config.GAP_UP_THRESHOLD
+                 and sig.volume_surge.triggered)
+
+    if not (trigger_a or trigger_b or trigger_c):
         return None
 
+    sig.breakout_50d      = _check_price_breakout(df, 50)
     sig.consolidation     = _check_consolidation(df)
     sig.higher_lows       = _check_higher_lows(df)
-    sig.volume_surge      = _check_volume_surge(df)
     sig.rsi_zone          = _check_rsi(df)
-    sig.relative_strength = _check_relative_strength(df, spy_df)
     sig.atr_expansion     = _check_atr_expansion(df)
 
     if earnings_date is not None:

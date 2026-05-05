@@ -429,6 +429,7 @@ def _build_candidate(signals, setup: TradeSetup, scorer: BreakoutScorer, regime:
         "rsi":          round(signals.rsi_zone.value, 1),
         "rs_vs_spy":    round(signals.relative_strength.value, 2),
         "breakout_20d": signals.breakout_20d.triggered,
+        "breakout_10d": signals.breakout_10d.triggered,
         "breakout_50d": signals.breakout_50d.triggered,
         "accum_score":  accum.composite_score if accum else 0.0,
         "is_trap":      trap.is_trap if trap else False,
@@ -439,6 +440,7 @@ def _build_candidate(signals, setup: TradeSetup, scorer: BreakoutScorer, regime:
         "score_breakdown": scorer.breakdown(signals),
         "signals": {
             "breakout_20d":      signals.breakout_20d.description,
+            "breakout_10d":      signals.breakout_10d.description,
             "breakout_50d":      signals.breakout_50d.description,
             "consolidation":     signals.consolidation.description,
             "higher_lows":       signals.higher_lows.description,

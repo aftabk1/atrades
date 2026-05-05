@@ -110,6 +110,7 @@ def make_signals(
         atr_14=atr,
         support_level=support,
         breakout_20d=sig(all_triggered, 0.025),
+        breakout_10d=sig(all_triggered, 0.015),
         breakout_50d=sig(all_triggered, 0.015),
         consolidation=sig(all_triggered, 0.012),
         higher_lows=sig(all_triggered, 1.0),
