@@ -518,11 +518,11 @@
             <div class="form-control"><input type="number" id="cfg-BREAKOUT_VOLUME_SURGE_MULT" step="0.1" min="1"></div>
           </div>
           <div class="form-row">
-            <div class="form-label">RSI Low Zone<span class="wt-badge wt-pos">15 pts</span><div class="form-hint">RSI must be above this (momentum zone lower bound)</div></div>
+            <div class="form-label">RSI Low Zone<span class="wt-badge wt-pos">15 pts</span><div class="form-hint">RSI band lower bound &mdash; RSI Low &amp; High together = one 15-pt signal</div></div>
             <div class="form-control"><input type="number" id="cfg-BREAKOUT_RSI_LOW" step="1" min="1" max="100"></div>
           </div>
           <div class="form-row">
-            <div class="form-label">RSI High Zone<span class="wt-badge wt-pos">15 pts</span><div class="form-hint">RSI must be below this (not overbought)</div></div>
+            <div class="form-label">RSI High Zone<span class="wt-badge wt-neut">same signal</span><div class="form-hint">RSI band upper bound &mdash; not overbought ceiling</div></div>
             <div class="form-control"><input type="number" id="cfg-BREAKOUT_RSI_HIGH" step="1" min="1" max="100"></div>
           </div>
           <div class="form-row">
@@ -543,6 +543,28 @@
               <input type="number" id="cfg-BREAKOUT_MIN_SCORE" step="1" min="0" max="100">
             </div>
           </div>
+
+          <!-- Score reference -->
+          <div style="margin-top:14px;padding:10px 12px;background:var(--surface2);border-radius:6px;border:1px solid var(--border)">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:8px;">Full Score Breakdown (125 raw pts → normalised to 100)</div>
+            <table style="width:100%;font-size:11px;border-collapse:collapse;">
+              <tbody>
+                <tr><td style="padding:3px 0;color:var(--text);">Volume Surge</td><td style="text-align:right;"><span class="wt-badge wt-pos">25 pts</span></td><td style="padding-left:8px;color:var(--muted);font-size:10px;">configurable threshold above</td></tr>
+                <tr><td style="padding:3px 0;color:var(--text);">20-Day Breakout</td><td style="text-align:right;"><span class="wt-badge wt-pos">20 pts</span></td><td style="padding-left:8px;color:var(--muted);font-size:10px;">mandatory anchor — no threshold to tune</td></tr>
+                <tr><td style="padding:3px 0;color:var(--text);">Relative Strength vs SPY</td><td style="text-align:right;"><span class="wt-badge wt-pos">15 pts</span></td><td style="padding-left:8px;color:var(--muted);font-size:10px;">fixed 20-day window</td></tr>
+                <tr><td style="padding:3px 0;color:var(--text);">RSI Zone</td><td style="text-align:right;"><span class="wt-badge wt-pos">15 pts</span></td><td style="padding-left:8px;color:var(--muted);font-size:10px;">configurable band above</td></tr>
+                <tr><td style="padding:3px 0;color:var(--text);">50-Day Breakout</td><td style="text-align:right;"><span class="wt-badge wt-pos">15 pts</span></td><td style="padding-left:8px;color:var(--muted);font-size:10px;">no threshold to tune</td></tr>
+                <tr><td style="padding:3px 0;color:var(--text);">ATR Expansion</td><td style="text-align:right;"><span class="wt-badge wt-pos">10 pts</span></td><td style="padding-left:8px;color:var(--muted);font-size:10px;">configurable ratio above</td></tr>
+                <tr><td style="padding:3px 0;color:var(--text);">Consolidation</td><td style="text-align:right;"><span class="wt-badge wt-pos">10 pts</span></td><td style="padding-left:8px;color:var(--muted);font-size:10px;">configurable lookback above</td></tr>
+                <tr><td style="padding:3px 0;color:var(--text);">Higher Lows</td><td style="text-align:right;"><span class="wt-badge wt-pos">10 pts</span></td><td style="padding-left:8px;color:var(--muted);font-size:10px;">configurable lookback above</td></tr>
+                <tr><td style="padding:3px 0;color:var(--text);">Earnings Proximity</td><td style="text-align:right;"><span class="wt-badge wt-pos">5 pts</span></td><td style="padding-left:8px;color:var(--muted);font-size:10px;">±5 days to earnings</td></tr>
+                <tr style="border-top:1px solid var(--border)">
+                  <td style="padding:5px 0 3px;color:var(--muted);">Accumulation bonus</td><td style="text-align:right;"><span class="wt-badge wt-pos">+15 pts</span></td><td style="padding-left:8px;color:var(--muted);font-size:10px;">OBV / CMF / block days</td></tr>
+                <tr><td style="padding:3px 0;color:var(--muted);">Bull trap penalty</td><td style="text-align:right;"><span class="wt-badge wt-neg">−40 pts</span></td><td style="padding-left:8px;color:var(--muted);font-size:10px;">reversal candles, gap-and-fade, etc.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
         </div>
       </div>
 
