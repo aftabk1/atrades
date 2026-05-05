@@ -195,6 +195,8 @@
 
   /* refresh countdown */
   .refresh-info { font-size: 11px; color: var(--muted); }
+  .scan-next-info { font-size: 11px; padding: 3px 8px; border-radius: 4px; background: var(--surface2); border: 1px solid var(--border); white-space: nowrap; }
+  .scan-next-info.imminent { color: var(--cyan); border-color: var(--cyan); }
 
   /* execute mode toggle */
   #execute-toggle { transition: background .15s, color .15s; }
@@ -254,6 +256,7 @@
   <div id="regime-badge" class="regime"><span class="regime-dot" id="regime-dot"></span><span id="regime-text">Loading...</span></div>
   <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
     <span class="refresh-info" id="refresh-countdown"></span>
+    <span class="scan-next-info" id="scan-countdown" style="display:none"></span>
     <input type="date" id="date-picker">
     <button onclick="loadToday()">Today</button>
     <button onclick="refresh()" id="refresh-btn">&#8635; Refresh</button>
@@ -788,6 +791,25 @@
       </div>
     </div>
 
+    <!-- Notifications -->
+    <div class="cfg-card">
+      <div class="cfg-card-header"><span class="cfg-card-icon">&#128241;</span><span class="cfg-card-title">WhatsApp Notifications</span></div>
+      <div class="cfg-card-body">
+        <div class="form-row">
+          <div class="form-label">Phone Number<div class="form-hint">International format, e.g. +97455512345</div></div>
+          <div class="form-control" style="flex: 0 0 220px;"><input type="text" id="cfg-WHATSAPP_PHONE" placeholder="+97455512345" autocomplete="off"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-label">CallMeBot API Key<div class="form-hint">Get yours: add +34 644 59 57 88 on WhatsApp and send "I allow callmebot to send me messages"</div></div>
+          <div class="form-control" style="flex: 0 0 220px;"><input type="text" id="cfg-WHATSAPP_APIKEY" placeholder="API key from CallMeBot" autocomplete="off"></div>
+        </div>
+        <div class="form-row" style="align-items:center;">
+          <div class="form-label">Test notification</div>
+          <div class="form-control"><button class="btn-sm" onclick="testWhatsapp()">Send Test Message</button></div>
+        </div>
+      </div>
+    </div>
+
     <!-- Alpaca Credentials -->
     <div class="cfg-card" style="margin-bottom:80px;">
       <div class="cfg-card-header"><span class="cfg-card-icon">&#128273;</span><span class="cfg-card-title">Alpaca Credentials</span></div>
@@ -845,13 +867,14 @@ function fmtTime(ts) {
 }
 
 // ── Tab switching ──────────────────────────────────────────────────────────
+let _configEverLoaded = false;
 function switchTab(name, el) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   el.classList.add('active');
   document.getElementById('tab-' + name).classList.add('active');
   if (name === 'history') loadHistory();
-  if (name === 'config')  loadConfig();
+  if (name === 'config' && !_configEverLoaded) { _configEverLoaded = true; loadConfig(); }
   if (name === 'trades')  loadLiveTrades();
 }
 
@@ -1072,8 +1095,11 @@ async function toggleHistoryDetail(date, srcRow) {
       inner.innerHTML = '<span class="muted" style="font-size:12px;">No candidates for this date.</span>';
       return;
     }
+    const scanLabel = (data.scan_count||1) > 1
+      ? `${cands.length} unique candidate${cands.length>1?'s':''} across ${data.scan_count} scans`
+      : `${cands.length} candidate${cands.length>1?'s':''} · 1 scan run`;
     inner.innerHTML = `
-      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">${cands.length} candidate${cands.length>1?'s':''} from last scan run</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">${scanLabel}</div>
       <div style="overflow-x:auto">
       <table style="font-size:12px;width:100%">
         <thead>
@@ -1291,6 +1317,50 @@ function tickCountdown() {
 setInterval(tickCountdown, 1000);
 resetCountdown();
 
+// ── Next scan countdown ────────────────────────────────────────────────────
+let _nextScanTs     = null;
+let _runnerActive   = false;
+let _scanInProgress = false;
+
+async function fetchNextScan() {
+  try {
+    const d = await fetch('/api/scan/next').then(r => r.json());
+    _nextScanTs     = d.next_scan_ts ? new Date(d.next_scan_ts) : null;
+    _runnerActive   = !!d.runner_running;
+    _scanInProgress = !!d.scan_running;
+  } catch(e) {}
+}
+
+function tickScanCountdown() {
+  const el = document.getElementById('scan-countdown');
+  // Only show when runner is active or a scan is in progress
+  if (!_runnerActive && !_scanInProgress) { el.style.display = 'none'; return; }
+  if (_scanInProgress) {
+    el.textContent = 'Scanning…';
+    el.className = 'scan-next-info imminent';
+    el.style.display = '';
+    return;
+  }
+  if (!_nextScanTs) { el.style.display = 'none'; return; }
+  const secsLeft = Math.round((_nextScanTs - Date.now()) / 1000);
+  if (secsLeft <= 0) {
+    el.textContent = 'Scan due…';
+    el.className = 'scan-next-info imminent';
+    el.style.display = '';
+    fetchNextScan();
+    return;
+  }
+  const m = Math.floor(secsLeft / 60);
+  const s = String(secsLeft % 60).padStart(2, '0');
+  el.textContent = `Next scan ${m}:${s}`;
+  el.className = secsLeft < 60 ? 'scan-next-info imminent' : 'scan-next-info';
+  el.style.display = '';
+}
+
+setInterval(tickScanCountdown, 1000);
+setInterval(fetchNextScan, 30_000);  // re-sync every 30s
+fetchNextScan();
+
 // ── Runner daemon status ────────────────────────────────────────────────────
 
 async function updateRunnerStatus() {
@@ -1507,6 +1577,7 @@ function populateConfig(data) {
     'MAX_POSITION_SIZE','MAX_PORTFOLIO_RISK','MAX_CONCURRENT_TRADES','MAX_DAILY_LOSS_PCT',
     'BACKTEST_INITIAL_CAPITAL','BACKTEST_MAX_HOLD_DAYS','BACKTEST_SLIPPAGE_PCT',
     'ALPACA_API_KEY','ALPACA_SECRET_KEY','ALPACA_BASE_URL',
+    'WHATSAPP_PHONE','WHATSAPP_APIKEY',
   ];
   fields.forEach(k => {
     const el = document.getElementById('cfg-' + k);
@@ -1593,6 +1664,7 @@ function collectConfig() {
     'MAX_POSITION_SIZE','MAX_PORTFOLIO_RISK','MAX_CONCURRENT_TRADES','MAX_DAILY_LOSS_PCT',
     'BACKTEST_INITIAL_CAPITAL','BACKTEST_MAX_HOLD_DAYS','BACKTEST_SLIPPAGE_PCT',
     'ALPACA_API_KEY','ALPACA_SECRET_KEY','ALPACA_BASE_URL',
+    'WHATSAPP_PHONE','WHATSAPP_APIKEY',
   ];
   fields.forEach(k => {
     const el = document.getElementById('cfg-' + k);
@@ -1734,6 +1806,28 @@ function onPaperToggle(cb) {
     document.getElementById('cfg-ALPACA_BASE_URL').value = 'https://paper-api.alpaca.markets';
     _isLiveAccount = false;
     applyTradingModeBanner();
+  }
+}
+
+// ── WhatsApp test ──────────────────────────────────────────────────────────
+async function testWhatsapp() {
+  const phone  = document.getElementById('cfg-WHATSAPP_PHONE').value.trim();
+  const apikey = document.getElementById('cfg-WHATSAPP_APIKEY').value.trim();
+  if (!phone || !apikey) {
+    showToast('Enter phone number and API key first', 'error');
+    return;
+  }
+  try {
+    const res  = await fetch('/api/notifications/test', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({phone, apikey}),
+    });
+    const data = await res.json();
+    if (data.ok) showToast('Test message sent — check WhatsApp', 'success');
+    else         showToast('Failed: ' + (data.error || 'unknown'), 'error');
+  } catch(e) {
+    showToast('Request failed: ' + e.message, 'error');
   }
 }
 

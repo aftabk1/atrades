@@ -337,17 +337,20 @@ def query_day(day: str) -> dict:
             "SELECT * FROM scan_runs WHERE date=? ORDER BY ts DESC", (day,)
         ))
         latest_run    = runs[0] if runs else {}
-        latest_run_id = latest_run.get("id")
 
-        # Only show candidates from the most recent scan run
+        # All unique candidates for the day — keep highest-scoring row per symbol
         candidates = _rows(con.execute(
-            """SELECT sc.*, sr.regime as run_regime
+            """SELECT sc.*
                FROM scan_candidates sc
-               JOIN scan_runs sr ON sc.scan_run_id = sr.id
-               WHERE sc.scan_run_id=?
+               WHERE sc.date=?
+                 AND sc.id = (
+                   SELECT sc2.id FROM scan_candidates sc2
+                   WHERE sc2.date=? AND sc2.symbol=sc.symbol
+                   ORDER BY sc2.score DESC LIMIT 1
+                 )
                ORDER BY sc.score DESC""",
-            (latest_run_id,),
-        )) if latest_run_id else []
+            (day, day),
+        ))
 
         trades = _rows(con.execute(
             "SELECT * FROM trades WHERE date=? ORDER BY ts", (day,)
@@ -356,6 +359,7 @@ def query_day(day: str) -> dict:
     return {
         "date":             day,
         "scan_count":       len(runs),
+        "scan_times":       [r["ts"] for r in runs],
         "symbols_scanned":  latest_run.get("symbols_scanned", 0),
         "candidates_found": len(candidates),
         "trades_placed":    len(trades),

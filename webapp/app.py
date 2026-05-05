@@ -22,11 +22,15 @@ import sys
 from datetime import date, datetime, timezone
 from pathlib import Path
 
+import hmac
+import os
+import secrets
+
 import uvicorn
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Query, Body
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi import Depends, FastAPI, HTTPException, Query, Body, Request, status
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 ROOT = Path(__file__).parent.parent
@@ -36,6 +40,47 @@ from datetime import date as _date
 from data.store import init_db, query_day, query_history, get_open_trades, query_performance
 
 ENV_PATH = ROOT / ".env"
+
+# ── HTTP Basic Auth ───────────────────────────────────────────────────────────
+# Set DASHBOARD_USER and DASHBOARD_PASS in .env (or Fly.io secrets).
+# If not set, auth is disabled (safe for local-only use).
+
+_AUTH_USER = os.getenv("DASHBOARD_USER", "")
+_AUTH_PASS = os.getenv("DASHBOARD_PASS", "")
+_AUTH_ENABLED = bool(_AUTH_USER and _AUTH_PASS)
+
+
+def _check_auth(request: Request) -> None:
+    if not _AUTH_ENABLED:
+        return
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Basic "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+            headers={"WWW-Authenticate": "Basic realm=\"A1TRADES\""},
+        )
+    import base64
+    try:
+        decoded   = base64.b64decode(auth[6:]).decode("utf-8")
+        user, _, pw = decoded.partition(":")
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            headers={"WWW-Authenticate": "Basic realm=\"A1TRADES\""})
+
+    # Constant-time comparison prevents timing attacks
+    user_ok = hmac.compare_digest(user.encode(), _AUTH_USER.encode())
+    pass_ok = hmac.compare_digest(pw.encode(),   _AUTH_PASS.encode())
+    if not (user_ok and pass_ok):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials",
+            headers={"WWW-Authenticate": "Basic realm=\"A1TRADES\""},
+        )
+
+
+_Auth = Depends(_check_auth)
+
 
 # ── .env helpers ──────────────────────────────────────────────────────────────
 
@@ -124,6 +169,8 @@ CONFIG_DEFAULTS = {
     "BACKTEST_MAX_HOLD_DAYS":          "20",
     "BACKTEST_SLIPPAGE_PCT":           "0.0005",
     "BACKTEST_INITIAL_CAPITAL":        "100000",
+    "WHATSAPP_PHONE":                  "",
+    "WHATSAPP_APIKEY":                 "",
 }
 
 
@@ -134,7 +181,13 @@ async def lifespan(app):
     init_db()
     yield
 
-app = FastAPI(title="A1TRADES Dashboard", docs_url=None, redoc_url=None, lifespan=lifespan)
+app = FastAPI(
+    title="A1TRADES Dashboard",
+    docs_url=None,
+    redoc_url=None,
+    lifespan=lifespan,
+    dependencies=[_Auth],   # enforces auth on every route
+)
 
 STATIC = Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=str(STATIC)), name="static")
@@ -163,12 +216,12 @@ def api_history(days: int = Query(default=30, ge=1, le=365)):
 @app.get("/api/positions")
 def api_positions():
     try:
-        import config
+        env = _parse_env(_read_env_lines())
         from alpaca.trading.client import TradingClient
         client = TradingClient(
-            api_key=config.ALPACA_API_KEY,
-            secret_key=config.ALPACA_SECRET_KEY,
-            paper=config.IS_PAPER,
+            api_key=env.get("ALPACA_API_KEY", ""),
+            secret_key=env.get("ALPACA_SECRET_KEY", ""),
+            paper=(env.get("IS_PAPER", "true") or "true").lower() != "false",
         )
         positions = client.get_all_positions()
         clock     = client.get_clock()
@@ -205,13 +258,12 @@ def api_performance(days: int = Query(default=90, ge=1, le=365)):
 @app.get("/api/live-trades")
 def api_live_trades():
     try:
-        import config as _cfg
-        importlib.reload(_cfg)
+        env = _parse_env(_read_env_lines())
         from alpaca.trading.client import TradingClient
         tc = TradingClient(
-            api_key=_cfg.ALPACA_API_KEY,
-            secret_key=_cfg.ALPACA_SECRET_KEY,
-            paper=_cfg.IS_PAPER,
+            api_key=env.get("ALPACA_API_KEY", ""),
+            secret_key=env.get("ALPACA_SECRET_KEY", ""),
+            paper=(env.get("IS_PAPER", "true") or "true").lower() != "false",
         )
 
         # Live positions from Alpaca, keyed by symbol
@@ -319,7 +371,12 @@ def reset_fallback_symbols():
 @app.post("/api/config")
 def save_config(body: dict = Body(...)):
     try:
-        safe = {k: str(v) for k, v in body.items() if k in CONFIG_DEFAULTS and str(v).strip() != ""}
+        # REGIME_OVERRIDE is a select that legitimately stores an empty string (= "Auto")
+        _allow_empty = {"REGIME_OVERRIDE"}
+        safe = {
+            k: str(v) for k, v in body.items()
+            if k in CONFIG_DEFAULTS and (str(v).strip() != "" or k in _allow_empty)
+        }
         _write_env(safe)
         # Reload config in the running process so new values take effect immediately
         import config as _cfg
@@ -375,6 +432,67 @@ def scan_output(offset: int = Query(default=0)):
     }
 
 
+@app.post("/api/notifications/test")
+def notifications_test(body: dict = Body(...)):
+    try:
+        import urllib.parse, urllib.request
+        phone  = str(body.get("phone",  "")).strip()
+        apikey = str(body.get("apikey", "")).strip()
+        if not phone or not apikey:
+            return JSONResponse(status_code=400, content={"ok": False, "error": "phone and apikey required"})
+        msg    = "A1TRADES: test notification — WhatsApp alerts are working."
+        params = urllib.parse.urlencode({"phone": phone, "text": msg, "apikey": apikey})
+        url    = f"https://api.callmebot.com/whatsapp.php?{params}"
+        with urllib.request.urlopen(url, timeout=10) as resp:
+            if 200 <= resp.status < 300:
+                return {"ok": True}
+            return JSONResponse(status_code=502, content={"ok": False, "error": f"CallMeBot HTTP {resp.status}"})
+    except Exception as exc:
+        return JSONResponse(status_code=500, content={"ok": False, "error": str(exc)})
+
+
+@app.get("/api/scan/next")
+def scan_next():
+    """Return last scan timestamp and when the next one is due."""
+    try:
+        env = _parse_env(_read_env_lines())
+        interval = int(env.get("SCANNER_INTERVAL_MINUTES", "5") or "5")
+    except Exception:
+        interval = 5
+
+    import sqlite3 as _sq
+    from pathlib import Path as _Path
+    db = _Path(__file__).parent.parent / "data" / "atrades.db"
+    last_ts = None
+    try:
+        con = _sq.connect(db)
+        row = con.execute("SELECT ts FROM scan_runs ORDER BY id DESC LIMIT 1").fetchone()
+        if row:
+            last_ts = row[0]
+        con.close()
+    except Exception:
+        pass
+
+    next_ts = None
+    if last_ts:
+        try:
+            from datetime import timedelta
+            last_dt = datetime.fromisoformat(last_ts)
+            if last_dt.tzinfo is None:
+                last_dt = last_dt.replace(tzinfo=timezone.utc)
+            next_ts = (last_dt + timedelta(minutes=interval)).isoformat()
+        except Exception:
+            pass
+
+    return {
+        "last_scan_ts":    last_ts,
+        "next_scan_ts":    next_ts,
+        "interval_minutes": interval,
+        "runner_running":  _runner_alive(),
+        "scan_running":    _scan_running,
+    }
+
+
 # ── Runner API ───────────────────────────────────────────────────────────────
 
 _runner_proc: subprocess.Popen | None = None
@@ -387,9 +505,10 @@ def _runner_alive() -> bool:
 @app.get("/api/trading-mode")
 def trading_mode():
     try:
-        import config as _cfg
-        importlib.reload(_cfg)
-        return {"is_paper": _cfg.IS_PAPER, "base_url": _cfg.ALPACA_BASE_URL}
+        env = _parse_env(_read_env_lines())
+        is_paper = (env.get("IS_PAPER", "true") or "true").lower() != "false"
+        base_url = env.get("ALPACA_BASE_URL", "https://paper-api.alpaca.markets") or "https://paper-api.alpaca.markets"
+        return {"is_paper": is_paper, "base_url": base_url}
     except Exception as exc:
         return JSONResponse(status_code=500, content={"error": str(exc)})
 
@@ -397,9 +516,8 @@ def trading_mode():
 @app.get("/api/runner/status")
 def runner_status():
     try:
-        import config as _cfg
-        importlib.reload(_cfg)
-        is_paper = _cfg.IS_PAPER
+        env = _parse_env(_read_env_lines())
+        is_paper = (env.get("IS_PAPER", "true") or "true").lower() != "false"
     except Exception:
         is_paper = True
     return {"running": _runner_alive(), "is_paper": is_paper}
