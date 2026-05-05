@@ -78,3 +78,7 @@ REGIME_AWARE_SCANNING = os.getenv("REGIME_AWARE_SCANNING", "true").lower() == "t
 BACKTEST_MAX_HOLD_DAYS = int(os.getenv("BACKTEST_MAX_HOLD_DAYS", "20"))
 BACKTEST_SLIPPAGE_PCT = float(os.getenv("BACKTEST_SLIPPAGE_PCT", "0.0005")) # 0.05% slippage
 BACKTEST_INITIAL_CAPITAL = float(os.getenv("BACKTEST_INITIAL_CAPITAL", "100000"))
+
+# ── Notifications ─────────────────────────────────────────────────────────────
+WHATSAPP_PHONE  = os.getenv("WHATSAPP_PHONE",  "")   # international format, e.g. +97455512345
+WHATSAPP_APIKEY = os.getenv("WHATSAPP_APIKEY", "")   # from CallMeBot setup

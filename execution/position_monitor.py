@@ -37,6 +37,7 @@ from alpaca.trading.requests import (
 
 import config
 from broker.alpaca_client import AlpacaClient
+from notifications.whatsapp import notify
 from data.store import (
     close_trade,
     get_open_trades,
@@ -106,6 +107,7 @@ def sync_open_trades(client: AlpacaClient) -> None:
                     exit_price = float(trail_order.filled_avg_price or 0)
                     close_trade(buy_id, exit_price, "trailing_stop")
                     logger.info(f"{symbol}: trailing stop filled @ ${exit_price:.2f} — trade closed")
+                    notify(f"TRADE CLOSED: {symbol} via Trailing Stop @ ${exit_price:.2f}")
             except Exception as exc:
                 logger.debug(f"{symbol}: trail order check error — {exc}")
 
@@ -128,12 +130,15 @@ def _handle_closed_position(tc, trade: dict) -> None:
                 exit_price = float(order.filled_avg_price or 0)
                 close_trade(buy_id, exit_price, reason)
                 logger.info(f"{symbol}: closed via {reason} @ ${exit_price:.2f}")
+                notify(f"TRADE CLOSED: {symbol} via {reason.replace('_', ' ').title()} "
+                       f"@ ${exit_price:.2f}")
                 return
         except Exception:
             pass
     # Position gone but no filled exit found — mark closed manually
     close_trade(buy_id, 0.0, "unknown")
     logger.warning(f"{symbol}: position closed, exit order not identified")
+    notify(f"TRADE CLOSED: {symbol} — exit order unidentified, position gone")
 
 
 def _upgrade_stop_to_trail(tc, trade: dict) -> None:

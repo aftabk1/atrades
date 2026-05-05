@@ -25,6 +25,7 @@ from alpaca.trading.requests import (
 )
 
 from broker.alpaca_client import AlpacaClient
+from notifications.whatsapp import notify
 from risk.trade_setup import TradeSetup
 
 _FILL_POLL_INTERVAL = 2   # seconds between fill checks
@@ -116,7 +117,7 @@ class BracketOrderExecutor:
                     f"limit ${setup.target_price:.2f} | order_id={partial_order_id}"
                 )
 
-            return {
+            result = {
                 "buy_order_id":     str(buy_order.id),
                 "stop_order_id":    stop_order_id,
                 "partial_order_id": partial_order_id,
@@ -133,6 +134,14 @@ class BracketOrderExecutor:
                 "trail_atr":        setup.trail_atr,
                 "score":            setup.score,
             }
+            notify(
+                f"TRADE PLACED: {setup.symbol} "
+                f"{setup.shares} sh @ ${fill_price:.2f} | "
+                f"Stop: ${setup.stop_loss:.2f} | "
+                f"Target: ${setup.target_price:.2f} | "
+                f"Score: {setup.score:.0f}"
+            )
+            return result
 
         except Exception as exc:
             logger.error(f"Order submission failed for {setup.symbol}: {exc}")
