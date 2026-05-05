@@ -319,8 +319,11 @@ def reset_fallback_symbols():
 @app.post("/api/config")
 def save_config(body: dict = Body(...)):
     try:
-        safe = {k: str(v) for k, v in body.items() if k in CONFIG_DEFAULTS}
+        safe = {k: str(v) for k, v in body.items() if k in CONFIG_DEFAULTS and str(v).strip() != ""}
         _write_env(safe)
+        # Reload config in the running process so new values take effect immediately
+        import config as _cfg
+        importlib.reload(_cfg)
         return {"ok": True}
     except Exception as exc:
         return JSONResponse(status_code=500, content={"ok": False, "error": str(exc)})

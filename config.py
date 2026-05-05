@@ -1,7 +1,10 @@
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv(override=True)
+# Pin to this file's directory so .env is always found regardless of CWD
+_ENV_PATH = Path(__file__).parent / ".env"
+load_dotenv(dotenv_path=_ENV_PATH, override=True)
 
 # ── Alpaca credentials ────────────────────────────────────────────────────────
 ALPACA_API_KEY = os.getenv("ALPACA_API_KEY", "")
