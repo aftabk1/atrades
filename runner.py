@@ -232,8 +232,9 @@ def _end_of_day(scanner: BreakoutScanner) -> None:
 
 def main() -> None:
     p = argparse.ArgumentParser(description="A1TRADES autonomous trading runner")
-    p.add_argument("--interval", type=int, default=60,
-                   help="Re-scan interval in minutes (0 = once at open only, default: 60)")
+    _default_interval = int(getattr(config, "SCANNER_INTERVAL_MINUTES", 60))
+    p.add_argument("--interval", type=int, default=_default_interval,
+                   help=f"Re-scan interval in minutes (0 = once at open only, default: {_default_interval} from config)")
     p.add_argument("--dry-run",  action="store_true",
                    help="Scan and print setups but do not place orders")
     args = p.parse_args()
