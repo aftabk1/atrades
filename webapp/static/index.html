@@ -514,11 +514,11 @@
             <div class="form-control"><input type="number" id="cfg-BREAKOUT_MIN_AVG_VOLUME" step="100000" min="0"></div>
           </div>
           <div class="form-row">
-            <div class="form-label">Volume Surge Multiplier<span class="wt-badge wt-pos">20 pts</span><div class="form-hint">Today vs avg (e.g. 1.5 = 50% above avg)</div></div>
+            <div class="form-label">Volume Surge Multiplier<span class="wt-badge wt-pos" id="wt-SCORE_VOLUME_SURGE">20 pts</span><div class="form-hint">Today vs avg (e.g. 1.5 = 50% above avg)</div></div>
             <div class="form-control"><input type="number" id="cfg-BREAKOUT_VOLUME_SURGE_MULT" step="0.1" min="1"></div>
           </div>
           <div class="form-row">
-            <div class="form-label">RSI Low Zone<span class="wt-badge wt-pos">12 pts</span><div class="form-hint">RSI band lower bound &mdash; RSI Low &amp; High together = one 15-pt signal</div></div>
+            <div class="form-label">RSI Low Zone<span class="wt-badge wt-pos" id="wt-SCORE_RSI_ZONE">12 pts</span><div class="form-hint">RSI band lower bound &mdash; RSI Low &amp; High together = one 15-pt signal</div></div>
             <div class="form-control"><input type="number" id="cfg-BREAKOUT_RSI_LOW" step="1" min="1" max="100"></div>
           </div>
           <div class="form-row">
@@ -526,15 +526,15 @@
             <div class="form-control"><input type="number" id="cfg-BREAKOUT_RSI_HIGH" step="1" min="1" max="100"></div>
           </div>
           <div class="form-row">
-            <div class="form-label">ATR Expansion Threshold<span class="wt-badge wt-pos">8 pts</span><div class="form-hint">Short-term ATR must exceed long-term ATR by this ratio</div></div>
+            <div class="form-label">ATR Expansion Threshold<span class="wt-badge wt-pos" id="wt-SCORE_ATR_EXPANSION">8 pts</span><div class="form-hint">Short-term ATR must exceed long-term ATR by this ratio</div></div>
             <div class="form-control"><input type="number" id="cfg-BREAKOUT_ATR_EXPANSION_THRESHOLD" step="0.05" min="1"></div>
           </div>
           <div class="form-row">
-            <div class="form-label">Consolidation Lookback (days)<span class="wt-badge wt-pos">8 pts</span><div class="form-hint">Low daily volatility in this window = tight base</div></div>
+            <div class="form-label">Consolidation Lookback (days)<span class="wt-badge wt-pos" id="wt-SCORE_CONSOLIDATION">8 pts</span><div class="form-hint">Low daily volatility in this window = tight base</div></div>
             <div class="form-control"><input type="number" id="cfg-BREAKOUT_CONSOLIDATION_LOOKBACK" step="1" min="3"></div>
           </div>
           <div class="form-row">
-            <div class="form-label">Higher Lows Lookback (days)<span class="wt-badge wt-pos">8 pts</span><div class="form-hint">Ascending swing lows over this window = demand building</div></div>
+            <div class="form-label">Higher Lows Lookback (days)<span class="wt-badge wt-pos" id="wt-SCORE_HIGHER_LOWS">8 pts</span><div class="form-hint">Ascending swing lows over this window = demand building</div></div>
             <div class="form-control"><input type="number" id="cfg-BREAKOUT_HIGHER_LOWS_LOOKBACK" step="1" min="3"></div>
           </div>
           <div class="form-row">
@@ -1529,7 +1529,7 @@ function populateConfig(data) {
     if (el && data[k] !== undefined) el.value = data[k];
   });
 
-  updateWeightsTotal();
+  updateWeightsTotal();  // also calls updateThresholdBadges()
 }
 
 const _WEIGHT_FIELDS = [
@@ -1538,8 +1538,27 @@ const _WEIGHT_FIELDS = [
   'SCORE_CONSOLIDATION','SCORE_HIGHER_LOWS','SCORE_EARNINGS_PROXIMITY',
 ];
 
+// Sync wt-badge labels in Scanner Thresholds to match live Signal Weights inputs
+const _THRESHOLD_BADGE_MAP = {
+  'SCORE_VOLUME_SURGE':  'wt-SCORE_VOLUME_SURGE',
+  'SCORE_RSI_ZONE':      'wt-SCORE_RSI_ZONE',
+  'SCORE_ATR_EXPANSION': 'wt-SCORE_ATR_EXPANSION',
+  'SCORE_CONSOLIDATION': 'wt-SCORE_CONSOLIDATION',
+  'SCORE_HIGHER_LOWS':   'wt-SCORE_HIGHER_LOWS',
+};
+function updateThresholdBadges() {
+  for (const [scoreKey, badgeId] of Object.entries(_THRESHOLD_BADGE_MAP)) {
+    const input = document.getElementById('cfg-' + scoreKey);
+    const badge = document.getElementById(badgeId);
+    if (!input || !badge) continue;
+    const v = parseFloat(input.value);
+    badge.textContent = isNaN(v) ? '— pts' : v + ' pts';
+  }
+}
+
 function updateWeightsTotal() {
   // Sum with fixed-precision to avoid floating-point drift (e.g. 0.1+0.2≠0.3)
+  updateThresholdBadges();
   const totalRaw = _WEIGHT_FIELDS.reduce((s, k) => {
     return s + (parseFloat(document.getElementById('cfg-' + k)?.value) || 0);
   }, 0);

@@ -275,7 +275,7 @@ def api_live_trades():
 @app.get("/api/config")
 def get_config():
     env = _parse_env(_read_env_lines())
-    return {k: env.get(k, v) for k, v in CONFIG_DEFAULTS.items()}
+    return {k: env.get(k, v) or v for k, v in CONFIG_DEFAULTS.items()}
 
 
 @app.get("/api/symbols/fallback")
