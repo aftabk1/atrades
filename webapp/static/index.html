@@ -1539,19 +1539,20 @@ const _WEIGHT_FIELDS = [
 ];
 
 function updateWeightsTotal() {
-  const total = _WEIGHT_FIELDS.reduce((s, k) => {
-    const v = parseFloat(document.getElementById('cfg-' + k)?.value) || 0;
-    return s + v;
+  // Sum with fixed-precision to avoid floating-point drift (e.g. 0.1+0.2≠0.3)
+  const totalRaw = _WEIGHT_FIELDS.reduce((s, k) => {
+    return s + (parseFloat(document.getElementById('cfg-' + k)?.value) || 0);
   }, 0);
+  const total = Math.round(totalRaw * 100) / 100;  // round to 2 dp
   const badge = document.getElementById('weights-total-badge');
   if (!badge) return;
-  const diff = Math.round((total - 100) * 10) / 10;
-  if (Math.abs(diff) < 0.01) {
+  const diff  = Math.round((total - 100) * 100) / 100;  // 2 dp diff
+  if (diff === 0) {
     badge.style.color = 'var(--green)';
-    badge.textContent = 'Total: 100 ✓';
+    badge.textContent = `Total: 100 ✓`;
   } else {
     badge.style.color = diff > 0 ? 'var(--red)' : 'var(--yellow)';
-    badge.textContent = `Total: ${Math.round(total * 10) / 10} (${diff > 0 ? '+' : ''}${diff} from 100)`;
+    badge.textContent = `Total: ${total} — ${diff > 0 ? '+' : ''}${diff} off (must = 100)`;
   }
 }
 
