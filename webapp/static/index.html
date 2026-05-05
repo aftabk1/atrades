@@ -151,6 +151,10 @@
   .form-label { color: var(--text); font-size: 12px; flex: 1; min-width: 0; }
   .form-hint  { color: var(--muted); font-size: 10px; margin-top: 2px; }
   .form-control { flex: 0 0 140px; }
+  .wt-badge { display: inline-block; font-size: 9px; font-weight: 700; letter-spacing: .03em; padding: 1px 6px; border-radius: 10px; margin-left: 6px; vertical-align: middle; }
+  .wt-pos   { background: rgba(34,197,94,.15);  color: var(--green); }
+  .wt-neg   { background: rgba(239,68,68,.15);  color: var(--red); }
+  .wt-neut  { background: rgba(100,116,139,.15); color: var(--muted); }
 
   /* toggle switch */
   .toggle-wrap { display: flex; align-items: center; gap: 8px; }
@@ -413,7 +417,15 @@
           <tbody id="live-trades-body">
             <tr><td colspan="12" class="empty"><span class="spin"></span></td></tr>
           </tbody>
-        </table>
+          <tfoot id="live-trades-foot" style="display:none">
+            <tr style="border-top:1px solid var(--border);font-weight:600;background:var(--surface2)">
+              <td id="lts-count"></td>
+              <td></td><td></td><td></td>
+              <td class="num" id="lts-pl"></td>
+              <td class="num" id="lts-r"></td>
+              <td colspan="6"></td>
+            </tr>
+          </tfoot>
       </div>
     </div>
 
@@ -494,39 +506,39 @@
         <div class="cfg-card-header"><span class="cfg-card-icon">&#128269;</span><span class="cfg-card-title">Scanner Thresholds</span></div>
         <div class="cfg-card-body">
           <div class="form-row">
-            <div class="form-label">Min Price ($)<div class="form-hint">Ignore stocks below this price</div></div>
+            <div class="form-label">Min Price ($)<div class="form-hint">Ignore stocks below this price &mdash; filter only, no score</div></div>
             <div class="form-control"><input type="number" id="cfg-BREAKOUT_MIN_PRICE" step="1" min="1"></div>
           </div>
           <div class="form-row">
-            <div class="form-label">Min Avg Volume<div class="form-hint">Daily average volume floor</div></div>
+            <div class="form-label">Min Avg Volume<div class="form-hint">Daily average volume floor &mdash; filter only, no score</div></div>
             <div class="form-control"><input type="number" id="cfg-BREAKOUT_MIN_AVG_VOLUME" step="100000" min="0"></div>
           </div>
           <div class="form-row">
-            <div class="form-label">Volume Surge Multiplier<div class="form-hint">Today vs avg (e.g. 1.5 = 50% above avg)</div></div>
+            <div class="form-label">Volume Surge Multiplier<span class="wt-badge wt-pos">25 pts</span><div class="form-hint">Today vs avg (e.g. 1.5 = 50% above avg)</div></div>
             <div class="form-control"><input type="number" id="cfg-BREAKOUT_VOLUME_SURGE_MULT" step="0.1" min="1"></div>
           </div>
           <div class="form-row">
-            <div class="form-label">RSI Low Zone<div class="form-hint">RSI must be above this</div></div>
+            <div class="form-label">RSI Low Zone<span class="wt-badge wt-pos">15 pts</span><div class="form-hint">RSI must be above this (momentum zone lower bound)</div></div>
             <div class="form-control"><input type="number" id="cfg-BREAKOUT_RSI_LOW" step="1" min="1" max="100"></div>
           </div>
           <div class="form-row">
-            <div class="form-label">RSI High Zone<div class="form-hint">RSI must be below this</div></div>
+            <div class="form-label">RSI High Zone<span class="wt-badge wt-pos">15 pts</span><div class="form-hint">RSI must be below this (not overbought)</div></div>
             <div class="form-control"><input type="number" id="cfg-BREAKOUT_RSI_HIGH" step="1" min="1" max="100"></div>
           </div>
           <div class="form-row">
-            <div class="form-label">ATR Expansion Threshold<div class="form-hint">Today ATR vs avg ATR ratio</div></div>
+            <div class="form-label">ATR Expansion Threshold<span class="wt-badge wt-pos">10 pts</span><div class="form-hint">Short-term ATR must exceed long-term ATR by this ratio</div></div>
             <div class="form-control"><input type="number" id="cfg-BREAKOUT_ATR_EXPANSION_THRESHOLD" step="0.05" min="1"></div>
           </div>
           <div class="form-row">
-            <div class="form-label">Consolidation Lookback (days)</div>
+            <div class="form-label">Consolidation Lookback (days)<span class="wt-badge wt-pos">10 pts</span><div class="form-hint">Low daily volatility in this window = tight base</div></div>
             <div class="form-control"><input type="number" id="cfg-BREAKOUT_CONSOLIDATION_LOOKBACK" step="1" min="3"></div>
           </div>
           <div class="form-row">
-            <div class="form-label">Higher Lows Lookback (days)</div>
+            <div class="form-label">Higher Lows Lookback (days)<span class="wt-badge wt-pos">10 pts</span><div class="form-hint">Ascending swing lows over this window = demand building</div></div>
             <div class="form-control"><input type="number" id="cfg-BREAKOUT_HIGHER_LOWS_LOOKBACK" step="1" min="3"></div>
           </div>
           <div class="form-row">
-            <div class="form-label">Min Score (0–100)<div class="form-hint">Candidates below this are dropped</div></div>
+            <div class="form-label">Min Score (0–100)<span class="wt-badge wt-neut">floor</span><div class="form-hint">Candidates below this score are dropped</div></div>
             <div class="form-control">
               <input type="number" id="cfg-BREAKOUT_MIN_SCORE" step="1" min="0" max="100">
             </div>
@@ -962,15 +974,87 @@ function renderHistory(rows) {
     return;
   }
   hb.innerHTML = rows.map(r => `
-    <tr style="cursor:pointer" onclick="jumpToDate('${r.date}')">
-      <td>${r.date}</td>
+    <tr style="cursor:pointer" onclick="toggleHistoryDetail('${r.date}', this)" title="Click to show candidates">
+      <td>${r.date} <span style="color:var(--muted);font-size:10px;" id="hist-arrow-${r.date}">&#9654;</span></td>
       <td>${regimePill(r.regime)}</td>
       <td class="num">${r.adx ? fmt(r.adx,1) : '—'}</td>
       <td class="num">${r.symbols_scanned || '—'}</td>
       <td class="num ${(r.candidates_found||0) > 0 ? 'cyan' : 'muted'}">${r.candidates_found || 0}</td>
       <td class="num ${(r.trades_placed||0) > 0 ? 'green' : 'muted'}">${r.trades_placed || 0}</td>
       <td class="num">${r.score_multiplier ? fmt(r.score_multiplier,2)+'x' : '—'}</td>
+    </tr>
+    <tr id="hist-detail-${r.date}" style="display:none">
+      <td colspan="7" style="padding:0;background:var(--surface2)">
+        <div id="hist-detail-inner-${r.date}" style="padding:10px 14px;"></div>
+      </td>
     </tr>`).join('');
+}
+
+const _histOpen = {};
+async function toggleHistoryDetail(date, srcRow) {
+  const detailRow  = document.getElementById(`hist-detail-${date}`);
+  const inner      = document.getElementById(`hist-detail-inner-${date}`);
+  const arrow      = document.getElementById(`hist-arrow-${date}`);
+  const isOpen     = _histOpen[date];
+
+  if (isOpen) {
+    detailRow.style.display = 'none';
+    arrow.innerHTML = '&#9654;';
+    _histOpen[date] = false;
+    return;
+  }
+
+  detailRow.style.display = '';
+  arrow.innerHTML = '&#9660;';
+  _histOpen[date] = true;
+  inner.innerHTML = '<span class="muted" style="font-size:12px;"><span class="spin"></span> Loading…</span>';
+
+  try {
+    const res  = await fetch(`/api/dashboard?date=${date}`);
+    const data = await res.json();
+    const cands = data.candidates || [];
+    if (!cands.length) {
+      inner.innerHTML = '<span class="muted" style="font-size:12px;">No candidates for this date.</span>';
+      return;
+    }
+    inner.innerHTML = `
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">${cands.length} candidate${cands.length>1?'s':''} from last scan run</div>
+      <div style="overflow-x:auto">
+      <table style="font-size:12px;width:100%">
+        <thead>
+          <tr>
+            <th>#</th><th>Symbol</th><th>Score</th>
+            <th class="num">Entry</th><th class="num">Stop</th><th class="num">Target</th>
+            <th class="num">R:R</th><th class="num">$&nbsp;Risk</th>
+            <th class="num">RSI</th><th class="num">RS/SPY</th><th class="num">Vol</th><th>Trap</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${cands.map((c,i) => `
+            <tr>
+              <td class="muted">${i+1}</td>
+              <td><strong>${c.symbol}</strong></td>
+              <td>
+                <div class="score-wrap">
+                  <span>${fmt(c.score,0)}</span>
+                  <div class="score-bar"><div class="score-fill" style="width:${c.score}%"></div></div>
+                </div>
+              </td>
+              <td class="num mono">$${fmt(c.entry)}</td>
+              <td class="num mono red">$${fmt(c.stop)}</td>
+              <td class="num mono green">$${fmt(c.target)}</td>
+              <td class="num">${fmt(c.risk_reward,1)}x</td>
+              <td class="num">${fmtDollar(c.dollar_risk)}</td>
+              <td class="num ${c.rsi>70?'yellow':''}">${fmt(c.rsi,0)}</td>
+              <td class="num ${c.rs_vs_spy>0?'green':'red'}">${c.rs_vs_spy>0?'+':''}${fmt(c.rs_vs_spy,1)}%</td>
+              <td class="num ${c.volume_ratio>=1.5?'green':''}">${fmt(c.volume_ratio,1)}x</td>
+              <td>${c.is_trap?'<span class="trap-badge">TRAP</span>':'<span class="muted">—</span>'}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table></div>`;
+  } catch(e) {
+    inner.innerHTML = '<span class="muted" style="font-size:12px;">Failed to load candidates.</span>';
+  }
 }
 
 function jumpToDate(d) {
@@ -1024,11 +1108,25 @@ function rColor(r) {
 }
 
 function renderLiveTrades(trades) {
-  const tb = document.getElementById('live-trades-body');
+  const tb   = document.getElementById('live-trades-body');
+  const foot = document.getElementById('live-trades-foot');
   if (!trades.length) {
     tb.innerHTML = '<tr><td colspan="12" class="empty muted">No open positions</td></tr>';
+    foot.style.display = 'none';
     return;
   }
+
+  // Summary footer
+  const totalPL  = trades.reduce((s, t) => s + (t.unrealized_pl || 0), 0);
+  const validR   = trades.filter(t => t.unrealized_r != null);
+  const avgR     = validR.length ? validR.reduce((s, t) => s + t.unrealized_r, 0) / validR.length : null;
+  const plCls    = totalPL > 0 ? 'green' : totalPL < 0 ? 'red' : '';
+  document.getElementById('lts-count').textContent = `${trades.length} position${trades.length > 1 ? 's' : ''}`;
+  document.getElementById('lts-pl').innerHTML =
+    `<span class="${plCls}">${totalPL >= 0 ? '+' : ''}$${fmt(Math.abs(totalPL))} total P&amp;L</span>`;
+  document.getElementById('lts-r').innerHTML = avgR != null
+    ? `<span class="${rColor(avgR)}">${avgR >= 0 ? '+' : ''}${fmt(avgR, 2)}R avg</span>` : '—';
+  foot.style.display = '';
   tb.innerHTML = trades.map(t => {
     const pl    = t.unrealized_pl;
     const plCls = pl > 0 ? 'green' : pl < 0 ? 'red' : '';
