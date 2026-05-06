@@ -72,7 +72,8 @@ class BreakoutScanner:
 
     # ── Main scan ─────────────────────────────────────────────────────────────
 
-    def scan(self, symbols: list[str] | None = None) -> list[dict]:
+    def scan(self, symbols: list[str] | None = None,
+             min_score_override: float | None = None) -> list[dict]:
         """
         Full breakout scan with regime gate, accumulation scoring, and trap filtering.
         Returns up to _TOP_N candidates sorted by descending score.
@@ -87,9 +88,10 @@ class BreakoutScanner:
         regime = detect_regime(spy_data)
         self._last_regime = regime
 
+        base_min = min_score_override if min_score_override is not None else config.BREAKOUT_MIN_SCORE
         effective_min_score = (
-            max(config.BREAKOUT_MIN_SCORE, regime.min_score_override)
-            if self._regime_aware else config.BREAKOUT_MIN_SCORE
+            max(base_min, regime.min_score_override)
+            if self._regime_aware else base_min
         )
 
         if self._regime_aware and not regime.scan_recommended:
@@ -541,6 +543,8 @@ def _build_arg_parser() -> argparse.ArgumentParser:
                    help="Candidates to return (default: 5)")
     p.add_argument("--no-regime", action="store_true",
                    help="Bypass market regime filter")
+    p.add_argument("--min-score", type=float, default=None, metavar="N",
+                   help="Override BREAKOUT_MIN_SCORE for this run (e.g. 0 to show all candidates)")
     return p
 
 
@@ -567,7 +571,8 @@ def main() -> None:
         scanner.run_intraday(interval_minutes=args.interval)
         return
 
-    candidates = scanner.scan(symbols=args.symbols)
+    candidates = scanner.scan(symbols=args.symbols,
+                              min_score_override=args.min_score)
 
     try:
         from data.store import init_db, save_scan

@@ -3,12 +3,15 @@ Partial-exit order execution via Alpaca.
 
 Entry + exit legs submitted as separate orders after fill confirmation:
   1. Market buy  — all shares (waits for fill)
-  2. Stop-loss   — all shares at stop_price (GTC, immediate hard floor)
-  3. Limit sell  — partial_shares at 2R target (GTC)
+  2. Limit sell  — partial_shares at 2R target (GTC)
+
+Hard stop is NOT placed as an order here — it is monitored by the position
+monitor (sync_open_trades) which runs every 10 min during the session.
+Placing a full-position stop alongside a partial limit sell causes Alpaca to
+reject the limit sell ("insufficient qty available for order").
 
 Once the position monitor detects the limit sell filled, it:
-  4. Cancels the stop-loss order
-  5. Places a trailing stop — trail_shares with trail_price = 2×ATR (GTC)
+  3. Places a trailing stop — trail_shares with trail_price = 2×ATR (GTC)
 """
 
 from __future__ import annotations
@@ -84,42 +87,37 @@ class BracketOrderExecutor:
                     "status":       "fill_timeout",
                 }
 
-            # ── 3. Hard stop — all shares ──────────────────────────────────
-            stop_order_id = None
-            stop_req = StopOrderRequest(
-                symbol=setup.symbol,
-                qty=setup.shares,
-                side=OrderSide.SELL,
-                time_in_force=TimeInForce.GTC,
-                stop_price=round(setup.stop_loss, 2),
-            )
-            stop_order = self._client.trading_client.submit_order(stop_req)
-            stop_order_id = str(stop_order.id)
-            logger.info(
-                f"Hard stop — {setup.symbol} {setup.shares} sh "
-                f"stop ${setup.stop_loss:.2f} | order_id={stop_order_id}"
-            )
-
-            # ── 4. Limit sell — partial_shares at 2R ──────────────────────
+            # ── 3. Limit sell — partial_shares at 2R ──────────────────────
+            # (No hard stop order here — position monitor enforces the stop.
+            #  Placing a full-position stop here would hold all shares and
+            #  cause Alpaca to reject this partial limit sell.)
             partial_order_id = None
             if setup.partial_shares >= 1:
-                limit_req = LimitOrderRequest(
-                    symbol=setup.symbol,
-                    qty=setup.partial_shares,
-                    side=OrderSide.SELL,
-                    time_in_force=TimeInForce.GTC,
-                    limit_price=round(setup.target_price, 2),
-                )
-                partial_order = self._client.trading_client.submit_order(limit_req)
-                partial_order_id = str(partial_order.id)
-                logger.info(
-                    f"Partial exit — {setup.symbol} {setup.partial_shares} sh "
-                    f"limit ${setup.target_price:.2f} | order_id={partial_order_id}"
-                )
+                try:
+                    limit_req = LimitOrderRequest(
+                        symbol=setup.symbol,
+                        qty=setup.partial_shares,
+                        side=OrderSide.SELL,
+                        time_in_force=TimeInForce.GTC,
+                        limit_price=round(setup.target_price, 2),
+                    )
+                    partial_order = self._client.trading_client.submit_order(limit_req)
+                    partial_order_id = str(partial_order.id)
+                    logger.info(
+                        f"Partial exit — {setup.symbol} {setup.partial_shares} sh "
+                        f"limit ${setup.target_price:.2f} | order_id={partial_order_id}"
+                    )
+                except Exception as exc:
+                    logger.error(
+                        f"Partial limit order failed for {setup.symbol} — "
+                        f"position open, monitor will manage exit: {exc}"
+                    )
 
+            # Build result regardless of whether partial order succeeded —
+            # the buy is filled and the position is open.
             result = {
                 "buy_order_id":     str(buy_order.id),
-                "stop_order_id":    stop_order_id,
+                "stop_order_id":    None,
                 "partial_order_id": partial_order_id,
                 "trail_order_id":   None,
                 "symbol":           setup.symbol,
