@@ -1,0 +1,175 @@
+2026-05-03 20:06:39 | INFO     | ==========================================================
+2026-05-03 20:06:39 | INFO     |   ATrades Autonomous Runner
+2026-05-03 20:06:39 | INFO     |   Mode     : DRY RUN (no orders)
+2026-05-03 20:06:39 | INFO     |   Scan     : every 60 min
+2026-05-03 20:06:39 | INFO     |   Universe : 4 max positions | risk 2%/trade
+2026-05-03 20:06:39 | INFO     | ==========================================================
+2026-05-03 20:06:40 | INFO     | Market closed. Next open: Mon 2026-05-04 09:30 ET (20.4h away) -- sleeping 1h
+2026-05-03 20:09:48 | INFO     | ==========================================================
+2026-05-03 20:09:48 | INFO     |   ATrades Autonomous Runner
+2026-05-03 20:09:48 | INFO     |   Mode     : LIVE (paper=True)
+2026-05-03 20:09:48 | INFO     |   Scan     : every 60 min
+2026-05-03 20:09:48 | INFO     |   Universe : 4 max positions | risk 2%/trade
+2026-05-03 20:09:48 | INFO     | ==========================================================
+2026-05-03 20:09:49 | INFO     | Market closed. Next open: Mon 2026-05-04 09:30 ET (20.3h away) -- sleeping 1h
+2026-05-03 20:09:52 | INFO     | ==========================================================
+2026-05-03 20:09:52 | INFO     |   ATrades Autonomous Runner
+2026-05-03 20:09:52 | INFO     |   Mode     : LIVE (paper=True)
+2026-05-03 20:09:52 | INFO     |   Scan     : every 60 min
+2026-05-03 20:09:52 | INFO     |   Universe : 4 max positions | risk 2%/trade
+2026-05-03 20:09:52 | INFO     | ==========================================================
+2026-05-03 20:09:53 | INFO     | Market closed. Next open: Mon 2026-05-04 09:30 ET (20.3h away) -- sleeping 1h
+2026-05-03 20:25:15 | INFO     | ==========================================================
+2026-05-03 20:25:15 | INFO     |   ATrades Autonomous Runner
+2026-05-03 20:25:15 | INFO     |   Mode     : LIVE (paper=True)
+2026-05-03 20:25:15 | INFO     |   Scan     : every 60 min
+2026-05-03 20:25:15 | INFO     |   Universe : 4 max positions | risk 2%/trade
+2026-05-03 20:25:15 | INFO     | ==========================================================
+2026-05-03 20:25:17 | INFO     | Market closed. Next open: Mon 2026-05-04 09:30 ET (20.1h away) -- sleeping 1h
+2026-05-03 21:06:41 | INFO     | Market closed. Next open: Mon 2026-05-04 09:30 ET (19.4h away) -- sleeping 1h
+2026-05-03 21:09:50 | INFO     | Market closed. Next open: Mon 2026-05-04 09:30 ET (19.3h away) -- sleeping 1h
+2026-05-03 21:09:54 | INFO     | Market closed. Next open: Mon 2026-05-04 09:30 ET (19.3h away) -- sleeping 1h
+2026-05-03 22:06:43 | INFO     | Market closed. Next open: Mon 2026-05-04 09:30 ET (18.4h away) -- sleeping 1h
+2026-05-03 22:09:52 | INFO     | Market closed. Next open: Mon 2026-05-04 09:30 ET (18.3h away) -- sleeping 1h
+2026-05-03 22:09:56 | INFO     | Market closed. Next open: Mon 2026-05-04 09:30 ET (18.3h away) -- sleeping 1h
+2026-05-04 07:44:08 | INFO     | Market closed. Next open: Mon 2026-05-04 09:30 ET (8.8h away) -- sleeping 1h
+2026-05-04 07:47:17 | INFO     | Market closed. Next open: Mon 2026-05-04 09:30 ET (8.7h away) -- sleeping 1h
+2026-05-04 07:47:21 | INFO     | Market closed. Next open: Mon 2026-05-04 09:30 ET (8.7h away) -- sleeping 1h
+2026-05-04 08:44:10 | INFO     | Market closed. Next open: Mon 2026-05-04 09:30 ET (7.8h away) -- sleeping 1h
+2026-05-04 08:47:18 | INFO     | Market closed. Next open: Mon 2026-05-04 09:30 ET (7.7h away) -- sleeping 1h
+2026-05-04 08:47:22 | INFO     | Market closed. Next open: Mon 2026-05-04 09:30 ET (7.7h away) -- sleeping 1h
+2026-05-04 09:44:11 | INFO     | Market closed. Next open: Mon 2026-05-04 09:30 ET (6.8h away) -- sleeping 1h
+2026-05-04 09:47:19 | INFO     | Market closed. Next open: Mon 2026-05-04 09:30 ET (6.7h away) -- sleeping 1h
+2026-05-04 09:47:24 | INFO     | Market closed. Next open: Mon 2026-05-04 09:30 ET (6.7h away) -- sleeping 1h
+2026-05-04 10:44:12 | INFO     | Market closed. Next open: Mon 2026-05-04 09:30 ET (5.8h away) -- sleeping 1h
+2026-05-04 10:47:21 | INFO     | Market closed. Next open: Mon 2026-05-04 09:30 ET (5.7h away) -- sleeping 1h
+2026-05-04 10:47:25 | INFO     | Market closed. Next open: Mon 2026-05-04 09:30 ET (5.7h away) -- sleeping 1h
+2026-05-04 11:44:14 | INFO     | Market closed. Next open: Mon 2026-05-04 09:30 ET (4.8h away) -- sleeping 1h
+2026-05-04 11:47:22 | INFO     | Market closed. Next open: Mon 2026-05-04 09:30 ET (4.7h away) -- sleeping 1h
+2026-05-04 11:47:26 | INFO     | Market closed. Next open: Mon 2026-05-04 09:30 ET (4.7h away) -- sleeping 1h
+2026-05-04 12:44:15 | INFO     | Market closed. Next open: Mon 2026-05-04 09:30 ET (3.8h away) -- sleeping 1h
+2026-05-04 12:47:24 | INFO     | Market closed. Next open: Mon 2026-05-04 09:30 ET (3.7h away) -- sleeping 1h
+2026-05-04 12:47:28 | INFO     | Market closed. Next open: Mon 2026-05-04 09:30 ET (3.7h away) -- sleeping 1h
+2026-05-04 13:44:16 | INFO     | Market closed. Next open: Mon 2026-05-04 09:30 ET (2.8h away) -- sleeping 1h
+2026-05-04 13:47:25 | INFO     | Market closed. Next open: Mon 2026-05-04 09:30 ET (2.7h away) -- sleeping 1h
+2026-05-04 13:47:29 | INFO     | Market closed. Next open: Mon 2026-05-04 09:30 ET (2.7h away) -- sleeping 1h
+2026-05-04 14:44:17 | INFO     | Market closed. Next open: Mon 2026-05-04 09:30 ET (1.8h away) -- sleeping 1h
+2026-05-04 14:47:26 | INFO     | Market closed. Next open: Mon 2026-05-04 09:30 ET (1.7h away) -- sleeping 1h
+2026-05-04 14:47:30 | INFO     | Market closed. Next open: Mon 2026-05-04 09:30 ET (1.7h away) -- sleeping 1h
+2026-05-04 15:44:19 | INFO     | Market opens at 09:30 ET (46 min) -- sleeping 5 min
+2026-05-04 15:47:27 | INFO     | Market opens at 09:30 ET (43 min) -- sleeping 5 min
+2026-05-04 15:47:31 | INFO     | Market opens at 09:30 ET (42 min) -- sleeping 5 min
+2026-05-04 15:49:20 | INFO     | Market opens at 09:30 ET (41 min) -- sleeping 5 min
+2026-05-04 15:52:28 | INFO     | Market opens at 09:30 ET (38 min) -- sleeping 5 min
+2026-05-04 15:52:32 | INFO     | Market opens at 09:30 ET (37 min) -- sleeping 5 min
+2026-05-04 15:54:21 | INFO     | Market opens at 09:30 ET (36 min) -- sleeping 5 min
+2026-05-04 15:57:30 | INFO     | Market opens at 09:30 ET (32 min) -- sleeping 5 min
+2026-05-04 15:57:34 | INFO     | Market opens at 09:30 ET (32 min) -- sleeping 5 min
+2026-05-04 15:59:23 | INFO     | Market opens at 09:30 ET (31 min) -- sleeping 5 min
+2026-05-04 16:02:31 | INFO     | Market opens at 09:30 ET (27 min) -- sleeping 5 min
+2026-05-04 16:02:35 | INFO     | Market opens at 09:30 ET (27 min) -- sleeping 5 min
+2026-05-04 16:04:24 | INFO     | Market opens at 09:30 ET (26 min) -- sleeping 5 min
+2026-05-04 16:07:32 | INFO     | Market opens at 09:30 ET (22 min) -- sleeping 5 min
+2026-05-04 16:07:36 | INFO     | Market opens at 09:30 ET (22 min) -- sleeping 5 min
+2026-05-04 16:09:25 | INFO     | Market opens at 09:30 ET (21 min) -- sleeping 5 min
+2026-05-04 16:44:44 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 16:44:47 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 16:46:37 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 16:49:45 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 16:49:48 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 16:50:45 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 16:50:48 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 16:51:38 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 16:52:38 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 16:55:46 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 16:55:49 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 16:56:46 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 16:56:50 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 16:57:39 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 16:58:40 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 17:01:48 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 17:01:51 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 17:02:48 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 17:02:51 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 17:03:41 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 17:04:41 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 17:07:49 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 17:07:52 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 17:08:49 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 17:08:52 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 17:09:42 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 17:10:42 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 17:13:50 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 17:13:53 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 17:14:50 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 17:14:54 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 17:15:43 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 17:16:43 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 17:19:52 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 17:19:55 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 17:20:52 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 17:20:55 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 17:21:45 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 17:22:45 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 17:25:53 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 17:25:56 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 17:26:54 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 17:26:57 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 17:27:46 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 17:28:46 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 17:31:55 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 17:31:58 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 17:32:55 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 17:32:58 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 17:33:48 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 17:34:48 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 19:03:20 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 19:03:23 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 19:18:43 | ERROR    | Unexpected error: ('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None)) -- restarting in 60s
+2026-05-04 19:18:46 | ERROR    | Unexpected error: ('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None)) -- restarting in 60s
+2026-05-04 19:19:35 | ERROR    | Unexpected error: ('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None)) -- restarting in 60s
+2026-05-04 19:19:44 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 19:19:47 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 19:20:36 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 19:28:00 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 19:28:03 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 19:28:51 | ERROR    | Unexpected error: ('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None)) -- restarting in 60s
+2026-05-04 19:29:00 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 19:29:03 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 19:29:52 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 19:34:02 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 19:34:06 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 19:34:53 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 19:35:02 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 19:35:06 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 19:35:54 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 19:40:04 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 19:40:07 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 19:40:55 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 19:41:04 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 19:41:08 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 19:41:55 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 19:46:05 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 19:46:09 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 19:46:56 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 19:47:05 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 19:47:09 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 19:47:57 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 19:52:07 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 19:52:11 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 19:52:58 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 19:53:07 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 19:53:11 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 19:53:58 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 19:58:08 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 19:58:12 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 19:59:00 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 19:59:08 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 19:59:12 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 20:00:00 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 20:04:10 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 20:04:14 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 20:05:01 | ERROR    | Unexpected error: can't subtract offset-naive and offset-aware datetimes -- restarting in 60s
+2026-05-04 20:05:10 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 20:05:14 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-04 20:06:02 | INFO     | Market open -- waiting 5 min for prices to settle

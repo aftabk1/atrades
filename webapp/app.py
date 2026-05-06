@@ -24,7 +24,6 @@ from pathlib import Path
 
 import hmac
 import os
-import secrets
 
 import uvicorn
 from contextlib import asynccontextmanager

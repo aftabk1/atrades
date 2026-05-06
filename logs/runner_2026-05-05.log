@@ -1,0 +1,116 @@
+2026-05-05 20:13:09 | INFO     | --- Re-scan #2  13:13 ET ---
+2026-05-05 20:13:10 | INFO     | Universe: 501 symbols (custom override)
+2026-05-05 20:13:10 | INFO     | Scanning 501 symbols...
+2026-05-05 20:13:12 | DEBUG    | Alpaca batch ['MMM', 'AOS', 'ABT']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-05 20:13:12 | DEBUG    | Alpaca batch ['ADSK', 'ADP', 'AZO']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-05 20:13:12 | DEBUG    | Alpaca batch ['CMG', 'CB', 'CHD']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-05 20:13:12 | DEBUG    | Alpaca batch ['DLR', 'DG', 'DLTR']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-05 20:13:13 | DEBUG    | Alpaca batch ['FE', 'FISV', 'F']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-05 20:13:13 | DEBUG    | Alpaca batch ['PODD', 'INTC', 'IBKR']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-05 20:13:13 | DEBUG    | Alpaca batch ['MLM', 'MAS', 'MA']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-05 20:13:13 | DEBUG    | Alpaca batch ['OKE', 'ORCL', 'OTIS']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-05 20:13:13 | DEBUG    | Alpaca batch ['RCL', 'SPGI', 'CRM']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-05 20:13:14 | DEBUG    | Alpaca batch ['TFC', 'TYL', 'TSN']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-05 20:13:14 | DEBUG    | Alpaca batch ['ZTS']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-05 20:13:14 | INFO     | yfinance fallback for 501 symbol(s)
+2026-05-05 20:13:56 | DEBUG    | Alpaca batch ['SPY']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-05 20:13:56 | INFO     | yfinance fallback for 1 symbol(s)
+2026-05-05 20:13:57 | INFO     | Market regime: 🟢 BULL TREND — SPY above 200MA | ADX=30.9 | Slope20d=+13.4% | Slope50d=+13.4% | RealVol=12.2%
+2026-05-05 20:13:58 | INFO     | Portfolio: $102,560.52 | Open: SNDK, MU, DDOG, CDNS | Regime: BULL_TREND (×1.0)
+2026-05-05 20:16:44 | INFO     | Placing orders [PAPER] — 5 candidate(s), 4 already open
+2026-05-05 20:16:44 | INFO     | Scan complete — 10 qualified, returning top 5 (regime=BULL_TREND)
+2026-05-05 20:16:44 | INFO     | Universe: 501 symbols (custom override)
+2026-05-05 20:16:44 | INFO     | 5 setup(s) found -- orders placed
+2026-05-05 21:16:46 | INFO     | --- Re-scan #3  14:16 ET ---
+2026-05-05 21:16:47 | INFO     | Universe: 501 symbols (custom override)
+2026-05-05 21:16:47 | INFO     | Scanning 501 symbols...
+2026-05-05 21:16:49 | DEBUG    | Alpaca batch ['MMM', 'AOS', 'ABT']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-05 21:16:49 | DEBUG    | Alpaca batch ['ADSK', 'ADP', 'AZO']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-05 21:16:49 | DEBUG    | Alpaca batch ['CMG', 'CB', 'CHD']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-05 21:16:50 | DEBUG    | Alpaca batch ['DLR', 'DG', 'DLTR']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-05 21:16:50 | DEBUG    | Alpaca batch ['FE', 'FISV', 'F']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-05 21:16:50 | DEBUG    | Alpaca batch ['PODD', 'INTC', 'IBKR']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-05 21:16:51 | DEBUG    | Alpaca batch ['MLM', 'MAS', 'MA']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-05 21:16:51 | DEBUG    | Alpaca batch ['OKE', 'ORCL', 'OTIS']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-05 21:16:51 | DEBUG    | Alpaca batch ['RCL', 'SPGI', 'CRM']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-05 21:16:51 | DEBUG    | Alpaca batch ['TFC', 'TYL', 'TSN']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-05 21:16:52 | DEBUG    | Alpaca batch ['ZTS']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-05 21:16:52 | INFO     | yfinance fallback for 501 symbol(s)
+2026-05-05 21:17:37 | DEBUG    | Alpaca batch ['SPY']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-05 21:17:37 | INFO     | yfinance fallback for 1 symbol(s)
+2026-05-05 21:17:38 | INFO     | Market regime: 🟢 BULL TREND — SPY above 200MA | ADX=31.2 | Slope20d=+13.6% | Slope50d=+13.6% | RealVol=12.3%
+2026-05-05 21:17:39 | INFO     | Portfolio: $102,530.70 | Open: SNDK, MU, DDOG, CDNS | Regime: BULL_TREND (×1.0)
+2026-05-05 21:20:29 | INFO     | Placing orders [PAPER] — 5 candidate(s), 4 already open
+2026-05-05 21:20:29 | INFO     | Scan complete — 9 qualified, returning top 5 (regime=BULL_TREND)
+2026-05-05 21:20:29 | INFO     | Universe: 501 symbols (custom override)
+2026-05-05 21:20:29 | INFO     | 5 setup(s) found -- orders placed
+2026-05-05 22:20:31 | INFO     | --- Re-scan #4  15:20 ET ---
+2026-05-05 22:20:32 | INFO     | Universe: 501 symbols (custom override)
+2026-05-05 22:20:32 | INFO     | Scanning 501 symbols...
+2026-05-05 22:20:34 | DEBUG    | Alpaca batch ['MMM', 'AOS', 'ABT']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-05 22:20:34 | DEBUG    | Alpaca batch ['ADSK', 'ADP', 'AZO']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-05 22:20:34 | DEBUG    | Alpaca batch ['CMG', 'CB', 'CHD']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-05 22:20:35 | DEBUG    | Alpaca batch ['DLR', 'DG', 'DLTR']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-05 22:20:35 | DEBUG    | Alpaca batch ['FE', 'FISV', 'F']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-05 22:20:35 | DEBUG    | Alpaca batch ['PODD', 'INTC', 'IBKR']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-05 22:20:35 | DEBUG    | Alpaca batch ['MLM', 'MAS', 'MA']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-05 22:20:35 | DEBUG    | Alpaca batch ['OKE', 'ORCL', 'OTIS']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-05 22:20:36 | DEBUG    | Alpaca batch ['RCL', 'SPGI', 'CRM']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-05 22:20:36 | DEBUG    | Alpaca batch ['TFC', 'TYL', 'TSN']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-05 22:20:36 | DEBUG    | Alpaca batch ['ZTS']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-05 22:20:36 | INFO     | yfinance fallback for 501 symbol(s)
+2026-05-05 22:21:26 | DEBUG    | Alpaca batch ['SPY']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-05 22:21:26 | INFO     | yfinance fallback for 1 symbol(s)
+2026-05-05 22:21:27 | INFO     | Market regime: 🟢 BULL TREND — SPY above 200MA | ADX=31.2 | Slope20d=+13.6% | Slope50d=+13.6% | RealVol=12.3%
+2026-05-05 22:21:27 | INFO     | Portfolio: $102,508.99 | Open: SNDK, MU, DDOG, CDNS | Regime: BULL_TREND (×1.0)
+2026-05-05 22:23:58 | INFO     | Placing orders [PAPER] — 5 candidate(s), 4 already open
+2026-05-05 22:23:58 | INFO     | Scan complete — 10 qualified, returning top 5 (regime=BULL_TREND)
+2026-05-05 22:23:58 | INFO     | Universe: 501 symbols (custom override)
+2026-05-05 22:23:58 | INFO     | 5 setup(s) found -- orders placed
+2026-05-05 22:58:28 | INFO     | ==========================================================
+2026-05-05 22:58:28 | INFO     |   A1TRADES Autonomous Runner
+2026-05-05 22:58:28 | INFO     |   Mode     : PAPER TRADING
+2026-05-05 22:58:28 | INFO     |   Scan     : every 60 min
+2026-05-05 22:58:28 | INFO     |   Universe : 5 max positions | risk 2%/trade
+2026-05-05 22:58:28 | INFO     | ==========================================================
+2026-05-05 22:58:29 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-05 23:03:31 | INFO     | Market closed after 0 scan(s) today
+2026-05-05 23:03:33 | INFO     | Market closed. Next open: Wed 2026-05-06 09:30 ET (17.4h away) -- sleeping 1h
+2026-05-05 23:04:10 | INFO     | Market closed after 5 scan(s) today
+2026-05-05 23:04:11 | INFO     | Market closed. Next open: Wed 2026-05-06 09:30 ET (17.4h away) -- sleeping 1h

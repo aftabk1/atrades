@@ -1,0 +1,750 @@
+[32m2026-05-06 18:30:02[0m | [1mINFO    [0m | ==========================================================
+[32m2026-05-06 18:30:02[0m | [1mINFO    [0m |   A1TRADES Autonomous Runner
+[32m2026-05-06 18:30:02[0m | [1mINFO    [0m |   Mode     : PAPER TRADING
+[32m2026-05-06 18:30:02[0m | [1mINFO    [0m |   Scan     : every 5 min
+[32m2026-05-06 18:30:02[0m | [1mINFO    [0m |   Universe : 5 max positions | risk 2%/trade
+[32m2026-05-06 18:30:02[0m | [1mINFO    [0m | ==========================================================
+[32m2026-05-06 18:30:03[0m | [1mINFO    [0m | Market open -- waiting 5 min for prices to settle
+[32m2026-05-06 18:35:05[0m | [1mINFO    [0m | --- Opening scan  11:35 ET ---
+[32m2026-05-06 18:35:06[0m | [1mINFO    [0m | Circuit breaker: start-of-day portfolio = $102,794.27
+[32m2026-05-06 18:35:06[0m | [1mINFO    [0m | Universe: 501 symbols (custom override)
+[32m2026-05-06 18:35:06[0m | [1mINFO    [0m | Scanning 501 symbols...
+[32m2026-05-06 18:35:10[0m | [1mINFO    [0m | yfinance fallback for 501 symbol(s)
+[32m2026-05-06 18:35:57[0m | [1mINFO    [0m | yfinance fallback for 1 symbol(s)
+[32m2026-05-06 18:35:58[0m | [1mINFO    [0m | Market regime: 🟢 BULL TREND — SPY above 200MA | ADX=32.9 | Slope20d=+14.7% | Slope50d=+14.7% | RealVol=9.9%
+[32m2026-05-06 18:35:58[0m | [1mINFO    [0m | Portfolio: $102,824.05 | Open: MU, DDOG, SNDK, CDNS | Regime: BULL_TREND (×1.0)
+[32m2026-05-06 18:38:32[0m | [1mINFO    [0m | Placing orders [PAPER] — 1 candidate(s), 4 already open
+[32m2026-05-06 18:38:33[0m | [1mINFO    [0m | Buy submitted — QCOM 53 sh @ ~$193.06 | order_id=74152095-68b1-4129-9acf-618c1af6c15a
+[32m2026-05-06 18:38:36[0m | [1mINFO    [0m | QCOM filled @ $193.76 (expected ~$193.76)
+[32m2026-05-06 18:38:36[0m | [1mINFO    [0m | Hard stop — QCOM 53 sh stop $154.45 | order_id=fdf7115a-7f00-4384-96ce-09a7f739e60c
+[32m2026-05-06 18:38:36[0m | [31m[1mERROR   [0m | Order submission failed for QCOM: {"available":"0","code":40310000,"existing_qty":"53","held_for_orders":"53","message":"insufficient qty available for order (requested: 26, available: 0)","related_orders":["fdf7115a-7f00-4384-96ce-09a7f739e60c"],"symbol":"QCOM"}
+[32m2026-05-06 18:38:36[0m | [1mINFO    [0m | Scan complete — 1 qualified, returning top 1 (regime=BULL_TREND)
+[32m2026-05-06 18:38:36[0m | [1mINFO    [0m | Universe: 501 symbols (custom override)
+[32m2026-05-06 18:38:36[0m | [1mINFO    [0m | 1 setup(s) found -- orders placed
+[32m2026-05-06 18:43:38[0m | [1mINFO    [0m | --- Re-scan #1  11:43 ET ---
+[32m2026-05-06 18:43:39[0m | [1mINFO    [0m | Universe: 501 symbols (custom override)
+[32m2026-05-06 18:43:39[0m | [1mINFO    [0m | Scanning 501 symbols...
+[32m2026-05-06 18:43:43[0m | [1mINFO    [0m | yfinance fallback for 501 symbol(s)
+C:\Projects\ATrades\data\market_data.py:50: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start = datetime.utcnow() - timedelta(days=days + 10)  # +10 for weekend buffer
+C:\Projects\ATrades\data\market_data.py:105: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  end = datetime.utcnow()
+[32m2026-05-06 18:44:19[0m | [1mINFO    [0m | yfinance fallback for 1 symbol(s)
+C:\Projects\ATrades\data\market_data.py:136: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start_str = (datetime.utcnow() - timedelta(days=days + 10)).strftime("%Y-%m-%d")
+[32m2026-05-06 18:44:20[0m | [1mINFO    [0m | Market regime: 🟢 BULL TREND — SPY above 200MA | ADX=32.9 | Slope20d=+14.6% | Slope50d=+14.6% | RealVol=9.8%
+[32m2026-05-06 18:44:21[0m | [1mINFO    [0m | Portfolio: $102,677.01 | Open: CDNS, QCOM, MU, DDOG, SNDK | Regime: BULL_TREND (×1.0)
+[32m2026-05-06 18:46:40[0m | [1mINFO    [0m | Scan complete — 0 qualified, returning top 0 (regime=BULL_TREND)
+[32m2026-05-06 18:46:40[0m | [1mINFO    [0m | Universe: 501 symbols (custom override)
+[32m2026-05-06 18:46:40[0m | [1mINFO    [0m | No qualifying setups this scan
+[32m2026-05-06 18:51:41[0m | [1mINFO    [0m | --- Re-scan #2  11:51 ET ---
+[32m2026-05-06 18:51:43[0m | [1mINFO    [0m | Universe: 501 symbols (custom override)
+[32m2026-05-06 18:51:43[0m | [1mINFO    [0m | Scanning 501 symbols...
+C:\Projects\ATrades\data\market_data.py:50: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start = datetime.utcnow() - timedelta(days=days + 10)  # +10 for weekend buffer
+C:\Projects\ATrades\data\market_data.py:105: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  end = datetime.utcnow()
+[32m2026-05-06 18:51:46[0m | [1mINFO    [0m | yfinance fallback for 501 symbol(s)
+C:\Projects\ATrades\data\market_data.py:136: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start_str = (datetime.utcnow() - timedelta(days=days + 10)).strftime("%Y-%m-%d")
+C:\Projects\ATrades\data\market_data.py:50: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start = datetime.utcnow() - timedelta(days=days + 10)  # +10 for weekend buffer
+C:\Projects\ATrades\data\market_data.py:105: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  end = datetime.utcnow()
+[32m2026-05-06 18:52:13[0m | [1mINFO    [0m | yfinance fallback for 1 symbol(s)
+C:\Projects\ATrades\data\market_data.py:136: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start_str = (datetime.utcnow() - timedelta(days=days + 10)).strftime("%Y-%m-%d")
+[32m2026-05-06 18:52:14[0m | [1mINFO    [0m | Market regime: 🟢 BULL TREND — SPY above 200MA | ADX=32.9 | Slope20d=+14.7% | Slope50d=+14.7% | RealVol=9.8%
+[32m2026-05-06 18:52:14[0m | [1mINFO    [0m | Portfolio: $102,646.38 | Open: CDNS, QCOM, MU, DDOG, SNDK | Regime: BULL_TREND (×1.0)
+[32m2026-05-06 18:54:31[0m | [1mINFO    [0m | Scan complete — 0 qualified, returning top 0 (regime=BULL_TREND)
+[32m2026-05-06 18:54:31[0m | [1mINFO    [0m | Universe: 501 symbols (custom override)
+[32m2026-05-06 18:54:31[0m | [1mINFO    [0m | No qualifying setups this scan
+[32m2026-05-06 18:59:32[0m | [1mINFO    [0m | --- Re-scan #3  11:59 ET ---
+[32m2026-05-06 18:59:34[0m | [1mINFO    [0m | Universe: 501 symbols (custom override)
+[32m2026-05-06 18:59:34[0m | [1mINFO    [0m | Scanning 501 symbols...
+C:\Projects\ATrades\data\market_data.py:50: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start = datetime.utcnow() - timedelta(days=days + 10)  # +10 for weekend buffer
+C:\Projects\ATrades\data\market_data.py:105: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  end = datetime.utcnow()
+[32m2026-05-06 18:59:37[0m | [1mINFO    [0m | yfinance fallback for 501 symbol(s)
+C:\Projects\ATrades\data\market_data.py:136: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start_str = (datetime.utcnow() - timedelta(days=days + 10)).strftime("%Y-%m-%d")
+C:\Projects\ATrades\data\market_data.py:50: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start = datetime.utcnow() - timedelta(days=days + 10)  # +10 for weekend buffer
+C:\Projects\ATrades\data\market_data.py:105: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  end = datetime.utcnow()
+[32m2026-05-06 19:00:08[0m | [1mINFO    [0m | yfinance fallback for 1 symbol(s)
+C:\Projects\ATrades\data\market_data.py:136: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start_str = (datetime.utcnow() - timedelta(days=days + 10)).strftime("%Y-%m-%d")
+[32m2026-05-06 19:00:08[0m | [1mINFO    [0m | Market regime: 🟢 BULL TREND — SPY above 200MA | ADX=32.9 | Slope20d=+14.7% | Slope50d=+14.7% | RealVol=9.8%
+[32m2026-05-06 19:00:09[0m | [1mINFO    [0m | Portfolio: $102,510.48 | Open: CDNS, QCOM, MU, DDOG, SNDK | Regime: BULL_TREND (×1.0)
+[32m2026-05-06 19:02:34[0m | [1mINFO    [0m | Scan complete — 0 qualified, returning top 0 (regime=BULL_TREND)
+[32m2026-05-06 19:02:34[0m | [1mINFO    [0m | Universe: 501 symbols (custom override)
+[32m2026-05-06 19:02:34[0m | [1mINFO    [0m | No qualifying setups this scan
+[32m2026-05-06 19:07:36[0m | [1mINFO    [0m | --- Re-scan #4  12:07 ET ---
+[32m2026-05-06 19:07:38[0m | [1mINFO    [0m | Universe: 501 symbols (custom override)
+[32m2026-05-06 19:07:38[0m | [1mINFO    [0m | Scanning 501 symbols...
+C:\Projects\ATrades\data\market_data.py:50: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start = datetime.utcnow() - timedelta(days=days + 10)  # +10 for weekend buffer
+C:\Projects\ATrades\data\market_data.py:105: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  end = datetime.utcnow()
+[32m2026-05-06 19:07:42[0m | [1mINFO    [0m | yfinance fallback for 501 symbol(s)
+C:\Projects\ATrades\data\market_data.py:136: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start_str = (datetime.utcnow() - timedelta(days=days + 10)).strftime("%Y-%m-%d")
+C:\Projects\ATrades\data\market_data.py:50: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start = datetime.utcnow() - timedelta(days=days + 10)  # +10 for weekend buffer
+C:\Projects\ATrades\data\market_data.py:105: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  end = datetime.utcnow()
+[32m2026-05-06 19:08:13[0m | [1mINFO    [0m | yfinance fallback for 1 symbol(s)
+C:\Projects\ATrades\data\market_data.py:136: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start_str = (datetime.utcnow() - timedelta(days=days + 10)).strftime("%Y-%m-%d")
+[32m2026-05-06 19:08:13[0m | [1mINFO    [0m | Market regime: 🟢 BULL TREND — SPY above 200MA | ADX=32.9 | Slope20d=+14.7% | Slope50d=+14.7% | RealVol=9.9%
+[32m2026-05-06 19:08:14[0m | [1mINFO    [0m | Portfolio: $102,645.07 | Open: CDNS, QCOM, MU, DDOG, SNDK | Regime: BULL_TREND (×1.0)
+[32m2026-05-06 19:10:38[0m | [1mINFO    [0m | Scan complete — 0 qualified, returning top 0 (regime=BULL_TREND)
+[32m2026-05-06 19:10:38[0m | [1mINFO    [0m | Universe: 501 symbols (custom override)
+[32m2026-05-06 19:10:38[0m | [1mINFO    [0m | No qualifying setups this scan
+[32m2026-05-06 19:15:40[0m | [1mINFO    [0m | --- Re-scan #5  12:15 ET ---
+[32m2026-05-06 19:15:41[0m | [1mINFO    [0m | Universe: 501 symbols (custom override)
+[32m2026-05-06 19:15:41[0m | [1mINFO    [0m | Scanning 501 symbols...
+C:\Projects\ATrades\data\market_data.py:50: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start = datetime.utcnow() - timedelta(days=days + 10)  # +10 for weekend buffer
+C:\Projects\ATrades\data\market_data.py:105: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  end = datetime.utcnow()
+[32m2026-05-06 19:15:46[0m | [1mINFO    [0m | yfinance fallback for 501 symbol(s)
+C:\Projects\ATrades\data\market_data.py:136: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start_str = (datetime.utcnow() - timedelta(days=days + 10)).strftime("%Y-%m-%d")
+C:\Projects\ATrades\data\market_data.py:50: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start = datetime.utcnow() - timedelta(days=days + 10)  # +10 for weekend buffer
+C:\Projects\ATrades\data\market_data.py:105: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  end = datetime.utcnow()
+[32m2026-05-06 19:16:17[0m | [1mINFO    [0m | yfinance fallback for 1 symbol(s)
+C:\Projects\ATrades\data\market_data.py:136: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start_str = (datetime.utcnow() - timedelta(days=days + 10)).strftime("%Y-%m-%d")
+[32m2026-05-06 19:16:17[0m | [1mINFO    [0m | Market regime: 🟢 BULL TREND — SPY above 200MA | ADX=32.9 | Slope20d=+14.7% | Slope50d=+14.7% | RealVol=9.9%
+[32m2026-05-06 19:16:18[0m | [1mINFO    [0m | Portfolio: $102,541.51 | Open: CDNS, QCOM, MU, DDOG, SNDK | Regime: BULL_TREND (×1.0)
+[32m2026-05-06 19:18:40[0m | [1mINFO    [0m | Placing orders [PAPER] — 1 candidate(s), 5 already open
+[32m2026-05-06 19:18:40[0m | [1mINFO    [0m | Scan complete — 1 qualified, returning top 1 (regime=BULL_TREND)
+[32m2026-05-06 19:18:40[0m | [1mINFO    [0m | Universe: 501 symbols (custom override)
+[32m2026-05-06 19:18:40[0m | [1mINFO    [0m | 1 setup(s) found -- orders placed
+[32m2026-05-06 19:23:42[0m | [1mINFO    [0m | --- Re-scan #6  12:23 ET ---
+[32m2026-05-06 19:23:43[0m | [1mINFO    [0m | Universe: 501 symbols (custom override)
+[32m2026-05-06 19:23:43[0m | [1mINFO    [0m | Scanning 501 symbols...
+C:\Projects\ATrades\data\market_data.py:50: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start = datetime.utcnow() - timedelta(days=days + 10)  # +10 for weekend buffer
+C:\Projects\ATrades\data\market_data.py:105: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  end = datetime.utcnow()
+[32m2026-05-06 19:23:47[0m | [1mINFO    [0m | yfinance fallback for 501 symbol(s)
+C:\Projects\ATrades\data\market_data.py:136: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start_str = (datetime.utcnow() - timedelta(days=days + 10)).strftime("%Y-%m-%d")
+C:\Projects\ATrades\data\market_data.py:50: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start = datetime.utcnow() - timedelta(days=days + 10)  # +10 for weekend buffer
+C:\Projects\ATrades\data\market_data.py:105: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  end = datetime.utcnow()
+[32m2026-05-06 19:24:20[0m | [1mINFO    [0m | yfinance fallback for 1 symbol(s)
+C:\Projects\ATrades\data\market_data.py:136: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start_str = (datetime.utcnow() - timedelta(days=days + 10)).strftime("%Y-%m-%d")
+[32m2026-05-06 19:24:20[0m | [1mINFO    [0m | Market regime: 🟢 BULL TREND — SPY above 200MA | ADX=32.9 | Slope20d=+14.7% | Slope50d=+14.7% | RealVol=9.9%
+[32m2026-05-06 19:24:21[0m | [1mINFO    [0m | Portfolio: $102,328.38 | Open: CDNS, QCOM, MU, DDOG, SNDK | Regime: BULL_TREND (×1.0)
+[32m2026-05-06 19:26:33[0m | [1mINFO    [0m | Placing orders [PAPER] — 1 candidate(s), 5 already open
+[32m2026-05-06 19:26:33[0m | [1mINFO    [0m | Scan complete — 1 qualified, returning top 1 (regime=BULL_TREND)
+[32m2026-05-06 19:26:33[0m | [1mINFO    [0m | Universe: 501 symbols (custom override)
+[32m2026-05-06 19:26:33[0m | [1mINFO    [0m | 1 setup(s) found -- orders placed
+[32m2026-05-06 19:31:35[0m | [1mINFO    [0m | --- Re-scan #7  12:31 ET ---
+[32m2026-05-06 19:31:36[0m | [33m[1mWARNING [0m | SNDK: position closed, exit order not identified
+[32m2026-05-06 19:31:37[0m | [1mINFO    [0m | Universe: 501 symbols (custom override)
+[32m2026-05-06 19:31:37[0m | [1mINFO    [0m | Scanning 501 symbols...
+C:\Projects\ATrades\data\market_data.py:50: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start = datetime.utcnow() - timedelta(days=days + 10)  # +10 for weekend buffer
+C:\Projects\ATrades\data\market_data.py:105: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  end = datetime.utcnow()
+[32m2026-05-06 19:31:41[0m | [1mINFO    [0m | yfinance fallback for 501 symbol(s)
+C:\Projects\ATrades\data\market_data.py:136: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start_str = (datetime.utcnow() - timedelta(days=days + 10)).strftime("%Y-%m-%d")
+C:\Projects\ATrades\data\market_data.py:50: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start = datetime.utcnow() - timedelta(days=days + 10)  # +10 for weekend buffer
+C:\Projects\ATrades\data\market_data.py:105: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  end = datetime.utcnow()
+[32m2026-05-06 19:32:14[0m | [1mINFO    [0m | yfinance fallback for 1 symbol(s)
+C:\Projects\ATrades\data\market_data.py:136: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start_str = (datetime.utcnow() - timedelta(days=days + 10)).strftime("%Y-%m-%d")
+[32m2026-05-06 19:32:14[0m | [1mINFO    [0m | Market regime: 🟢 BULL TREND — SPY above 200MA | ADX=32.9 | Slope20d=+14.7% | Slope50d=+14.7% | RealVol=9.9%
+[32m2026-05-06 19:32:15[0m | [1mINFO    [0m | Portfolio: $102,455.19 | Open: MU, DDOG, CDNS, QCOM | Regime: BULL_TREND (×1.0)
+[32m2026-05-06 19:34:30[0m | [1mINFO    [0m | Placing orders [PAPER] — 1 candidate(s), 4 already open
+[32m2026-05-06 19:34:32[0m | [1mINFO    [0m | Buy submitted — DOC 534 sh @ ~$19.18 | order_id=699277ad-e061-4de2-b365-69b7d5e921ab
+[32m2026-05-06 19:34:35[0m | [1mINFO    [0m | DOC filled @ $19.18 (expected ~$19.18)
+[32m2026-05-06 19:34:35[0m | [1mINFO    [0m | Hard stop — DOC 534 sh stop $15.62 | order_id=7eeaf0d3-69f0-4163-af57-92bba15df6b6
+[32m2026-05-06 19:34:35[0m | [31m[1mERROR   [0m | Order submission failed for DOC: {"available":"0","code":40310000,"existing_qty":"534","held_for_orders":"534","message":"insufficient qty available for order (requested: 267, available: 0)","symbol":"DOC"}
+[32m2026-05-06 19:34:35[0m | [1mINFO    [0m | Scan complete — 1 qualified, returning top 1 (regime=BULL_TREND)
+[32m2026-05-06 19:34:35[0m | [1mINFO    [0m | Universe: 501 symbols (custom override)
+[32m2026-05-06 19:34:35[0m | [1mINFO    [0m | 1 setup(s) found -- orders placed
+[32m2026-05-06 19:39:37[0m | [1mINFO    [0m | --- Re-scan #8  12:39 ET ---
+[32m2026-05-06 19:39:38[0m | [1mINFO    [0m | Universe: 501 symbols (custom override)
+[32m2026-05-06 19:39:38[0m | [1mINFO    [0m | Scanning 501 symbols...
+C:\Projects\ATrades\data\market_data.py:50: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start = datetime.utcnow() - timedelta(days=days + 10)  # +10 for weekend buffer
+C:\Projects\ATrades\data\market_data.py:105: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  end = datetime.utcnow()
+[32m2026-05-06 19:39:42[0m | [1mINFO    [0m | yfinance fallback for 501 symbol(s)
+C:\Projects\ATrades\data\market_data.py:136: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start_str = (datetime.utcnow() - timedelta(days=days + 10)).strftime("%Y-%m-%d")
+C:\Projects\ATrades\data\market_data.py:50: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start = datetime.utcnow() - timedelta(days=days + 10)  # +10 for weekend buffer
+C:\Projects\ATrades\data\market_data.py:105: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  end = datetime.utcnow()
+[32m2026-05-06 19:40:14[0m | [1mINFO    [0m | yfinance fallback for 1 symbol(s)
+C:\Projects\ATrades\data\market_data.py:136: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start_str = (datetime.utcnow() - timedelta(days=days + 10)).strftime("%Y-%m-%d")
+[32m2026-05-06 19:40:14[0m | [1mINFO    [0m | Market regime: 🟢 BULL TREND — SPY above 200MA | ADX=32.9 | Slope20d=+14.7% | Slope50d=+14.7% | RealVol=9.8%
+[32m2026-05-06 19:40:15[0m | [1mINFO    [0m | Portfolio: $102,444.89 | Open: CDNS, QCOM, MU, DDOG, DOC | Regime: BULL_TREND (×1.0)
+[32m2026-05-06 19:42:34[0m | [1mINFO    [0m | Scan complete — 0 qualified, returning top 0 (regime=BULL_TREND)
+[32m2026-05-06 19:42:34[0m | [1mINFO    [0m | Universe: 501 symbols (custom override)
+[32m2026-05-06 19:42:35[0m | [1mINFO    [0m | No qualifying setups this scan
+[32m2026-05-06 19:47:36[0m | [1mINFO    [0m | --- Re-scan #9  12:47 ET ---
+[32m2026-05-06 19:47:37[0m | [1mINFO    [0m | Universe: 501 symbols (custom override)
+[32m2026-05-06 19:47:37[0m | [1mINFO    [0m | Scanning 501 symbols...
+C:\Projects\ATrades\data\market_data.py:50: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start = datetime.utcnow() - timedelta(days=days + 10)  # +10 for weekend buffer
+C:\Projects\ATrades\data\market_data.py:105: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  end = datetime.utcnow()
+[32m2026-05-06 19:47:41[0m | [1mINFO    [0m | yfinance fallback for 501 symbol(s)
+C:\Projects\ATrades\data\market_data.py:136: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start_str = (datetime.utcnow() - timedelta(days=days + 10)).strftime("%Y-%m-%d")
+C:\Projects\ATrades\data\market_data.py:50: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start = datetime.utcnow() - timedelta(days=days + 10)  # +10 for weekend buffer
+C:\Projects\ATrades\data\market_data.py:105: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  end = datetime.utcnow()
+[32m2026-05-06 19:48:12[0m | [1mINFO    [0m | yfinance fallback for 1 symbol(s)
+C:\Projects\ATrades\data\market_data.py:136: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start_str = (datetime.utcnow() - timedelta(days=days + 10)).strftime("%Y-%m-%d")
+[32m2026-05-06 19:48:12[0m | [1mINFO    [0m | Market regime: 🟢 BULL TREND — SPY above 200MA | ADX=32.9 | Slope20d=+14.6% | Slope50d=+14.6% | RealVol=9.8%
+[32m2026-05-06 19:48:13[0m | [1mINFO    [0m | Portfolio: $102,467.40 | Open: CDNS, QCOM, MU, DDOG, DOC | Regime: BULL_TREND (×1.0)
+[32m2026-05-06 19:50:31[0m | [1mINFO    [0m | Scan complete — 0 qualified, returning top 0 (regime=BULL_TREND)
+[32m2026-05-06 19:50:31[0m | [1mINFO    [0m | Universe: 501 symbols (custom override)
+[32m2026-05-06 19:50:31[0m | [1mINFO    [0m | No qualifying setups this scan
+[32m2026-05-06 19:55:33[0m | [1mINFO    [0m | --- Re-scan #10  12:55 ET ---
+[32m2026-05-06 19:55:34[0m | [1mINFO    [0m | Universe: 501 symbols (custom override)
+[32m2026-05-06 19:55:34[0m | [1mINFO    [0m | Scanning 501 symbols...
+C:\Projects\ATrades\data\market_data.py:50: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start = datetime.utcnow() - timedelta(days=days + 10)  # +10 for weekend buffer
+C:\Projects\ATrades\data\market_data.py:105: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  end = datetime.utcnow()
+[32m2026-05-06 19:55:38[0m | [1mINFO    [0m | yfinance fallback for 501 symbol(s)
+C:\Projects\ATrades\data\market_data.py:136: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start_str = (datetime.utcnow() - timedelta(days=days + 10)).strftime("%Y-%m-%d")
+C:\Projects\ATrades\data\market_data.py:50: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start = datetime.utcnow() - timedelta(days=days + 10)  # +10 for weekend buffer
+C:\Projects\ATrades\data\market_data.py:105: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  end = datetime.utcnow()
+[32m2026-05-06 19:56:20[0m | [1mINFO    [0m | yfinance fallback for 1 symbol(s)
+C:\Projects\ATrades\data\market_data.py:136: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start_str = (datetime.utcnow() - timedelta(days=days + 10)).strftime("%Y-%m-%d")
+[32m2026-05-06 19:56:21[0m | [1mINFO    [0m | Market regime: 🟢 BULL TREND — SPY above 200MA | ADX=32.9 | Slope20d=+14.6% | Slope50d=+14.6% | RealVol=9.8%
+[32m2026-05-06 19:56:22[0m | [1mINFO    [0m | Portfolio: $102,469.86 | Open: CDNS, QCOM, MU, DDOG, DOC | Regime: BULL_TREND (×1.0)
+[32m2026-05-06 19:59:02[0m | [1mINFO    [0m | Scan complete — 0 qualified, returning top 0 (regime=BULL_TREND)
+[32m2026-05-06 19:59:02[0m | [1mINFO    [0m | Universe: 501 symbols (custom override)
+[32m2026-05-06 19:59:02[0m | [1mINFO    [0m | No qualifying setups this scan
+[32m2026-05-06 20:04:03[0m | [1mINFO    [0m | --- Re-scan #11  13:04 ET ---
+[32m2026-05-06 20:04:04[0m | [1mINFO    [0m | Universe: 501 symbols (custom override)
+[32m2026-05-06 20:04:04[0m | [1mINFO    [0m | Scanning 501 symbols...
+C:\Projects\ATrades\data\market_data.py:50: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start = datetime.utcnow() - timedelta(days=days + 10)  # +10 for weekend buffer
+C:\Projects\ATrades\data\market_data.py:105: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  end = datetime.utcnow()
+[32m2026-05-06 20:04:07[0m | [1mINFO    [0m | yfinance fallback for 501 symbol(s)
+C:\Projects\ATrades\data\market_data.py:136: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start_str = (datetime.utcnow() - timedelta(days=days + 10)).strftime("%Y-%m-%d")
+C:\Projects\ATrades\data\market_data.py:50: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start = datetime.utcnow() - timedelta(days=days + 10)  # +10 for weekend buffer
+C:\Projects\ATrades\data\market_data.py:105: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  end = datetime.utcnow()
+[32m2026-05-06 20:04:33[0m | [1mINFO    [0m | yfinance fallback for 1 symbol(s)
+C:\Projects\ATrades\data\market_data.py:136: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start_str = (datetime.utcnow() - timedelta(days=days + 10)).strftime("%Y-%m-%d")
+[32m2026-05-06 20:04:34[0m | [1mINFO    [0m | Market regime: 🟢 BULL TREND — SPY above 200MA | ADX=32.9 | Slope20d=+14.6% | Slope50d=+14.6% | RealVol=9.8%
+[32m2026-05-06 20:04:34[0m | [1mINFO    [0m | Portfolio: $102,499.20 | Open: CDNS, QCOM, MU, DDOG, DOC | Regime: BULL_TREND (×1.0)
+[32m2026-05-06 20:06:48[0m | [1mINFO    [0m | Scan complete — 0 qualified, returning top 0 (regime=BULL_TREND)
+[32m2026-05-06 20:06:48[0m | [1mINFO    [0m | Universe: 501 symbols (custom override)
+[32m2026-05-06 20:06:49[0m | [1mINFO    [0m | No qualifying setups this scan
+[32m2026-05-06 20:11:50[0m | [1mINFO    [0m | --- Re-scan #12  13:11 ET ---
+[32m2026-05-06 20:11:51[0m | [1mINFO    [0m | Universe: 501 symbols (custom override)
+[32m2026-05-06 20:11:51[0m | [1mINFO    [0m | Scanning 501 symbols...
+C:\Projects\ATrades\data\market_data.py:50: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start = datetime.utcnow() - timedelta(days=days + 10)  # +10 for weekend buffer
+C:\Projects\ATrades\data\market_data.py:105: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  end = datetime.utcnow()
+[32m2026-05-06 20:11:55[0m | [1mINFO    [0m | yfinance fallback for 501 symbol(s)
+C:\Projects\ATrades\data\market_data.py:136: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start_str = (datetime.utcnow() - timedelta(days=days + 10)).strftime("%Y-%m-%d")
+C:\Projects\ATrades\data\market_data.py:50: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start = datetime.utcnow() - timedelta(days=days + 10)  # +10 for weekend buffer
+C:\Projects\ATrades\data\market_data.py:105: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  end = datetime.utcnow()
+[32m2026-05-06 20:12:25[0m | [1mINFO    [0m | yfinance fallback for 1 symbol(s)
+C:\Projects\ATrades\data\market_data.py:136: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start_str = (datetime.utcnow() - timedelta(days=days + 10)).strftime("%Y-%m-%d")
+[32m2026-05-06 20:12:26[0m | [1mINFO    [0m | Market regime: 🟢 BULL TREND — SPY above 200MA | ADX=32.9 | Slope20d=+14.7% | Slope50d=+14.7% | RealVol=9.8%
+[32m2026-05-06 20:12:26[0m | [1mINFO    [0m | Portfolio: $102,503.24 | Open: CDNS, QCOM, MU, DDOG, DOC | Regime: BULL_TREND (×1.0)
+[32m2026-05-06 20:14:33[0m | [1mINFO    [0m | Scan complete — 0 qualified, returning top 0 (regime=BULL_TREND)
+[32m2026-05-06 20:14:33[0m | [1mINFO    [0m | Universe: 501 symbols (custom override)
+[32m2026-05-06 20:14:33[0m | [1mINFO    [0m | No qualifying setups this scan
+[32m2026-05-06 20:19:34[0m | [1mINFO    [0m | --- Re-scan #13  13:19 ET ---
+[32m2026-05-06 20:19:35[0m | [1mINFO    [0m | Universe: 501 symbols (custom override)
+[32m2026-05-06 20:19:35[0m | [1mINFO    [0m | Scanning 501 symbols...
+C:\Projects\ATrades\data\market_data.py:50: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start = datetime.utcnow() - timedelta(days=days + 10)  # +10 for weekend buffer
+C:\Projects\ATrades\data\market_data.py:105: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  end = datetime.utcnow()
+[32m2026-05-06 20:19:39[0m | [1mINFO    [0m | yfinance fallback for 501 symbol(s)
+C:\Projects\ATrades\data\market_data.py:136: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start_str = (datetime.utcnow() - timedelta(days=days + 10)).strftime("%Y-%m-%d")
+C:\Projects\ATrades\data\market_data.py:50: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start = datetime.utcnow() - timedelta(days=days + 10)  # +10 for weekend buffer
+C:\Projects\ATrades\data\market_data.py:105: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  end = datetime.utcnow()
+[32m2026-05-06 20:20:24[0m | [1mINFO    [0m | yfinance fallback for 1 symbol(s)
+C:\Projects\ATrades\data\market_data.py:136: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start_str = (datetime.utcnow() - timedelta(days=days + 10)).strftime("%Y-%m-%d")
+[32m2026-05-06 20:20:25[0m | [1mINFO    [0m | Market regime: 🟢 BULL TREND — SPY above 200MA | ADX=32.9 | Slope20d=+14.7% | Slope50d=+14.7% | RealVol=9.8%
+[32m2026-05-06 20:20:26[0m | [1mINFO    [0m | Portfolio: $102,473.02 | Open: CDNS, QCOM, MU, DDOG, DOC | Regime: BULL_TREND (×1.0)
+[32m2026-05-06 20:23:01[0m | [1mINFO    [0m | Scan complete — 0 qualified, returning top 0 (regime=BULL_TREND)
+[32m2026-05-06 20:23:01[0m | [1mINFO    [0m | Universe: 501 symbols (custom override)
+[32m2026-05-06 20:23:01[0m | [1mINFO    [0m | No qualifying setups this scan
+[32m2026-05-06 20:28:02[0m | [1mINFO    [0m | --- Re-scan #14  13:28 ET ---
+[32m2026-05-06 20:28:04[0m | [1mINFO    [0m | Universe: 501 symbols (custom override)
+[32m2026-05-06 20:28:04[0m | [1mINFO    [0m | Scanning 501 symbols...
+C:\Projects\ATrades\data\market_data.py:50: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start = datetime.utcnow() - timedelta(days=days + 10)  # +10 for weekend buffer
+C:\Projects\ATrades\data\market_data.py:105: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  end = datetime.utcnow()
+[32m2026-05-06 20:28:07[0m | [1mINFO    [0m | yfinance fallback for 501 symbol(s)
+C:\Projects\ATrades\data\market_data.py:136: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start_str = (datetime.utcnow() - timedelta(days=days + 10)).strftime("%Y-%m-%d")
+C:\Projects\ATrades\data\market_data.py:50: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start = datetime.utcnow() - timedelta(days=days + 10)  # +10 for weekend buffer
+C:\Projects\ATrades\data\market_data.py:105: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  end = datetime.utcnow()
+[32m2026-05-06 20:28:40[0m | [1mINFO    [0m | yfinance fallback for 1 symbol(s)
+C:\Projects\ATrades\data\market_data.py:136: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start_str = (datetime.utcnow() - timedelta(days=days + 10)).strftime("%Y-%m-%d")
+[32m2026-05-06 20:28:41[0m | [1mINFO    [0m | Market regime: 🟢 BULL TREND — SPY above 200MA | ADX=32.9 | Slope20d=+14.7% | Slope50d=+14.7% | RealVol=9.8%
+[32m2026-05-06 20:28:41[0m | [1mINFO    [0m | Portfolio: $102,460.09 | Open: CDNS, QCOM, MU, DDOG, DOC | Regime: BULL_TREND (×1.0)
+[32m2026-05-06 20:30:57[0m | [1mINFO    [0m | Scan complete — 0 qualified, returning top 0 (regime=BULL_TREND)
+[32m2026-05-06 20:30:57[0m | [1mINFO    [0m | Universe: 501 symbols (custom override)
+[32m2026-05-06 20:30:57[0m | [1mINFO    [0m | No qualifying setups this scan
+[32m2026-05-06 20:35:58[0m | [1mINFO    [0m | --- Re-scan #15  13:35 ET ---
+[32m2026-05-06 20:36:00[0m | [1mINFO    [0m | Universe: 501 symbols (custom override)
+[32m2026-05-06 20:36:00[0m | [1mINFO    [0m | Scanning 501 symbols...
+C:\Projects\ATrades\data\market_data.py:50: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start = datetime.utcnow() - timedelta(days=days + 10)  # +10 for weekend buffer
+C:\Projects\ATrades\data\market_data.py:105: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  end = datetime.utcnow()
+[32m2026-05-06 20:36:04[0m | [1mINFO    [0m | yfinance fallback for 501 symbol(s)
+C:\Projects\ATrades\data\market_data.py:136: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start_str = (datetime.utcnow() - timedelta(days=days + 10)).strftime("%Y-%m-%d")
+C:\Projects\ATrades\data\market_data.py:50: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start = datetime.utcnow() - timedelta(days=days + 10)  # +10 for weekend buffer
+C:\Projects\ATrades\data\market_data.py:105: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  end = datetime.utcnow()
+[32m2026-05-06 20:36:38[0m | [1mINFO    [0m | yfinance fallback for 1 symbol(s)
+C:\Projects\ATrades\data\market_data.py:136: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start_str = (datetime.utcnow() - timedelta(days=days + 10)).strftime("%Y-%m-%d")
+[32m2026-05-06 20:36:38[0m | [1mINFO    [0m | Market regime: 🟢 BULL TREND — SPY above 200MA | ADX=32.9 | Slope20d=+14.7% | Slope50d=+14.7% | RealVol=9.9%
+[32m2026-05-06 20:36:39[0m | [1mINFO    [0m | Portfolio: $102,537.43 | Open: CDNS, QCOM, MU, DDOG, DOC | Regime: BULL_TREND (×1.0)
+[32m2026-05-06 20:38:54[0m | [1mINFO    [0m | Scan complete — 0 qualified, returning top 0 (regime=BULL_TREND)
+[32m2026-05-06 20:38:54[0m | [1mINFO    [0m | Universe: 501 symbols (custom override)
+[32m2026-05-06 20:38:54[0m | [1mINFO    [0m | No qualifying setups this scan
+[32m2026-05-06 20:43:55[0m | [1mINFO    [0m | --- Re-scan #16  13:43 ET ---
+[32m2026-05-06 20:43:57[0m | [1mINFO    [0m | Universe: 501 symbols (custom override)
+[32m2026-05-06 20:43:57[0m | [1mINFO    [0m | Scanning 501 symbols...
+C:\Projects\ATrades\data\market_data.py:50: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start = datetime.utcnow() - timedelta(days=days + 10)  # +10 for weekend buffer
+C:\Projects\ATrades\data\market_data.py:105: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  end = datetime.utcnow()
+[32m2026-05-06 20:44:01[0m | [1mINFO    [0m | yfinance fallback for 501 symbol(s)
+C:\Projects\ATrades\data\market_data.py:136: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start_str = (datetime.utcnow() - timedelta(days=days + 10)).strftime("%Y-%m-%d")
+C:\Projects\ATrades\data\market_data.py:50: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start = datetime.utcnow() - timedelta(days=days + 10)  # +10 for weekend buffer
+C:\Projects\ATrades\data\market_data.py:105: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  end = datetime.utcnow()
+[32m2026-05-06 20:44:41[0m | [1mINFO    [0m | yfinance fallback for 1 symbol(s)
+C:\Projects\ATrades\data\market_data.py:136: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start_str = (datetime.utcnow() - timedelta(days=days + 10)).strftime("%Y-%m-%d")
+[32m2026-05-06 20:44:42[0m | [1mINFO    [0m | Market regime: 🟢 BULL TREND — SPY above 200MA | ADX=32.9 | Slope20d=+14.7% | Slope50d=+14.7% | RealVol=9.9%
+[32m2026-05-06 20:44:43[0m | [1mINFO    [0m | Portfolio: $102,609.89 | Open: CDNS, QCOM, MU, DDOG, DOC | Regime: BULL_TREND (×1.0)
+[32m2026-05-06 20:47:18[0m | [1mINFO    [0m | Scan complete — 0 qualified, returning top 0 (regime=BULL_TREND)
+[32m2026-05-06 20:47:18[0m | [1mINFO    [0m | Universe: 501 symbols (custom override)
+[32m2026-05-06 20:47:18[0m | [1mINFO    [0m | No qualifying setups this scan
+[32m2026-05-06 20:52:19[0m | [1mINFO    [0m | --- Re-scan #17  13:52 ET ---
+[32m2026-05-06 20:52:20[0m | [1mINFO    [0m | Universe: 501 symbols (custom override)
+[32m2026-05-06 20:52:20[0m | [1mINFO    [0m | Scanning 501 symbols...
+C:\Projects\ATrades\data\market_data.py:50: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start = datetime.utcnow() - timedelta(days=days + 10)  # +10 for weekend buffer
+C:\Projects\ATrades\data\market_data.py:105: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  end = datetime.utcnow()
+[32m2026-05-06 20:52:24[0m | [1mINFO    [0m | yfinance fallback for 501 symbol(s)
+C:\Projects\ATrades\data\market_data.py:136: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start_str = (datetime.utcnow() - timedelta(days=days + 10)).strftime("%Y-%m-%d")
+C:\Projects\ATrades\data\market_data.py:50: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start = datetime.utcnow() - timedelta(days=days + 10)  # +10 for weekend buffer
+C:\Projects\ATrades\data\market_data.py:105: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  end = datetime.utcnow()
+[32m2026-05-06 20:53:02[0m | [1mINFO    [0m | yfinance fallback for 1 symbol(s)
+C:\Projects\ATrades\data\market_data.py:136: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  start_str = (datetime.utcnow() - timedelta(days=days + 10)).strftime("%Y-%m-%d")
+[32m2026-05-06 20:53:03[0m | [1mINFO    [0m | Market regime: 🟢 BULL TREND — SPY above 200MA | ADX=32.9 | Slope20d=+14.8% | Slope50d=+14.8% | RealVol=9.9%
+[32m2026-05-06 20:53:03[0m | [1mINFO    [0m | Portfolio: $102,482.96 | Open: CDNS, QCOM, MU, DDOG, DOC | Regime: BULL_TREND (×1.0)
+ca batch ['SPY']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 20:53:02 | INFO     | yfinance fallback for 1 symbol(s)
+2026-05-06 20:53:03 | INFO     | Market regime: 🟢 BULL TREND — SPY above 200MA | ADX=32.9 | Slope20d=+14.8% | Slope50d=+14.8% | RealVol=9.9%
+2026-05-06 20:53:03 | INFO     | Portfolio: $102,482.96 | Open: CDNS, QCOM, MU, DDOG, DOC | Regime: BULL_TREND (×1.0)
+2026-05-06 20:54:21 | INFO     | ==========================================================
+2026-05-06 20:54:21 | INFO     |   A1TRADES Autonomous Runner
+2026-05-06 20:54:21 | INFO     |   Mode     : PAPER TRADING
+2026-05-06 20:54:21 | INFO     |   Scan     : every 15 min
+2026-05-06 20:54:21 | INFO     |   Universe : 5 max positions | risk 2%/trade
+2026-05-06 20:54:21 | INFO     | ==========================================================
+2026-05-06 20:54:22 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-06 20:59:23 | INFO     | --- Opening scan  13:59 ET ---
+2026-05-06 20:59:23 | INFO     | PME: evaluating open positions before scan
+2026-05-06 20:59:23 | INFO     | PME: evaluating 4 open positions
+2026-05-06 20:59:25 | DEBUG    | Alpaca batch ['SPY']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 20:59:25 | INFO     | yfinance fallback for 1 symbol(s)
+2026-05-06 20:59:26 | DEBUG    | Alpaca batch ['CDNS', 'QCOM', 'MU']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 20:59:26 | INFO     | yfinance fallback for 4 symbol(s)
+2026-05-06 20:59:27 | INFO     | PME CDNS: EXIT | score=18 R=0.10 rs=+13.4% — score=18
+2026-05-06 20:59:27 | INFO     | PME DDOG: EXIT | score=17 R=-0.15 rs=+13.3% — score=17
+2026-05-06 20:59:27 | INFO     | PME MU: TRIM_HEAVY | score=48 R=0.64 rs=+52.2% — score=48 | trimming 60%
+2026-05-06 20:59:27 | INFO     | PME: QCOM opened today — skipping evaluation
+2026-05-06 20:59:28 | INFO     | PME EXIT CDNS 28 sh (cancelled 1 orders) | order_id=f6c274a8-2e4d-4f67-aea7-4cc4d87e7706
+2026-05-06 20:59:30 | INFO     | PME EXIT DDOG 69 sh (cancelled 0 orders) | order_id=4e3eab40-6cc0-46c8-9f3a-ffe0e3ae8ef6
+2026-05-06 20:59:31 | INFO     | PME TRIM_HEAVY MU -10 sh (60% of 17) | order_id=bc657636-7d76-4c09-93d0-3c4747133b75
+2026-05-06 20:59:33 | INFO     | Circuit breaker: start-of-day portfolio = $102,486.58
+2026-05-06 20:59:33 | INFO     | Universe: 501 symbols (custom override)
+2026-05-06 20:59:33 | INFO     | Scanning 501 symbols...
+2026-05-06 20:59:34 | DEBUG    | Alpaca batch ['MMM', 'AOS', 'ABT']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 20:59:34 | DEBUG    | Alpaca batch ['ADSK', 'ADP', 'AZO']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 20:59:34 | DEBUG    | Alpaca batch ['CMG', 'CB', 'CHD']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 20:59:35 | DEBUG    | Alpaca batch ['DLR', 'DG', 'DLTR']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 20:59:35 | DEBUG    | Alpaca batch ['FE', 'FISV', 'F']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 20:59:35 | DEBUG    | Alpaca batch ['PODD', 'INTC', 'IBKR']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 20:59:35 | DEBUG    | Alpaca batch ['MLM', 'MAS', 'MA']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 20:59:35 | DEBUG    | Alpaca batch ['OKE', 'ORCL', 'OTIS']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 20:59:36 | DEBUG    | Alpaca batch ['RCL', 'SPGI', 'CRM']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 20:59:36 | DEBUG    | Alpaca batch ['TFC', 'TYL', 'TSN']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 20:59:36 | DEBUG    | Alpaca batch ['ZTS']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 20:59:36 | INFO     | yfinance fallback for 501 symbol(s)
+2026-05-06 21:00:06 | DEBUG    | Alpaca batch ['SPY']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:00:06 | INFO     | yfinance fallback for 1 symbol(s)
+2026-05-06 21:00:06 | INFO     | Market regime: 🟢 BULL TREND — SPY above 200MA | ADX=32.9 | Slope20d=+14.8% | Slope50d=+14.8% | RealVol=9.9%
+2026-05-06 21:00:06 | INFO     | Portfolio: $102,513.28 | Open: MU, QCOM, DOC | Regime: BULL_TREND (×1.0)
+2026-05-06 21:02:30 | INFO     | Scan complete — 0 qualified, returning top 0 (regime=BULL_TREND)
+2026-05-06 21:02:30 | INFO     | Universe: 501 symbols (custom override)
+2026-05-06 21:02:30 | INFO     | No qualifying setups this scan
+2026-05-06 21:12:34 | WARNING  | reconcile_orphans: DOC has 534.0 shares but only 0 covered by sell orders — placing emergency stop for 534.0
+2026-05-06 21:12:34 | INFO     | reconcile_orphans: emergency stop placed for DOC — 534.0 sh @ stop $15.62 | id=bab8f523-22ea-42ec-a0e4-aaba64af6dbb
+2026-05-06 21:12:34 | WARNING  | reconcile_orphans: MU has 7.0 shares but only 0 covered by sell orders — placing emergency stop for 7.0
+2026-05-06 21:12:34 | INFO     | reconcile_orphans: emergency stop placed for MU — 7.0 sh @ stop $462.64 | id=4ab5462c-8e9d-454b-9835-6d616f392ac6
+2026-05-06 21:12:34 | WARNING  | reconcile_orphans: QCOM has 53.0 shares but only 0 covered by sell orders — placing emergency stop for 53.0
+2026-05-06 21:12:34 | INFO     | reconcile_orphans: emergency stop placed for QCOM — 53.0 sh @ stop $154.45 | id=16b3274a-9d1f-4f71-b670-7ee019087a57
+2026-05-06 21:17:31 | INFO     | --- Re-scan #1  14:17 ET ---
+2026-05-06 21:17:31 | INFO     | PME: evaluating open positions before scan
+2026-05-06 21:17:31 | INFO     | PME: evaluating 3 open positions
+2026-05-06 21:17:33 | DEBUG    | Alpaca batch ['SPY']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:17:33 | INFO     | yfinance fallback for 1 symbol(s)
+2026-05-06 21:17:34 | DEBUG    | Alpaca batch ['QCOM', 'MU', 'DOC']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:17:34 | INFO     | yfinance fallback for 3 symbol(s)
+2026-05-06 21:17:35 | INFO     | PME MU: TRIM_HEAVY | score=49 R=0.66 rs=+52.5% — score=49 | trimming 60%
+2026-05-06 21:17:35 | INFO     | PME: QCOM opened today — skipping evaluation
+2026-05-06 21:17:35 | INFO     | PME: DOC opened today — skipping evaluation
+2026-05-06 21:17:35 | ERROR    | PME executor error for MU: {"available":"0","code":40310000,"existing_qty":"7","held_for_orders":"7","message":"insufficient qty available for order (requested: 4, available: 0)","related_orders":["4ab5462c-8e9d-454b-9835-6d616f392ac6"],"symbol":"MU"}
+2026-05-06 21:17:36 | INFO     | Universe: 501 symbols (custom override)
+2026-05-06 21:17:36 | INFO     | Scanning 501 symbols...
+2026-05-06 21:17:38 | DEBUG    | Alpaca batch ['MMM', 'AOS', 'ABT']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:17:38 | DEBUG    | Alpaca batch ['ADSK', 'ADP', 'AZO']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:17:38 | DEBUG    | Alpaca batch ['CMG', 'CB', 'CHD']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:17:39 | DEBUG    | Alpaca batch ['DLR', 'DG', 'DLTR']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:17:39 | DEBUG    | Alpaca batch ['FE', 'FISV', 'F']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:17:39 | DEBUG    | Alpaca batch ['PODD', 'INTC', 'IBKR']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:17:39 | DEBUG    | Alpaca batch ['MLM', 'MAS', 'MA']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:17:39 | DEBUG    | Alpaca batch ['OKE', 'ORCL', 'OTIS']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:17:40 | DEBUG    | Alpaca batch ['RCL', 'SPGI', 'CRM']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:17:40 | DEBUG    | Alpaca batch ['TFC', 'TYL', 'TSN']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:17:40 | DEBUG    | Alpaca batch ['ZTS']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:17:40 | INFO     | yfinance fallback for 501 symbol(s)
+2026-05-06 21:18:11 | DEBUG    | Alpaca batch ['SPY']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:18:11 | INFO     | yfinance fallback for 1 symbol(s)
+2026-05-06 21:18:11 | INFO     | Market regime: 🟢 BULL TREND — SPY above 200MA | ADX=33.0 | Slope20d=+14.9% | Slope50d=+14.9% | RealVol=10.0%
+2026-05-06 21:18:12 | INFO     | Portfolio: $102,459.31 | Open: MU, QCOM, DOC | Regime: BULL_TREND (×1.0)
+2026-05-06 21:20:28 | INFO     | Scan complete — 0 qualified, returning top 0 (regime=BULL_TREND)
+2026-05-06 21:20:28 | INFO     | Universe: 501 symbols (custom override)
+2026-05-06 21:20:28 | INFO     | No qualifying setups this scan
+2026-05-06 21:35:29 | INFO     | --- Re-scan #2  14:35 ET ---
+2026-05-06 21:35:29 | INFO     | PME: evaluating open positions before scan
+2026-05-06 21:35:29 | INFO     | PME: evaluating 3 open positions
+2026-05-06 21:35:30 | DEBUG    | Alpaca batch ['SPY']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:35:30 | INFO     | yfinance fallback for 1 symbol(s)
+2026-05-06 21:35:32 | DEBUG    | Alpaca batch ['QCOM', 'MU', 'DOC']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:35:32 | INFO     | yfinance fallback for 3 symbol(s)
+2026-05-06 21:35:33 | INFO     | PME MU: TRIM_HEAVY | score=51 R=0.69 rs=+53.4% — score=51 | trimming 60%
+2026-05-06 21:35:33 | INFO     | PME: QCOM opened today — skipping evaluation
+2026-05-06 21:35:33 | INFO     | PME: DOC opened today — skipping evaluation
+2026-05-06 21:35:34 | ERROR    | PME executor error for MU: {"available":"0","code":40310000,"existing_qty":"7","held_for_orders":"7","message":"insufficient qty available for order (requested: 4, available: 0)","related_orders":["4ab5462c-8e9d-454b-9835-6d616f392ac6"],"symbol":"MU"}
+2026-05-06 21:35:34 | INFO     | Universe: 501 symbols (custom override)
+2026-05-06 21:35:34 | INFO     | Scanning 501 symbols...
+2026-05-06 21:35:36 | DEBUG    | Alpaca batch ['MMM', 'AOS', 'ABT']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:35:36 | DEBUG    | Alpaca batch ['ADSK', 'ADP', 'AZO']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:35:36 | DEBUG    | Alpaca batch ['CMG', 'CB', 'CHD']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:35:36 | DEBUG    | Alpaca batch ['DLR', 'DG', 'DLTR']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:35:36 | DEBUG    | Alpaca batch ['FE', 'FISV', 'F']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:35:37 | DEBUG    | Alpaca batch ['PODD', 'INTC', 'IBKR']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:35:37 | DEBUG    | Alpaca batch ['MLM', 'MAS', 'MA']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:35:37 | DEBUG    | Alpaca batch ['OKE', 'ORCL', 'OTIS']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:35:37 | DEBUG    | Alpaca batch ['RCL', 'SPGI', 'CRM']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:35:38 | DEBUG    | Alpaca batch ['TFC', 'TYL', 'TSN']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:35:38 | DEBUG    | Alpaca batch ['ZTS']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:35:38 | INFO     | yfinance fallback for 501 symbol(s)
+2026-05-06 21:36:19 | DEBUG    | Alpaca batch ['SPY']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:36:19 | INFO     | yfinance fallback for 1 symbol(s)
+2026-05-06 21:36:20 | INFO     | Market regime: 🟢 BULL TREND — SPY above 200MA | ADX=33.1 | Slope20d=+15.0% | Slope50d=+15.0% | RealVol=10.1%
+2026-05-06 21:36:21 | INFO     | Portfolio: $102,390.19 | Open: MU, QCOM, DOC | Regime: BULL_TREND (×1.0)
+2026-05-06 21:38:57 | INFO     | Scan complete — 0 qualified, returning top 0 (regime=BULL_TREND)
+2026-05-06 21:38:57 | INFO     | Universe: 501 symbols (custom override)
+2026-05-06 21:38:57 | INFO     | No qualifying setups this scan
+2026-05-06 21:53:58 | INFO     | --- Re-scan #3  14:53 ET ---
+2026-05-06 21:53:58 | INFO     | PME: evaluating open positions before scan
+2026-05-06 21:53:58 | INFO     | PME: evaluating 3 open positions
+2026-05-06 21:54:00 | DEBUG    | Alpaca batch ['SPY']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:54:00 | INFO     | yfinance fallback for 1 symbol(s)
+2026-05-06 21:54:01 | DEBUG    | Alpaca batch ['QCOM', 'MU', 'DOC']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:54:01 | INFO     | yfinance fallback for 3 symbol(s)
+2026-05-06 21:54:01 | INFO     | PME MU: TRIM_HEAVY | score=51 R=0.68 rs=+53.2% — score=51 | trimming 60%
+2026-05-06 21:54:01 | INFO     | PME: QCOM opened today — skipping evaluation
+2026-05-06 21:54:01 | INFO     | PME: DOC opened today — skipping evaluation
+2026-05-06 21:54:02 | ERROR    | PME executor error for MU: {"available":"0","code":40310000,"existing_qty":"7","held_for_orders":"7","message":"insufficient qty available for order (requested: 4, available: 0)","related_orders":["4ab5462c-8e9d-454b-9835-6d616f392ac6"],"symbol":"MU"}
+2026-05-06 21:54:03 | INFO     | Universe: 501 symbols (custom override)
+2026-05-06 21:54:03 | INFO     | Scanning 501 symbols...
+2026-05-06 21:54:05 | DEBUG    | Alpaca batch ['MMM', 'AOS', 'ABT']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:54:05 | DEBUG    | Alpaca batch ['ADSK', 'ADP', 'AZO']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:54:05 | DEBUG    | Alpaca batch ['CMG', 'CB', 'CHD']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:54:05 | DEBUG    | Alpaca batch ['DLR', 'DG', 'DLTR']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:54:06 | DEBUG    | Alpaca batch ['FE', 'FISV', 'F']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:54:06 | DEBUG    | Alpaca batch ['PODD', 'INTC', 'IBKR']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:54:06 | DEBUG    | Alpaca batch ['MLM', 'MAS', 'MA']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:54:06 | DEBUG    | Alpaca batch ['OKE', 'ORCL', 'OTIS']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:54:07 | DEBUG    | Alpaca batch ['RCL', 'SPGI', 'CRM']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:54:07 | DEBUG    | Alpaca batch ['TFC', 'TYL', 'TSN']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:54:07 | DEBUG    | Alpaca batch ['ZTS']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:54:07 | INFO     | yfinance fallback for 501 symbol(s)
+2026-05-06 21:54:37 | DEBUG    | Alpaca batch ['SPY']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 21:54:37 | INFO     | yfinance fallback for 1 symbol(s)
+2026-05-06 21:54:38 | INFO     | Market regime: 🟢 BULL TREND — SPY above 200MA | ADX=33.1 | Slope20d=+14.9% | Slope50d=+14.9% | RealVol=10.0%
+2026-05-06 21:54:38 | INFO     | Portfolio: $102,357.53 | Open: MU, QCOM, DOC | Regime: BULL_TREND (×1.0)
+2026-05-06 21:56:49 | INFO     | Scan complete — 0 qualified, returning top 0 (regime=BULL_TREND)
+2026-05-06 21:56:49 | INFO     | Universe: 501 symbols (custom override)
+2026-05-06 21:56:49 | INFO     | No qualifying setups this scan
+2026-05-06 22:11:51 | INFO     | --- Re-scan #4  15:11 ET ---
+2026-05-06 22:11:51 | INFO     | PME: evaluating open positions before scan
+2026-05-06 22:11:51 | INFO     | PME: evaluating 3 open positions
+2026-05-06 22:11:52 | DEBUG    | Alpaca batch ['SPY']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:11:52 | INFO     | yfinance fallback for 1 symbol(s)
+2026-05-06 22:11:53 | DEBUG    | Alpaca batch ['QCOM', 'MU', 'DOC']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:11:53 | INFO     | yfinance fallback for 3 symbol(s)
+2026-05-06 22:11:55 | INFO     | PME MU: TRIM_HEAVY | score=51 R=0.69 rs=+53.4% — score=51 | trimming 60%
+2026-05-06 22:11:55 | INFO     | PME: QCOM opened today — skipping evaluation
+2026-05-06 22:11:55 | INFO     | PME: DOC opened today — skipping evaluation
+2026-05-06 22:11:55 | ERROR    | PME executor error for MU: {"available":"0","code":40310000,"existing_qty":"7","held_for_orders":"7","message":"insufficient qty available for order (requested: 4, available: 0)","related_orders":["4ab5462c-8e9d-454b-9835-6d616f392ac6"],"symbol":"MU"}
+2026-05-06 22:11:56 | INFO     | Universe: 501 symbols (custom override)
+2026-05-06 22:11:56 | INFO     | Scanning 501 symbols...
+2026-05-06 22:11:57 | DEBUG    | Alpaca batch ['MMM', 'AOS', 'ABT']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:11:58 | DEBUG    | Alpaca batch ['ADSK', 'ADP', 'AZO']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:11:58 | DEBUG    | Alpaca batch ['CMG', 'CB', 'CHD']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:11:58 | DEBUG    | Alpaca batch ['DLR', 'DG', 'DLTR']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:11:58 | DEBUG    | Alpaca batch ['FE', 'FISV', 'F']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:11:59 | DEBUG    | Alpaca batch ['PODD', 'INTC', 'IBKR']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:11:59 | DEBUG    | Alpaca batch ['MLM', 'MAS', 'MA']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:11:59 | DEBUG    | Alpaca batch ['OKE', 'ORCL', 'OTIS']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:11:59 | DEBUG    | Alpaca batch ['RCL', 'SPGI', 'CRM']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:11:59 | DEBUG    | Alpaca batch ['TFC', 'TYL', 'TSN']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:12:00 | DEBUG    | Alpaca batch ['ZTS']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:12:00 | INFO     | yfinance fallback for 501 symbol(s)
+2026-05-06 22:12:44 | DEBUG    | Alpaca batch ['SPY']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:12:44 | INFO     | yfinance fallback for 1 symbol(s)
+2026-05-06 22:12:45 | INFO     | Market regime: 🟢 BULL TREND — SPY above 200MA | ADX=33.2 | Slope20d=+15.0% | Slope50d=+15.0% | RealVol=10.2%
+2026-05-06 22:12:45 | INFO     | Portfolio: $102,326.14 | Open: MU, QCOM, DOC | Regime: BULL_TREND (×1.0)
+2026-05-06 22:16:05 | INFO     | Placing orders [PAPER] — 1 candidate(s), 3 already open
+2026-05-06 22:16:05 | ERROR    | Scan error (will retry next interval): HTTPSConnectionPool(host='paper-api.alpaca.markets', port=443): Max retries exceeded with url: /v2/clock (Caused by NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x000001B78DB4E270>: Failed to establish a new connection: [Errno 11001] getaddrinfo failed'))
+2026-05-06 22:16:36 | INFO     | --- Re-scan #4  15:16 ET ---
+2026-05-06 22:16:36 | INFO     | PME: evaluating open positions before scan
+2026-05-06 22:16:36 | INFO     | PME: evaluating 3 open positions
+2026-05-06 22:16:37 | DEBUG    | Alpaca batch ['SPY']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:16:37 | INFO     | yfinance fallback for 1 symbol(s)
+2026-05-06 22:16:38 | DEBUG    | Alpaca batch ['QCOM', 'MU', 'DOC']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:16:38 | INFO     | yfinance fallback for 3 symbol(s)
+2026-05-06 22:16:39 | INFO     | PME MU: TRIM_HEAVY | score=52 R=0.71 rs=+53.8% — score=52 | trimming 60%
+2026-05-06 22:16:39 | INFO     | PME: QCOM opened today — skipping evaluation
+2026-05-06 22:16:39 | INFO     | PME: DOC opened today — skipping evaluation
+2026-05-06 22:16:40 | ERROR    | PME executor error for MU: {"available":"0","code":40310000,"existing_qty":"7","held_for_orders":"7","message":"insufficient qty available for order (requested: 4, available: 0)","related_orders":["4ab5462c-8e9d-454b-9835-6d616f392ac6"],"symbol":"MU"}
+2026-05-06 22:16:40 | INFO     | Universe: 501 symbols (custom override)
+2026-05-06 22:16:40 | INFO     | Scanning 501 symbols...
+2026-05-06 22:16:42 | DEBUG    | Alpaca batch ['MMM', 'AOS', 'ABT']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:16:42 | DEBUG    | Alpaca batch ['ADSK', 'ADP', 'AZO']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:16:42 | DEBUG    | Alpaca batch ['CMG', 'CB', 'CHD']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:16:43 | DEBUG    | Alpaca batch ['DLR', 'DG', 'DLTR']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:16:43 | DEBUG    | Alpaca batch ['FE', 'FISV', 'F']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:16:43 | DEBUG    | Alpaca batch ['PODD', 'INTC', 'IBKR']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:16:43 | DEBUG    | Alpaca batch ['MLM', 'MAS', 'MA']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:16:44 | DEBUG    | Alpaca batch ['OKE', 'ORCL', 'OTIS']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:16:44 | DEBUG    | Alpaca batch ['RCL', 'SPGI', 'CRM']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:16:44 | DEBUG    | Alpaca batch ['TFC', 'TYL', 'TSN']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:16:44 | DEBUG    | Alpaca batch ['ZTS']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:16:44 | INFO     | yfinance fallback for 501 symbol(s)
+2026-05-06 22:17:24 | DEBUG    | Alpaca batch ['SPY']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:17:24 | INFO     | yfinance fallback for 1 symbol(s)
+2026-05-06 22:17:24 | INFO     | Market regime: 🟢 BULL TREND — SPY above 200MA | ADX=33.2 | Slope20d=+15.0% | Slope50d=+15.0% | RealVol=10.2%
+2026-05-06 22:17:25 | INFO     | Portfolio: $102,349.91 | Open: MU, QCOM, DOC | Regime: BULL_TREND (×1.0)
+2026-05-06 22:20:32 | INFO     | Placing orders [PAPER] — 1 candidate(s), 3 already open
+2026-05-06 22:20:34 | INFO     | Buy submitted — SMCI 295 sh @ ~$34.63 | order_id=3a2a0fa1-41e6-4dcf-9757-9c607aa7098b
+2026-05-06 22:20:36 | INFO     | SMCI filled @ $34.47 (expected ~$34.47)
+2026-05-06 22:20:36 | INFO     | Partial exit — SMCI 147 sh limit $48.49 | order_id=9d6702fe-dc78-4b1e-84c4-376f89c871a2
+2026-05-06 22:20:37 | INFO     | Order placed: {'buy_order_id': '3a2a0fa1-41e6-4dcf-9757-9c607aa7098b', 'stop_order_id': None, 'partial_order_id': '9d6702fe-dc78-4b1e-84c4-376f89c871a2', 'trail_order_id': None, 'symbol': 'SMCI', 'shares': 295, 'partial_shares': 147, 'trail_shares': 148, 'entry': 34.63, 'fill_price': 34.47, 'fill_ts': '2026-05-06T19:20:35.514917+00:00', 'stop_loss': 27.71, 'partial_target': 48.49, 'trail_atr': 3.92, 'score': 70.2}
+2026-05-06 22:20:37 | INFO     | Scan complete — 1 qualified, returning top 1 (regime=BULL_TREND)
+2026-05-06 22:20:37 | INFO     | Universe: 501 symbols (custom override)
+2026-05-06 22:20:37 | INFO     | 1 setup(s) found -- orders placed
+2026-05-06 22:30:23 | INFO     | ==========================================================
+2026-05-06 22:30:23 | INFO     |   A1TRADES Autonomous Runner
+2026-05-06 22:30:23 | INFO     |   Mode     : PAPER TRADING
+2026-05-06 22:30:23 | INFO     |   Scan     : every 15 min
+2026-05-06 22:30:23 | INFO     |   Universe : 5 max positions | risk 2%/trade
+2026-05-06 22:30:23 | INFO     | ==========================================================
+2026-05-06 22:30:25 | INFO     | Market open -- waiting 5 min for prices to settle
+2026-05-06 22:35:26 | INFO     | --- Opening scan  15:35 ET ---
+2026-05-06 22:35:26 | INFO     | PME: evaluating open positions before scan
+2026-05-06 22:35:26 | INFO     | PME: evaluating 4 open positions
+2026-05-06 22:35:27 | DEBUG    | Alpaca batch ['SPY']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:35:27 | INFO     | yfinance fallback for 1 symbol(s)
+2026-05-06 22:35:29 | DEBUG    | Alpaca batch ['DOC', 'MU', 'QCOM']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:35:29 | INFO     | yfinance fallback for 4 symbol(s)
+2026-05-06 22:35:30 | INFO     | PME MU: TRIM_HEAVY | score=52 R=0.70 rs=+53.7% — score=52 | trimming 60%
+2026-05-06 22:35:30 | INFO     | PME: QCOM opened today — skipping evaluation
+2026-05-06 22:35:30 | INFO     | PME: DOC opened today — skipping evaluation
+2026-05-06 22:35:30 | INFO     | PME: SMCI opened today — skipping evaluation
+2026-05-06 22:35:31 | ERROR    | PME executor error for MU: {"available":"0","code":40310000,"existing_qty":"7","held_for_orders":"7","message":"insufficient qty available for order (requested: 4, available: 0)","related_orders":["4ab5462c-8e9d-454b-9835-6d616f392ac6"],"symbol":"MU"}
+2026-05-06 22:35:32 | INFO     | Circuit breaker: start-of-day portfolio = $102,264.76
+2026-05-06 22:35:32 | INFO     | Universe: 501 symbols (custom override)
+2026-05-06 22:35:32 | INFO     | Scanning 501 symbols...
+2026-05-06 22:35:33 | DEBUG    | Alpaca batch ['MMM', 'AOS', 'ABT']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:35:33 | DEBUG    | Alpaca batch ['ADSK', 'ADP', 'AZO']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:35:33 | DEBUG    | Alpaca batch ['CMG', 'CB', 'CHD']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:35:34 | DEBUG    | Alpaca batch ['DLR', 'DG', 'DLTR']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:35:34 | DEBUG    | Alpaca batch ['FE', 'FISV', 'F']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:35:34 | DEBUG    | Alpaca batch ['PODD', 'INTC', 'IBKR']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:35:34 | DEBUG    | Alpaca batch ['MLM', 'MAS', 'MA']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:35:35 | DEBUG    | Alpaca batch ['OKE', 'ORCL', 'OTIS']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:35:35 | DEBUG    | Alpaca batch ['RCL', 'SPGI', 'CRM']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:35:35 | DEBUG    | Alpaca batch ['TFC', 'TYL', 'TSN']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:35:35 | DEBUG    | Alpaca batch ['ZTS']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:35:35 | INFO     | yfinance fallback for 501 symbol(s)
+2026-05-06 22:36:14 | DEBUG    | Alpaca batch ['SPY']... failed: {"message":"subscription does not permit querying recent SIP data"}
+
+2026-05-06 22:36:14 | INFO     | yfinance fallback for 1 symbol(s)
+2026-05-06 22:36:15 | INFO     | Market regime: 🟢 BULL TREND — SPY above 200MA | ADX=33.2 | Slope20d=+15.0% | Slope50d=+15.0% | RealVol=10.1%
+2026-05-06 22:36:15 | INFO     | Portfolio: $102,260.13 | Open: DOC, MU, QCOM, SMCI | Regime: BULL_TREND (×1.0)
