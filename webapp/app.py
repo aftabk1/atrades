@@ -37,7 +37,11 @@ ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
 from datetime import date as _date
-from data.store import init_db, query_day, query_history, get_open_trades, query_performance, get_position_evaluations
+from data.store import (
+    init_db, query_day, query_history, get_open_trades,
+    query_performance, get_position_evaluations,
+    query_closed_trades, query_realized_pnl,
+)
 
 ENV_PATH = ROOT / ".env"
 
@@ -303,14 +307,22 @@ def api_close_position(body: dict = Body(...)):
         ))
 
         # 3. Mark trade closed in DB
+        exit_price = float(position.current_price)
         try:
             from data.store import close_trade as _close_trade
-            exit_price = float(position.current_price)
             _close_trade(
                 buy_order_id=body.get("buy_order_id", ""),
                 exit_price=exit_price,
                 exit_reason="manual_close",
             )
+        except Exception:
+            pass
+
+        # 4. WhatsApp notification
+        try:
+            from notifications.whatsapp import notify as _notify
+            import config as _cfg; importlib.reload(_cfg)
+            _notify(f"TRADE CLOSED: {symbol} {qty:.0f} sh @ ${exit_price:.2f} (manual close)")
         except Exception:
             pass
 
@@ -330,6 +342,16 @@ def api_close_position(body: dict = Body(...)):
 @app.get("/api/performance")
 def api_performance(days: int = Query(default=90, ge=1, le=365)):
     return query_performance(days)
+
+
+# ── Closed trades API ────────────────────────────────────────────────────────
+
+@app.get("/api/closed-trades")
+def api_closed_trades(
+    date_str: str | None = Query(default=None, alias="date"),
+    days: int = Query(default=30, ge=1, le=365),
+):
+    return {"trades": query_closed_trades(day=date_str, days=days)}
 
 
 # ── Position evaluations API ──────────────────────────────────────────────────
@@ -368,6 +390,8 @@ def api_account():
         open_exposure  = sum(float(p.market_value)     for p in positions)
         exposure_pct   = round(open_exposure / equity * 100, 1) if equity else 0
 
+        realized_pnl = query_realized_pnl()
+
         return {
             "equity":              round(equity, 2),
             "cash":                round(cash, 2),
@@ -375,6 +399,7 @@ def api_account():
             "today_pnl":           today_pnl,
             "today_pnl_pct":       today_pnl_pct,
             "unrealized_pl":       round(unrealized_pl, 2),
+            "realized_pnl":        realized_pnl,
             "open_exposure":       round(open_exposure, 2),
             "open_exposure_pct":   exposure_pct,
             "open_positions_count": len(positions),
@@ -565,21 +590,26 @@ def scan_output(offset: int = Query(default=0)):
 
 @app.post("/api/notifications/test")
 def notifications_test(body: dict = Body(...)):
+    import urllib.parse, urllib.request, urllib.error
+    phone  = str(body.get("phone",  "")).strip()
+    apikey = str(body.get("apikey", "")).strip()
+    if not phone or not apikey:
+        return JSONResponse(status_code=400, content={"ok": False, "error": "phone and apikey are required"})
+    msg    = "A1TRADES: test notification — WhatsApp alerts are working."
+    params = urllib.parse.urlencode({"phone": phone, "text": msg, "apikey": apikey})
+    url    = f"https://api.callmebot.com/whatsapp.php?{params}"
     try:
-        import urllib.parse, urllib.request
-        phone  = str(body.get("phone",  "")).strip()
-        apikey = str(body.get("apikey", "")).strip()
-        if not phone or not apikey:
-            return JSONResponse(status_code=400, content={"ok": False, "error": "phone and apikey required"})
-        msg    = "A1TRADES: test notification — WhatsApp alerts are working."
-        params = urllib.parse.urlencode({"phone": phone, "text": msg, "apikey": apikey})
-        url    = f"https://api.callmebot.com/whatsapp.php?{params}"
-        with urllib.request.urlopen(url, timeout=10) as resp:
-            if 200 <= resp.status < 300:
-                return {"ok": True}
-            return JSONResponse(status_code=502, content={"ok": False, "error": f"CallMeBot HTTP {resp.status}"})
+        with urllib.request.urlopen(url, timeout=15) as resp:
+            body_text = resp.read().decode("utf-8", errors="replace")
+            return {"ok": True, "response": body_text}
+    except urllib.error.HTTPError as exc:
+        body_text = exc.read().decode("utf-8", errors="replace") if exc.fp else ""
+        return JSONResponse(
+            status_code=200,
+            content={"ok": False, "error": f"HTTP {exc.code}: {body_text or exc.reason}"},
+        )
     except Exception as exc:
-        return JSONResponse(status_code=500, content={"ok": False, "error": str(exc)})
+        return JSONResponse(status_code=200, content={"ok": False, "error": str(exc)})
 
 
 @app.get("/api/scan/next")

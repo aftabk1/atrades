@@ -351,6 +351,43 @@ def get_position_evaluations(buy_order_id: str | None = None, days: int = 30) ->
         ))
 
 
+def query_closed_trades(day: str | None = None, days: int = 30) -> list[dict]:
+    """
+    Return closed trades.
+    If `day` is given (YYYY-MM-DD): trades whose exit_ts falls on that date.
+    Otherwise: all trades closed within the last `days` days.
+    """
+    with _conn() as con:
+        if day:
+            return _rows(con.execute(
+                """SELECT symbol, fill_price, exit_price, exit_ts, exit_reason,
+                          actual_r, hold_days, shares, stop_loss
+                   FROM trades
+                   WHERE status='closed' AND date(exit_ts)=?
+                   ORDER BY exit_ts DESC""",
+                (day,),
+            ))
+        return _rows(con.execute(
+            """SELECT symbol, fill_price, exit_price, exit_ts, exit_reason,
+                      actual_r, hold_days, shares, stop_loss
+               FROM trades
+               WHERE status='closed' AND exit_ts >= datetime('now', ?)
+               ORDER BY exit_ts DESC""",
+            (f"-{days} days",),
+        ))
+
+
+def query_realized_pnl() -> float:
+    """Sum of (exit_price - fill_price) * shares for all cleanly closed trades."""
+    with _conn() as con:
+        row = con.execute(
+            """SELECT COALESCE(SUM((exit_price - fill_price) * shares), 0) AS total
+               FROM trades WHERE status='closed'
+                 AND exit_price > 0 AND fill_price > 0 AND shares > 0"""
+        ).fetchone()
+    return round(float(row["total"]), 2) if row else 0.0
+
+
 def query_performance(days: int = 90) -> dict:
     """Aggregate P&L stats for closed trades in the last N days."""
     with _conn() as con:

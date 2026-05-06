@@ -481,6 +481,31 @@
       </div>
     </div>
 
+    <!-- Closed trades today -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Closed Today</span>
+      </div>
+      <div class="card-body table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Symbol</th>
+              <th class="num">Entry&nbsp;$</th>
+              <th class="num">Exit&nbsp;$</th>
+              <th class="num">P&amp;L&nbsp;$</th>
+              <th class="num">R</th>
+              <th class="num">Days</th>
+              <th>Reason</th>
+            </tr>
+          </thead>
+          <tbody id="closed-today-body">
+            <tr><td colspan="7" class="empty muted">No trades closed today</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
   </div><!-- /tab-trades -->
 
   <!-- ── HISTORY TAB ── -->
@@ -504,6 +529,32 @@
           </thead>
           <tbody id="history-body">
             <tr><td colspan="7" class="empty"><span class="spin"></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Closed trades — last 30 days -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Closed Trades — Last 30 Days</span>
+      </div>
+      <div class="card-body table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Symbol</th>
+              <th class="num">Entry&nbsp;$</th>
+              <th class="num">Exit&nbsp;$</th>
+              <th class="num">P&amp;L&nbsp;$</th>
+              <th class="num">R</th>
+              <th class="num">Days</th>
+              <th>Reason</th>
+            </tr>
+          </thead>
+          <tbody id="closed-history-body">
+            <tr><td colspan="8" class="empty muted">No closed trades in the last 30 days</td></tr>
           </tbody>
         </table>
       </div>
@@ -1082,9 +1133,14 @@ async function loadPositions() {
 // ── History ────────────────────────────────────────────────────────────────
 async function loadHistory() {
   try {
-    const res  = await fetch('/api/history?days=30');
-    const rows = await res.json();
+    const [histRes, closedRes] = await Promise.all([
+      fetch('/api/history?days=30'),
+      fetch('/api/closed-trades?days=30'),
+    ]);
+    const rows   = await histRes.json();
+    const closed = await closedRes.json();
     renderHistory(rows);
+    renderClosedTrades(closed.trades || [], 'closed-history-body', true);
   } catch(e) { console.error(e); }
 }
 
@@ -1225,20 +1281,23 @@ async function loadLiveTrades() {
   document.getElementById('live-trades-body').innerHTML =
     '<tr><td colspan="12" class="empty"><span class="spin"></span></td></tr>';
   try {
-    const [liveRes, todayRes, perfRes, acctRes] = await Promise.all([
+    const [liveRes, todayRes, perfRes, acctRes, closedRes] = await Promise.all([
       fetch('/api/live-trades'),
       fetch('/api/dashboard?date=' + todayStr()),
       fetch('/api/performance?days=' + _perfDays),
       fetch('/api/account'),
+      fetch('/api/closed-trades?date=' + todayStr()),
     ]);
-    const live  = await liveRes.json();
-    const today = await todayRes.json();
-    const perf  = await perfRes.json();
-    const acct  = await acctRes.json();
+    const live   = await liveRes.json();
+    const today  = await todayRes.json();
+    const perf   = await perfRes.json();
+    const acct   = await acctRes.json();
+    const closed = await closedRes.json();
     renderLiveTrades(live.trades || []);
     renderTradesToday(today.trades || []);
     renderPerf(perf);
     renderPortfolio(acct);
+    renderClosedTrades(closed.trades || [], 'closed-today-body', false);
     // update badge on tab button
     const n = (live.trades || []).length;
     const badge = document.getElementById('open-trades-badge');
@@ -1344,6 +1403,41 @@ function renderTradesToday(trades) {
     </tr>`).join('');
 }
 
+function renderClosedTrades(trades, tbodyId, showDate) {
+  const tb = document.getElementById(tbodyId);
+  if (!tb) return;
+  const cols = showDate ? 8 : 7;
+  if (!trades || !trades.length) {
+    tb.innerHTML = `<tr><td colspan="${cols}" class="empty muted">No closed trades</td></tr>`;
+    return;
+  }
+  const EXIT_LABELS = {
+    trailing_stop: 'Trail Stop', stop_loss: 'Stop Loss', manual_close: 'Manual',
+    pme_exit: 'PME Exit', partial_exit: 'Partial', unknown: 'Unknown',
+  };
+  tb.innerHTML = trades.map(t => {
+    const pnl    = (t.exit_price && t.fill_price && t.shares)
+                   ? (t.exit_price - t.fill_price) * t.shares : null;
+    const pnlCls = pnl == null ? '' : pnl >= 0 ? 'green' : 'red';
+    const pnlStr = pnl == null ? '—' : (pnl >= 0 ? '+' : '') + fmtDollar(Math.abs(pnl));
+    const r      = t.actual_r;
+    const rCls   = r == null ? '' : r >= 0 ? 'green' : 'red';
+    const rStr   = r == null ? '—' : (r >= 0 ? '+' : '') + fmt(r, 2) + 'R';
+    const reason = EXIT_LABELS[t.exit_reason] || (t.exit_reason || '—');
+    const dateCol = showDate ? `<td class="muted">${(t.exit_ts||'').slice(0,10)}</td>` : '';
+    return `<tr>
+      ${dateCol}
+      <td><strong>${t.symbol}</strong></td>
+      <td class="num mono">$${fmt(t.fill_price)}</td>
+      <td class="num mono">$${fmt(t.exit_price)}</td>
+      <td class="num ${pnlCls}" style="font-weight:600;">${pnlStr}</td>
+      <td class="num ${rCls}">${rStr}</td>
+      <td class="num muted">${t.hold_days ?? '—'}d</td>
+      <td class="muted">${reason}</td>
+    </tr>`;
+  }).join('');
+}
+
 function renderPortfolio(acct) {
   const modeEl = document.getElementById('portfolio-mode-label');
   const gridEl = document.getElementById('portfolio-kpi-grid');
@@ -1355,6 +1449,7 @@ function renderPortfolio(acct) {
   if (modeEl) modeEl.textContent = (acct.is_paper ? 'paper account' : 'LIVE account');
   const todayPnlCls = acct.today_pnl >= 0 ? 'green' : 'red';
   const unrCls      = acct.unrealized_pl >= 0 ? 'green' : 'red';
+  const realCls     = (acct.realized_pnl || 0) >= 0 ? 'green' : 'red';
   const sign = v => v >= 0 ? '+' : '';
   if (gridEl) gridEl.innerHTML = `
     <div class="kpi highlight">
@@ -1381,6 +1476,11 @@ function renderPortfolio(acct) {
       <div class="kpi-label">Open Exposure</div>
       <div class="kpi-value">${fmtDollar(acct.open_exposure)}</div>
       <div class="kpi-sub">${fmt(acct.open_exposure_pct,1)}% of equity</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Realized P&amp;L</div>
+      <div class="kpi-value ${realCls}">${sign(acct.realized_pnl)}${fmtDollar(acct.realized_pnl)}</div>
+      <div class="kpi-sub">all closed trades</div>
     </div>
     <div class="kpi">
       <div class="kpi-label">Buying Power</div>
