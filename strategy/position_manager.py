@@ -99,10 +99,17 @@ class PositionManager:
 
         bars = self._market.get_daily_bars(symbols, days=120)
 
+        today = date.today().isoformat()
         results: list[PositionEvaluation] = []
         for trade in trades:
             sym   = trade.get("symbol", "")
             boid  = trade.get("buy_order_id", "")
+
+            # Skip trades opened today — too early to evaluate
+            if trade.get("date", "") == today:
+                logger.info(f"PME: {sym} opened today — skipping evaluation")
+                continue
+
             df    = bars.get(sym)
             if df is None or df.empty:
                 logger.warning(f"PME: no market data for {sym} — skipping")
