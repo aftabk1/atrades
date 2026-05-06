@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A1TRADES — Sign In</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="/static/A1Trades.png?v=2">
+<style>
+  :root {
+    --bg:      #0b0f19;
+    --surface: #131929;
+    --border:  #1f2d45;
+    --text:    #e2e8f0;
+    --muted:   #64748b;
+    --cyan:    #06b6d4;
+    --accent:  #6366f1;
+    --red:     #ef4444;
+    --green:   #22c55e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 40px 36px 36px;
+    width: 340px;
+    box-shadow: 0 24px 64px rgba(0,0,0,.5);
+  }
+  .logo {
+    font-family: 'Exo 2', 'Segoe UI', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: var(--cyan);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 28px;
+    justify-content: center;
+  }
+  .logo span { color: #fff; }
+  .logo img  { width: 38px; height: 38px; border-radius: 8px; }
+  label {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  input[type=text], input[type=password] {
+    width: 100%;
+    background: #0b0f19;
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 12px;
+    border-radius: 7px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color .15s;
+    margin-bottom: 18px;
+  }
+  input:focus { border-color: var(--accent); }
+  button {
+    width: 100%;
+    background: var(--accent);
+    border: none;
+    color: #fff;
+    padding: 11px;
+    border-radius: 7px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .15s;
+    letter-spacing: .02em;
+  }
+  button:hover   { opacity: .88; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .error {
+    background: rgba(239,68,68,.12);
+    border: 1px solid rgba(239,68,68,.35);
+    color: var(--red);
+    border-radius: 7px;
+    padding: 9px 12px;
+    font-size: 12px;
+    margin-bottom: 18px;
+    display: none;
+  }
+  .notice {
+    background: rgba(234,179,8,.1);
+    border: 1px solid rgba(234,179,8,.3);
+    color: #eab308;
+    border-radius: 7px;
+    padding: 9px 12px;
+    font-size: 12px;
+    margin-bottom: 18px;
+    display: none;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <img src="/static/A1Trades.png?v=2" alt="">
+    A1<span>TRADES</span>
+  </div>
+
+  <div class="notice" id="notice"></div>
+  <div class="error"  id="error-msg"></div>
+
+  <form id="login-form" onsubmit="doLogin(event)">
+    <label for="username">Username</label>
+    <input type="text" id="username" name="username" autocomplete="username" autofocus required>
+
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password" autocomplete="current-password" required>
+
+    <button type="submit" id="submit-btn">Sign In</button>
+  </form>
+</div>
+
+<script>
+  // Show reason notice if redirected with ?reason=
+  const params = new URLSearchParams(location.search);
+  const reason = params.get('reason');
+  if (reason === 'idle') {
+    const n = document.getElementById('notice');
+    n.textContent = 'Signed out after 10 minutes of inactivity.';
+    n.style.display = 'block';
+  } else if (reason === 'session') {
+    const n = document.getElementById('notice');
+    n.textContent = 'Your session has expired. Please sign in again.';
+    n.style.display = 'block';
+  }
+
+  async function doLogin(e) {
+    e.preventDefault();
+    const btn = document.getElementById('submit-btn');
+    const err = document.getElementById('error-msg');
+    err.style.display = 'none';
+    btn.disabled = true;
+    btn.textContent = 'Signing in…';
+
+    try {
+      const res = await fetch('/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: document.getElementById('username').value,
+          password: document.getElementById('password').value,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        // Clear the password field before navigating away
+        document.getElementById('password').value = '';
+        window.location.href = '/';
+      } else {
+        err.textContent = data.detail || 'Invalid credentials';
+        err.style.display = 'block';
+        document.getElementById('password').value = '';
+        document.getElementById('password').focus();
+      }
+    } catch (ex) {
+      err.textContent = 'Connection error — is the server running?';
+      err.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Sign In';
+    }
+  }
+</script>
+</body>
+</html>

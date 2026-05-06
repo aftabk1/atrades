@@ -278,6 +278,7 @@
     <input type="date" id="date-picker">
     <button onclick="loadToday()">Today</button>
     <button onclick="refresh()" id="refresh-btn">&#8635; Refresh</button>
+    <button onclick="logout()" title="Sign out" style="padding:6px 10px;color:var(--muted);font-size:12px;">&#x23FB;</button>
     <div style="display:flex;align-items:center;gap:0;border:1px solid var(--border);border-radius:6px;overflow:hidden;">
       <button onclick="onScanNowClick()" id="runner-btn" style="border:none;border-radius:0;"><span class="runner-dot" id="runner-dot"></span><span id="runner-label">Scan Now</span></button>
       <div style="width:1px;background:var(--border);height:100%;align-self:stretch;"></div>
@@ -401,21 +402,6 @@
       </div>
     </div>
 
-    <!-- Performance card -->
-    <div class="card">
-      <div class="card-header">
-        <span class="card-title">Performance</span>
-        <span style="display:flex;gap:6px;margin-left:auto;">
-          <button class="period-btn active" id="perf-btn-30"  onclick="loadPerf(30)">30d</button>
-          <button class="period-btn"        id="perf-btn-90"  onclick="loadPerf(90)">90d</button>
-          <button class="period-btn"        id="perf-btn-all" onclick="loadPerf(365)">All</button>
-        </span>
-      </div>
-      <div id="perf-card-body">
-        <div style="padding:16px;"><span class="muted">Loading...</span></div>
-      </div>
-    </div>
-
     <!-- Live open positions enriched with trade metadata -->
     <div class="card">
       <div class="card-header">
@@ -453,13 +439,11 @@
               <td colspan="7"></td>
             </tr>
           </tfoot>
+        </table>
       </div>
-    </div>
-
-    <!-- Trades placed today (from DB) -->
-    <div class="card">
-      <div class="card-header">
-        <span class="card-title">Trades Placed Today</span>
+      <!-- Trades Placed Today sub-section -->
+      <div style="border-top:2px solid var(--border);padding:8px 16px 4px;">
+        <span style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Trades Placed Today</span>
       </div>
       <div class="card-body table-scroll">
         <table>
@@ -481,26 +465,26 @@
       </div>
     </div>
 
-    <!-- Closed trades today -->
+    <!-- Recently Closed & Partial Trims -->
     <div class="card">
       <div class="card-header">
-        <span class="card-title">Closed Today</span>
+        <span class="card-title">Recently Closed &amp; Trims</span>
+        <span class="muted" style="font-size:11px;">from Alpaca order history</span>
       </div>
       <div class="card-body table-scroll">
         <table>
           <thead>
             <tr>
+              <th>Date</th>
               <th>Symbol</th>
-              <th class="num">Entry&nbsp;$</th>
+              <th class="num">Qty</th>
+              <th class="num">Avg&nbsp;Cost</th>
               <th class="num">Exit&nbsp;$</th>
               <th class="num">P&amp;L&nbsp;$</th>
-              <th class="num">R</th>
-              <th class="num">Days</th>
-              <th>Reason</th>
             </tr>
           </thead>
-          <tbody id="closed-today-body">
-            <tr><td colspan="7" class="empty muted">No trades closed today</td></tr>
+          <tbody id="recent-sells-body">
+            <tr><td colspan="6" class="empty"><span class="spin"></span></td></tr>
           </tbody>
         </table>
       </div>
@@ -1000,9 +984,10 @@ function switchTab(name, el) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   el.classList.add('active');
   document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'trades')  loadLiveTrades();
+  if (name === 'today')   loadDashboard(currentDate);
   if (name === 'history') loadHistory();
   if (name === 'config' && !_configEverLoaded) { _configEverLoaded = true; loadConfig(); }
-  if (name === 'trades')  loadLiveTrades();
 }
 
 // ── Dashboard (today / selected date) ─────────────────────────────────────
@@ -1281,23 +1266,22 @@ async function loadLiveTrades() {
   document.getElementById('live-trades-body').innerHTML =
     '<tr><td colspan="12" class="empty"><span class="spin"></span></td></tr>';
   try {
-    const [liveRes, todayRes, perfRes, acctRes, closedRes] = await Promise.all([
+    const [liveRes, todayRes, perfRes, acctRes, sellsRes] = await Promise.all([
       fetch('/api/live-trades'),
       fetch('/api/dashboard?date=' + todayStr()),
-      fetch('/api/performance?days=' + _perfDays),
+      fetch('/api/performance?days=90'),
       fetch('/api/account'),
-      fetch('/api/closed-trades?date=' + todayStr()),
+      fetch('/api/recent-sells'),
     ]);
-    const live   = await liveRes.json();
-    const today  = await todayRes.json();
-    const perf   = await perfRes.json();
-    const acct   = await acctRes.json();
-    const closed = await closedRes.json();
+    const live  = await liveRes.json();
+    const today = await todayRes.json();
+    const perf  = await perfRes.json();
+    const acct  = await acctRes.json();
+    const sells = await sellsRes.json();
     renderLiveTrades(live.trades || []);
     renderTradesToday(today.trades || []);
-    renderPerf(perf);
-    renderPortfolio(acct);
-    renderClosedTrades(closed.trades || [], 'closed-today-body', false);
+    renderPortfolio(acct, perf);
+    renderRecentSells(sells.sells || []);
     // update badge on tab button
     const n = (live.trades || []).length;
     const badge = document.getElementById('open-trades-badge');
@@ -1438,7 +1422,29 @@ function renderClosedTrades(trades, tbodyId, showDate) {
   }).join('');
 }
 
-function renderPortfolio(acct) {
+function renderRecentSells(sells) {
+  const tb = document.getElementById('recent-sells-body');
+  if (!tb) return;
+  if (!sells || !sells.length) {
+    tb.innerHTML = '<tr><td colspan="6" class="empty muted">No sell orders found</td></tr>';
+    return;
+  }
+  tb.innerHTML = sells.map(s => {
+    const pnlCls = s.pnl == null ? '' : s.pnl >= 0 ? 'green' : 'red';
+    const pnlStr = s.pnl == null ? '—' : (s.pnl >= 0 ? '+' : '') + fmtDollar(Math.abs(s.pnl));
+    const dateStr = s.date || (s.ts ? s.ts.slice(0, 10) : '—');
+    return `<tr>
+      <td class="muted">${dateStr}</td>
+      <td><strong>${s.symbol}</strong></td>
+      <td class="num">${s.qty % 1 === 0 ? s.qty : fmt(s.qty, 2)}</td>
+      <td class="num mono muted">${s.avg_cost ? '$' + fmt(s.avg_cost) : '—'}</td>
+      <td class="num mono">$${fmt(s.sell_price)}</td>
+      <td class="num ${pnlCls}" style="font-weight:600;">${pnlStr}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderPortfolio(acct, perf) {
   const modeEl = document.getElementById('portfolio-mode-label');
   const gridEl = document.getElementById('portfolio-kpi-grid');
   if (!acct || acct.error) {
@@ -1451,6 +1457,19 @@ function renderPortfolio(acct) {
   const unrCls      = acct.unrealized_pl >= 0 ? 'green' : 'red';
   const realCls     = (acct.realized_pnl || 0) >= 0 ? 'green' : 'red';
   const sign = v => v >= 0 ? '+' : '';
+
+  // Win rate from perf data
+  let winRateHtml = '';
+  if (perf && perf.total > 0) {
+    const wrCls = (perf.win_rate || 0) >= 50 ? 'green' : 'red';
+    winRateHtml = `
+    <div class="kpi">
+      <div class="kpi-label">Win Rate</div>
+      <div class="kpi-value ${wrCls}">${fmt(perf.win_rate, 1)}%</div>
+      <div class="kpi-sub">${perf.wins}W / ${perf.losses}L</div>
+    </div>`;
+  }
+
   if (gridEl) gridEl.innerHTML = `
     <div class="kpi highlight">
       <div class="kpi-label">Equity</div>
@@ -1463,19 +1482,9 @@ function renderPortfolio(acct) {
       <div class="kpi-sub">available</div>
     </div>
     <div class="kpi">
-      <div class="kpi-label">Today's P&amp;L</div>
-      <div class="kpi-value ${todayPnlCls}">${sign(acct.today_pnl)}${fmtDollar(acct.today_pnl)}</div>
-      <div class="kpi-sub ${todayPnlCls}">${sign(acct.today_pnl_pct)}${fmt(acct.today_pnl_pct,2)}%</div>
-    </div>
-    <div class="kpi">
       <div class="kpi-label">Unrealized P&amp;L</div>
       <div class="kpi-value ${unrCls}">${sign(acct.unrealized_pl)}${fmtDollar(acct.unrealized_pl)}</div>
       <div class="kpi-sub">${acct.open_positions_count} open position${acct.open_positions_count !== 1 ? 's' : ''}</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">Open Exposure</div>
-      <div class="kpi-value">${fmtDollar(acct.open_exposure)}</div>
-      <div class="kpi-sub">${fmt(acct.open_exposure_pct,1)}% of equity</div>
     </div>
     <div class="kpi">
       <div class="kpi-label">Realized P&amp;L</div>
@@ -1483,10 +1492,16 @@ function renderPortfolio(acct) {
       <div class="kpi-sub">all closed trades</div>
     </div>
     <div class="kpi">
+      <div class="kpi-label">Open Exposure</div>
+      <div class="kpi-value">${fmtDollar(acct.open_exposure)}</div>
+      <div class="kpi-sub">${fmt(acct.open_exposure_pct,1)}% of equity</div>
+    </div>
+    <div class="kpi">
       <div class="kpi-label">Buying Power</div>
       <div class="kpi-value">${fmtDollar(acct.buying_power)}</div>
       <div class="kpi-sub">&nbsp;</div>
-    </div>`;
+    </div>
+    ${winRateHtml}`;
 }
 
 function renderPerf(p) {
@@ -2195,6 +2210,46 @@ async function bootLoadLatest() {
 bootLoadLatest();
 fetchTradingMode();
 loadLiveTrades();
+
+// ── Session security ───────────────────────────────────────────────────────
+
+// Intercept all fetch calls: redirect to /login on 401
+const _origFetch = window.fetch.bind(window);
+window.fetch = async function(...args) {
+  let res;
+  try { res = await _origFetch(...args); }
+  catch(e) { throw e; }
+  if (res.status === 401) {
+    window.location.href = '/login?reason=session';
+  }
+  return res;
+};
+
+// Auto-logout after 10 minutes of inactivity
+const IDLE_TIMEOUT_MS = 10 * 60 * 1000;
+let _idleTimer = null;
+
+async function autoLogout() {
+  try { await _origFetch('/logout', { method: 'POST' }); } catch(e) {}
+  window.location.href = '/login?reason=idle';
+}
+
+function resetIdleTimer() {
+  clearTimeout(_idleTimer);
+  _idleTimer = setTimeout(autoLogout, IDLE_TIMEOUT_MS);
+}
+
+['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'].forEach(evt => {
+  document.addEventListener(evt, resetIdleTimer, { passive: true });
+});
+resetIdleTimer();
+
+// Manual logout
+async function logout() {
+  if (!confirm('Sign out of A1TRADES?')) return;
+  try { await _origFetch('/logout', { method: 'POST' }); } catch(e) {}
+  window.location.href = '/login';
+}
 </script>
 </body>
 </html>

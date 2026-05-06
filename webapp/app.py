@@ -17,8 +17,13 @@ Usage:
 from __future__ import annotations
 
 import importlib
+import logging
+import re
+import secrets
 import subprocess
 import sys
+import time as _time_mod
+from collections import defaultdict
 from datetime import date, datetime, timezone
 from pathlib import Path
 
@@ -29,7 +34,7 @@ import uvicorn
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Body, Request, status
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 ROOT = Path(__file__).parent.parent
@@ -44,45 +49,57 @@ from data.store import (
 
 ENV_PATH = ROOT / ".env"
 
-# ── HTTP Basic Auth ───────────────────────────────────────────────────────────
-# Set DASHBOARD_USER and DASHBOARD_PASS in .env (or Fly.io secrets).
-# If not set, auth is disabled (safe for local-only use).
+# ── Session-based Auth ────────────────────────────────────────────────────────
+# Set DASHBOARD_USER and DASHBOARD_PASS in .env.
+# Browser receives a random session cookie — password is NEVER cached.
+# Sessions expire after SESSION_TIMEOUT seconds of inactivity.
 
-_AUTH_USER = os.getenv("DASHBOARD_USER", "")
-_AUTH_PASS = os.getenv("DASHBOARD_PASS", "")
+_AUTH_USER    = os.getenv("DASHBOARD_USER", "")
+_AUTH_PASS    = os.getenv("DASHBOARD_PASS", "")
 _AUTH_ENABLED = bool(_AUTH_USER and _AUTH_PASS)
 
+SESSION_COOKIE  = "a1t_sess"
+SESSION_TIMEOUT = 10 * 60          # 10 minutes inactivity
 
-def _check_auth(request: Request) -> None:
-    if not _AUTH_ENABLED:
-        return
-    auth = request.headers.get("Authorization", "")
-    if not auth.startswith("Basic "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required",
-            headers={"WWW-Authenticate": "Basic realm=\"A1TRADES\""},
-        )
-    import base64
-    try:
-        decoded   = base64.b64decode(auth[6:]).decode("utf-8")
-        user, _, pw = decoded.partition(":")
-    except Exception:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                            headers={"WWW-Authenticate": "Basic realm=\"A1TRADES\""})
+_SESSIONS: dict[str, float] = {}   # token → last-active epoch seconds
 
-    # Constant-time comparison prevents timing attacks
-    user_ok = hmac.compare_digest(user.encode(), _AUTH_USER.encode())
-    pass_ok = hmac.compare_digest(pw.encode(),   _AUTH_PASS.encode())
-    if not (user_ok and pass_ok):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials",
-            headers={"WWW-Authenticate": "Basic realm=\"A1TRADES\""},
-        )
+# Rate limiter: max 10 login attempts per IP per 5-minute window
+_RATE_WINDOW  = 300                 # 5 minutes
+_RATE_MAX     = 10
+_RATE_HITS: dict[str, list[float]] = defaultdict(list)
+
+# Auth logger → logs/auth.log
+_auth_log = logging.getLogger("a1trades.auth")
+if not _auth_log.handlers:
+    _log_dir = ROOT / "logs"
+    _log_dir.mkdir(exist_ok=True)
+    _fh = logging.FileHandler(_log_dir / "auth.log", encoding="utf-8")
+    _fh.setFormatter(logging.Formatter("%(asctime)s  %(message)s"))
+    _auth_log.addHandler(_fh)
+    _auth_log.setLevel(logging.INFO)
+
+# Date validation regex
+_DATE_RE = re.compile(r"^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$")
 
 
-_Auth = Depends(_check_auth)
+def _cleanup_sessions() -> None:
+    now = _time_mod.time()
+    expired = [t for t, ts in list(_SESSIONS.items()) if now - ts > SESSION_TIMEOUT]
+    for t in expired:
+        _SESSIONS.pop(t, None)
+
+
+def _validate_date(date_str: str | None) -> str | None:
+    """Raise 400 if date_str is present but not YYYY-MM-DD."""
+    if date_str is None:
+        return None
+    if not _DATE_RE.match(date_str):
+        raise HTTPException(status_code=400, detail="Invalid date — expected YYYY-MM-DD")
+    return date_str
+
+
+# _Auth kept as a no-op dependency (middleware handles real auth now)
+_Auth = Depends(lambda: None)
 
 
 # ── .env helpers ──────────────────────────────────────────────────────────────
@@ -204,11 +221,112 @@ app = FastAPI(
     docs_url=None,
     redoc_url=None,
     lifespan=lifespan,
-    dependencies=[_Auth],   # enforces auth on every route
 )
 
 STATIC = Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=str(STATIC)), name="static")
+
+
+# ── Security middleware ───────────────────────────────────────────────────────
+
+_OPEN_PATHS = {"/login", "/logout"}   # never require auth
+
+@app.middleware("http")
+async def security_middleware(request: Request, call_next):
+    path = request.url.path
+
+    # 1. Session auth (skip login/logout/static assets)
+    if _AUTH_ENABLED and path not in _OPEN_PATHS and not path.startswith("/static/"):
+        token = request.cookies.get(SESSION_COOKIE)
+        _cleanup_sessions()
+        if not token or token not in _SESSIONS:
+            if path.startswith("/api/"):
+                return JSONResponse(status_code=401, content={"detail": "not_authenticated"})
+            return Response(status_code=302, headers={"Location": "/login"})
+        _SESSIONS[token] = _time_mod.time()   # refresh idle timer
+
+    response = await call_next(request)
+
+    # 2. Security headers on every response
+    response.headers["X-Content-Type-Options"]  = "nosniff"
+    response.headers["X-Frame-Options"]         = "DENY"
+    response.headers["Referrer-Policy"]         = "strict-origin-when-cross-origin"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "style-src  'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src   'self' https://fonts.gstatic.com; "
+        "img-src    'self' data:; "
+        "connect-src 'self';"
+    )
+    if path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-store"
+
+    return response
+
+
+# ── Login / Logout ────────────────────────────────────────────────────────────
+
+@app.get("/login", include_in_schema=False)
+def login_page():
+    return FileResponse(str(STATIC / "login.html"))
+
+
+@app.post("/login", include_in_schema=False)
+async def do_login(request: Request):
+    client_ip = request.client.host if request.client else "unknown"
+
+    # Rate-limit check
+    now  = _time_mod.time()
+    hits = _RATE_HITS[client_ip]
+    _RATE_HITS[client_ip] = [t for t in hits if now - t < _RATE_WINDOW]
+    if len(_RATE_HITS[client_ip]) >= _RATE_MAX:
+        _auth_log.warning("RATE_LIMITED  ip=%s", client_ip)
+        return JSONResponse(status_code=429,
+                            content={"ok": False, "detail": "Too many attempts — try again in 5 minutes"})
+
+    # Parse credentials from JSON or form
+    try:
+        body = await request.json()
+        username = body.get("username", "")
+        password = body.get("password", "")
+    except Exception:
+        form = await request.form()
+        username = str(form.get("username", ""))
+        password = str(form.get("password", ""))
+
+    user_ok = hmac.compare_digest(username.encode(), _AUTH_USER.encode())
+    pass_ok = hmac.compare_digest(password.encode(), _AUTH_PASS.encode())
+
+    if not (user_ok and pass_ok):
+        _RATE_HITS[client_ip].append(now)
+        _auth_log.warning("FAILED_LOGIN  ip=%s  user=%s", client_ip, username)
+        return JSONResponse(status_code=401, content={"ok": False, "detail": "Invalid credentials"})
+
+    token = secrets.token_urlsafe(32)
+    _SESSIONS[token] = _time_mod.time()
+    _auth_log.info("LOGIN_OK  ip=%s  user=%s", client_ip, username)
+
+    resp = JSONResponse(content={"ok": True})
+    resp.set_cookie(
+        SESSION_COOKIE,
+        token,
+        httponly=True,
+        samesite="lax",
+        secure=False,      # set True if using HTTPS
+        max_age=SESSION_TIMEOUT,
+    )
+    return resp
+
+
+@app.post("/logout", include_in_schema=False)
+async def do_logout(request: Request):
+    token = request.cookies.get(SESSION_COOKIE)
+    if token:
+        _SESSIONS.pop(token, None)
+    resp = JSONResponse(content={"ok": True})
+    resp.delete_cookie(SESSION_COOKIE)
+    return resp
 
 
 # ── Pages ─────────────────────────────────────────────────────────────────────
@@ -222,7 +340,7 @@ def index():
 
 @app.get("/api/dashboard")
 def api_dashboard(date_str: str = Query(default=None, alias="date")):
-    day = date_str or date.today().isoformat()
+    day = _validate_date(date_str) or date.today().isoformat()
     return query_day(day)
 
 
@@ -350,7 +468,7 @@ def api_closed_trades(
     date_str: str | None = Query(default=None, alias="date"),
     days: int = Query(default=30, ge=1, le=365),
 ):
-    return {"trades": query_closed_trades(day=date_str, days=days)}
+    return {"trades": query_closed_trades(day=_validate_date(date_str), days=days)}
 
 
 # ── Position evaluations API ──────────────────────────────────────────────────
@@ -361,6 +479,76 @@ def api_position_evaluations(
     days: int = Query(default=30, ge=1, le=365),
 ):
     return get_position_evaluations(buy_order_id=buy_order_id, days=days)
+
+
+# ── Recent sells API (closed + partial trims from Alpaca order history) ───────
+
+@app.get("/api/recent-sells")
+def api_recent_sells(limit: int = Query(default=25, ge=1, le=100)):
+    """Return recent filled SELL orders from Alpaca with FIFO P&L, most-recent first."""
+    try:
+        env = _parse_env(_read_env_lines())
+        from alpaca.trading.client import TradingClient
+        from alpaca.trading.requests import GetOrdersRequest
+        from alpaca.trading.enums import QueryOrderStatus, OrderSide
+        from alpaca.trading.enums import OrderStatus as OStatus
+
+        tc = TradingClient(
+            api_key=env.get("ALPACA_API_KEY", ""),
+            secret_key=env.get("ALPACA_SECRET_KEY", ""),
+            paper=(env.get("IS_PAPER", "true") or "true").lower() != "false",
+        )
+
+        all_orders = tc.get_orders(filter=GetOrdersRequest(
+            status=QueryOrderStatus.ALL, limit=500
+        ))
+        filled = [o for o in all_orders if o.status == OStatus.FILLED]
+        filled.sort(key=lambda o: o.submitted_at or o.created_at)
+
+        lots: dict[str, list[dict]] = {}
+        sells: list[dict] = []
+
+        for o in filled:
+            sym   = o.symbol
+            qty   = float(o.filled_qty or o.qty or 0)
+            price = float(o.filled_avg_price or 0)
+            if qty == 0 or price == 0:
+                continue
+            ts = o.submitted_at or o.created_at
+
+            if o.side == OrderSide.BUY:
+                lots.setdefault(sym, []).append({"qty": qty, "price": price})
+            elif o.side == OrderSide.SELL:
+                # FIFO cost basis
+                cost_total = 0.0
+                remaining  = qty
+                snapshot   = [dict(lot) for lot in lots.get(sym, [])]  # non-destructive peek
+                for lot in lots.get(sym, []):
+                    if remaining <= 0:
+                        break
+                    used = min(remaining, lot["qty"])
+                    cost_total += lot["price"] * used
+                    lot["qty"] -= used
+                    remaining  -= used
+
+                avg_cost = cost_total / qty if qty > 0 else 0.0
+                pnl      = round((price - avg_cost) * qty, 2) if avg_cost else None
+
+                sells.append({
+                    "symbol":     sym,
+                    "qty":        qty,
+                    "sell_price": round(price, 2),
+                    "avg_cost":   round(avg_cost, 2) if avg_cost else None,
+                    "pnl":        pnl,
+                    "ts":         ts.isoformat() if ts else None,
+                    "date":       ts.date().isoformat() if ts else None,
+                    "order_id":   str(o.id),
+                })
+
+        sells.reverse()           # most-recent first
+        return {"sells": sells[:limit]}
+    except Exception as exc:
+        return JSONResponse(status_code=200, content={"error": str(exc), "sells": []})
 
 
 # ── Realized P&L helper ───────────────────────────────────────────────────────
