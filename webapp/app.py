@@ -246,6 +246,70 @@ def api_positions():
         return JSONResponse(status_code=200, content={"error": str(exc), "positions": []})
 
 
+# ── Close Position API ────────────────────────────────────────────────────────
+
+@app.post("/api/positions/close")
+def api_close_position(body: dict = Body(...)):
+    symbol = str(body.get("symbol", "")).strip().upper()
+    if not symbol:
+        return JSONResponse(status_code=400, content={"ok": False, "error": "symbol required"})
+    try:
+        env = _parse_env(_read_env_lines())
+        from alpaca.trading.client import TradingClient
+        from alpaca.trading.requests import GetOrdersRequest, MarketOrderRequest as _MktReq
+        from alpaca.trading.enums import OrderSide as _Side, TimeInForce as _TIF, QueryOrderStatus
+
+        tc = TradingClient(
+            api_key=env.get("ALPACA_API_KEY", ""),
+            secret_key=env.get("ALPACA_SECRET_KEY", ""),
+            paper=(env.get("IS_PAPER", "true") or "true").lower() != "false",
+        )
+
+        # 1. Cancel every open order for this symbol
+        open_orders = tc.get_orders(filter=GetOrdersRequest(
+            symbol=symbol, status=QueryOrderStatus.OPEN
+        ))
+        cancelled = []
+        for o in open_orders:
+            try:
+                tc.cancel_order_by_id(str(o.id))
+                cancelled.append(str(o.id))
+            except Exception:
+                pass
+
+        # 2. Market sell the full position
+        position = tc.get_open_position(symbol)
+        qty = abs(float(position.qty))
+        sell_order = tc.submit_order(_MktReq(
+            symbol=symbol,
+            qty=qty,
+            side=_Side.SELL,
+            time_in_force=_TIF.DAY,
+        ))
+
+        # 3. Mark trade closed in DB
+        try:
+            from data.store import close_trade as _close_trade
+            exit_price = float(position.current_price)
+            _close_trade(
+                buy_order_id=body.get("buy_order_id", ""),
+                exit_price=exit_price,
+                exit_reason="manual_close",
+            )
+        except Exception:
+            pass
+
+        return {
+            "ok": True,
+            "symbol": symbol,
+            "qty": qty,
+            "cancelled_orders": len(cancelled),
+            "sell_order_id": str(sell_order.id),
+        }
+    except Exception as exc:
+        return JSONResponse(status_code=200, content={"ok": False, "error": str(exc)})
+
+
 # ── Performance API ───────────────────────────────────────────────────────────
 
 @app.get("/api/performance")

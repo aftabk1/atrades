@@ -438,10 +438,11 @@
               <th class="num">Target&nbsp;Dist</th>
               <th class="num">Days</th>
               <th>Status</th>
+              <th></th>
             </tr>
           </thead>
           <tbody id="live-trades-body">
-            <tr><td colspan="12" class="empty"><span class="spin"></span></td></tr>
+            <tr><td colspan="13" class="empty"><span class="spin"></span></td></tr>
           </tbody>
           <tfoot id="live-trades-foot" style="display:none">
             <tr style="border-top:1px solid var(--border);font-weight:600;background:var(--surface2)">
@@ -449,7 +450,7 @@
               <td></td><td></td><td></td>
               <td class="num" id="lts-pl"></td>
               <td class="num" id="lts-r"></td>
-              <td colspan="6"></td>
+              <td colspan="7"></td>
             </tr>
           </tfoot>
       </div>
@@ -1256,6 +1257,7 @@ function renderLiveTrades(trades) {
       <td class="num muted">${t.target_dist_pct != null ? '+' + fmt(t.target_dist_pct, 1) + '%' : '—'}</td>
       <td class="num muted">${t.days_held}d</td>
       <td>${statusBadge(t.status)}</td>
+      <td><button class="btn-sm btn-danger" onclick="closePosition('${t.symbol}','${t.buy_order_id||''}')">Close</button></td>
     </tr>`;
   }).join('');
 }
@@ -1419,6 +1421,34 @@ function renderPerf(p) {
         <tbody>${recentRows}</tbody>
       </table>
     </div>` : ''}`;
+}
+
+// ── Close position ─────────────────────────────────────────────────────────
+async function closePosition(symbol, buyOrderId) {
+  if (!confirm(`Close ${symbol}?\n\nThis will cancel all open orders for ${symbol} and place a market sell for the full position.`)) return;
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = '…';
+  try {
+    const res  = await fetch('/api/positions/close', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({symbol, buy_order_id: buyOrderId}),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      showToast(`${symbol} closed — ${data.qty} sh sold, ${data.cancelled_orders} order(s) cancelled`, 'success');
+      setTimeout(loadLiveTrades, 1500);
+    } else {
+      showToast(`Close failed: ${data.error}`, 'error');
+      btn.disabled = false;
+      btn.textContent = 'Close';
+    }
+  } catch(e) {
+    showToast('Request failed: ' + e.message, 'error');
+    btn.disabled = false;
+    btn.textContent = 'Close';
+  }
 }
 
 // ── Controls ───────────────────────────────────────────────────────────────
