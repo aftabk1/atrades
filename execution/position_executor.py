@@ -115,9 +115,21 @@ class PositionExecutor:
             side=_Side.SELL,
             time_in_force=_TIF.DAY,
         ))
-        logger.info(f"PME {ev.action} {ev.symbol} -{qty} sh ({pct*100:.0f}% of {live_qty}) | order_id={order.id}")
+
+        # Fetch actual fill price for accurate notification
+        trim_price = ev.current_price
+        try:
+            import time as _time
+            _time.sleep(0.5)
+            filled_order = tc.get_order_by_id(str(order.id))
+            if filled_order.filled_avg_price:
+                trim_price = float(filled_order.filled_avg_price)
+        except Exception:
+            pass
+
+        logger.info(f"PME {ev.action} {ev.symbol} -{qty} sh @ ${trim_price:.2f} ({pct*100:.0f}% of {live_qty}) | order_id={order.id}")
         notify(
-            f"PME {ev.action}: {ev.symbol} -{qty} sh @ ~${ev.current_price:.2f} | "
+            f"PME {ev.action}: {ev.symbol} -{qty} sh @ ${trim_price:.2f} | "
             f"score={ev.score:.0f} R={ev.r_multiple:.2f}"
         )
         _mark_executed(ev)
@@ -154,20 +166,33 @@ class PositionExecutor:
             side=_Side.SELL,
             time_in_force=_TIF.DAY,
         ))
+
+        # Fetch actual fill price — market orders on paper fill almost instantly
+        exit_price = ev.current_price
+        try:
+            import time as _time
+            _time.sleep(0.5)
+            filled_order = tc.get_order_by_id(str(order.id))
+            if filled_order.filled_avg_price:
+                exit_price = float(filled_order.filled_avg_price)
+        except Exception:
+            pass
+
         logger.info(
-            f"PME EXIT {ev.symbol} {live_qty} sh (cancelled {cancelled} orders) | order_id={order.id}"
+            f"PME EXIT {ev.symbol} {live_qty} sh @ ${exit_price:.2f} "
+            f"(cancelled {cancelled} orders) | order_id={order.id}"
         )
         notify(
-            f"PME EXIT: {ev.symbol} {live_qty} sh @ ~${ev.current_price:.2f} | "
+            f"PME EXIT: {ev.symbol} {live_qty} sh @ ${exit_price:.2f} | "
             f"R={ev.r_multiple:.2f} | {ev.reason}"
         )
 
-        # Mark closed in DB
+        # Mark closed in DB with actual fill price
         try:
             close_trade(
                 buy_order_id=ev.buy_order_id,
-                exit_price=ev.current_price,
-                exit_reason=f"pme_exit",
+                exit_price=exit_price,
+                exit_reason="pme_exit",
             )
         except Exception as exc:
             logger.warning(f"PME {ev.symbol}: DB close_trade failed: {exc}")

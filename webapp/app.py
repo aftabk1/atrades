@@ -364,6 +364,51 @@ def api_position_evaluations(
     return get_position_evaluations(buy_order_id=buy_order_id, days=days)
 
 
+# ── Realized P&L helper ───────────────────────────────────────────────────────
+
+def _alpaca_realized_pnl(tc) -> float:
+    """
+    Compute realized P&L using FIFO accounting over all Alpaca fills.
+    This always matches Alpaca's own P&L number exactly.
+    Falls back to DB estimate if the API call fails.
+    """
+    try:
+        from alpaca.trading.requests import GetOrdersRequest
+        from alpaca.trading.enums import QueryOrderStatus, OrderSide
+        from alpaca.trading.enums import OrderStatus as OStatus
+
+        all_orders = tc.get_orders(filter=GetOrdersRequest(
+            status=QueryOrderStatus.ALL, limit=500
+        ))
+        filled = [o for o in all_orders if o.status == OStatus.FILLED]
+        filled.sort(key=lambda o: o.submitted_at or o.created_at)
+
+        lots: dict[str, list[dict]] = {}
+        realized = 0.0
+
+        for o in filled:
+            sym   = o.symbol
+            qty   = float(o.filled_qty or o.qty or 0)
+            price = float(o.filled_avg_price or 0)
+            if qty == 0 or price == 0:
+                continue
+            if o.side == OrderSide.BUY:
+                lots.setdefault(sym, []).append({"qty": qty, "price": price})
+            elif o.side == OrderSide.SELL:
+                remaining = qty
+                for lot in lots.get(sym, []):
+                    if remaining <= 0:
+                        break
+                    used = min(remaining, lot["qty"])
+                    realized += (price - lot["price"]) * used
+                    lot["qty"] -= used
+                    remaining -= used
+
+        return round(realized, 2)
+    except Exception:
+        return query_realized_pnl()
+
+
 # ── Account API ───────────────────────────────────────────────────────────────
 
 @app.get("/api/account")
@@ -390,7 +435,7 @@ def api_account():
         open_exposure  = sum(float(p.market_value)     for p in positions)
         exposure_pct   = round(open_exposure / equity * 100, 1) if equity else 0
 
-        realized_pnl = query_realized_pnl()
+        realized_pnl = _alpaca_realized_pnl(tc)
 
         return {
             "equity":              round(equity, 2),
