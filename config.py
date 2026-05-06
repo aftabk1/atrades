@@ -85,3 +85,19 @@ BACKTEST_INITIAL_CAPITAL = float(os.getenv("BACKTEST_INITIAL_CAPITAL", "100000")
 # ── Notifications ─────────────────────────────────────────────────────────────
 WHATSAPP_PHONE  = os.getenv("WHATSAPP_PHONE",  "")   # international format, e.g. +97455512345
 WHATSAPP_APIKEY = os.getenv("WHATSAPP_APIKEY", "")   # from CallMeBot setup
+
+# ── Position Management Engine ────────────────────────────────────────────────
+PME_ADD_SCORE_THRESHOLD    = int(os.getenv("PME_ADD_SCORE_THRESHOLD",    "75"))
+PME_HOLD_SCORE_MIN         = int(os.getenv("PME_HOLD_SCORE_MIN",         "60"))
+PME_TRIM_LIGHT_SCORE_MIN   = int(os.getenv("PME_TRIM_LIGHT_SCORE_MIN",   "55"))
+PME_TRIM_HEAVY_SCORE_MIN   = int(os.getenv("PME_TRIM_HEAVY_SCORE_MIN",   "45"))
+PME_ADD_SIZE_PCT           = float(os.getenv("PME_ADD_SIZE_PCT",           "0.20"))
+PME_ADD_MAX_MULTIPLIER     = float(os.getenv("PME_ADD_MAX_MULTIPLIER",     "1.50"))
+PME_TRIM_LIGHT_PCT         = float(os.getenv("PME_TRIM_LIGHT_PCT",         "0.25"))
+PME_TRIM_HEAVY_PCT         = float(os.getenv("PME_TRIM_HEAVY_PCT",         "0.60"))
+PME_RS_ADD_MIN_PCT         = float(os.getenv("PME_RS_ADD_MIN_PCT",         "8.0"))
+PME_RS_DOWNGRADE_BELOW_PCT = float(os.getenv("PME_RS_DOWNGRADE_BELOW_PCT", "2.0"))
+PME_R_TRIM_FLOOR           = float(os.getenv("PME_R_TRIM_FLOOR",           "2.0"))
+PME_R_TRIM_ENFORCE         = float(os.getenv("PME_R_TRIM_ENFORCE",         "3.0"))
+PME_FOLLOWTHROUGH_DAYS     = int(os.getenv("PME_FOLLOWTHROUGH_DAYS",      "2"))
+PME_VOLUME_SELLOFF_MULT    = float(os.getenv("PME_VOLUME_SELLOFF_MULT",    "2.0"))

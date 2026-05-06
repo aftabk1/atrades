@@ -35,6 +35,7 @@ from loguru import logger
 
 import config
 from data.store import init_db, save_scan, save_trade
+from execution.position_executor import PositionExecutor
 from execution.position_monitor import (
     check_circuit_breaker,
     ratchet_trailing_stops,
@@ -42,6 +43,7 @@ from execution.position_monitor import (
     sync_open_trades,
 )
 from scanner import BreakoutScanner
+from strategy.position_manager import PositionManager
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 NY = pytz.timezone("America/New_York")
@@ -171,10 +173,30 @@ def run_session(scanner: BreakoutScanner, rescan_interval: int) -> None:
         time.sleep(sleep_secs)
 
 
+def _run_pme(scanner: BreakoutScanner, execute: bool = True) -> None:
+    """Evaluate open positions via PME and optionally execute actions."""
+    try:
+        mgr      = PositionManager()
+        evals    = mgr.evaluate_all()
+        if not evals:
+            return
+        if execute and scanner._execute:
+            executor = PositionExecutor(scanner._broker)
+            for ev in evals:
+                executor.execute(ev)
+    except Exception as exc:
+        logger.warning(f"PME error (non-fatal): {exc}")
+
+
 def _run_scan(scanner: BreakoutScanner, scan_num: int) -> None:
     now_ny = datetime.now(NY)
     label  = "Opening scan" if scan_num == 0 else f"Re-scan #{scan_num}"
     logger.info(f"--- {label}  {now_ny.strftime('%H:%M ET')} ---")
+
+    # ── PME: evaluate + act on existing positions before scanning for new ones
+    if scanner._execute:
+        logger.info("PME: evaluating open positions before scan")
+        _run_pme(scanner, execute=True)
 
     # Sync position state before scanning
     if scanner._execute:
@@ -218,7 +240,7 @@ def _wait_for_close(scanner: BreakoutScanner) -> None:
 
 
 def _end_of_day(scanner: BreakoutScanner) -> None:
-    """Post-close housekeeping: sync positions and ratchet trailing stops."""
+    """Post-close housekeeping: sync positions, ratchet trailing stops, record PME."""
     if not scanner._execute:
         return
     try:
@@ -226,6 +248,9 @@ def _end_of_day(scanner: BreakoutScanner) -> None:
         ratchet_trailing_stops(scanner._broker)
     except Exception as exc:
         logger.warning(f"End-of-day monitor error (non-fatal): {exc}")
+    # PME end-of-day: evaluate and record recommendations (no execution — market closed)
+    logger.info("PME: end-of-day position evaluation (record only)")
+    _run_pme(scanner, execute=False)
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────

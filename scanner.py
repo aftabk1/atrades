@@ -145,9 +145,14 @@ class BreakoutScanner:
             placed = self._place_orders(top, open_positions)
             if placed:
                 try:
-                    from data.store import save_trade
+                    from data.store import save_trade, update_trade_breakout_level
+                    # Build a symbol→breakout_level map from candidates
+                    bl_map = {c["symbol"]: c.get("breakout_level", 0) for c in top}
                     for order in placed:
                         save_trade(order)
+                        sym = order.get("symbol", "")
+                        if sym in bl_map and bl_map[sym]:
+                            update_trade_breakout_level(order.get("buy_order_id", ""), bl_map[sym])
                 except Exception:
                     pass  # store errors must never crash the scanner
 
@@ -430,6 +435,7 @@ def _build_candidate(signals, setup: TradeSetup, scorer: BreakoutScorer, regime:
         "volume_ratio": round(signals.volume_surge.value, 2),
         "rsi":          round(signals.rsi_zone.value, 1),
         "rs_vs_spy":    round(signals.relative_strength.value, 2),
+        "breakout_level": round(signals.breakout_level, 2),
         "breakout_20d": signals.breakout_20d.triggered,
         "breakout_10d": signals.breakout_10d.triggered,
         "breakout_50d": signals.breakout_50d.triggered,

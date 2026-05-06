@@ -105,18 +105,40 @@ def init_db() -> None:
         if "gap_pct" not in sc_cols:
             con.execute("ALTER TABLE scan_candidates ADD COLUMN gap_pct REAL DEFAULT 0")
 
+        # position_evaluations — one record per PME evaluation cycle per trade
+        con.executescript("""
+            CREATE TABLE IF NOT EXISTS position_evaluations (
+                id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                ts             TEXT    NOT NULL,
+                date           TEXT    NOT NULL,
+                symbol         TEXT,
+                buy_order_id   TEXT,
+                score          REAL,
+                action         TEXT,
+                r_multiple     REAL,
+                rs_vs_spy      REAL,
+                trap_triggered INTEGER DEFAULT 0,
+                reason         TEXT,
+                executed       INTEGER DEFAULT 0
+            );
+            CREATE INDEX IF NOT EXISTS idx_pme_buy_order ON position_evaluations(buy_order_id);
+            CREATE INDEX IF NOT EXISTS idx_pme_date      ON position_evaluations(date);
+        """)
+
         # Migrate existing DB: add new columns if absent
         existing = {r[1] for r in con.execute("PRAGMA table_info(trades)").fetchall()}
         for col, defn in [
-            ("stop_order_id", "TEXT"),
-            ("fill_price",    "REAL"),
-            ("fill_ts",       "TEXT"),
-            ("status",        "TEXT DEFAULT 'open'"),
-            ("exit_price",    "REAL"),
-            ("exit_ts",       "TEXT"),
-            ("exit_reason",   "TEXT"),
-            ("actual_r",      "REAL"),
-            ("hold_days",     "INTEGER"),
+            ("stop_order_id",             "TEXT"),
+            ("fill_price",                "REAL"),
+            ("fill_ts",                   "TEXT"),
+            ("status",                    "TEXT DEFAULT 'open'"),
+            ("exit_price",                "REAL"),
+            ("exit_ts",                   "TEXT"),
+            ("exit_reason",               "TEXT"),
+            ("actual_r",                  "REAL"),
+            ("hold_days",                 "INTEGER"),
+            ("breakout_level",            "REAL"),
+            ("highest_price_since_entry", "REAL"),
         ]:
             if col not in existing:
                 con.execute(f"ALTER TABLE trades ADD COLUMN {col} {defn}")
@@ -270,6 +292,63 @@ def close_trade(buy_order_id: str, exit_price: float,
                WHERE buy_order_id=?""",
             (exit_price, now, exit_reason, actual_r, hold_days, buy_order_id),
         )
+
+
+def update_trade_breakout_level(buy_order_id: str, breakout_level: float) -> None:
+    """Set the 20-day breakout level recorded at trade entry."""
+    with _conn() as con:
+        con.execute(
+            "UPDATE trades SET breakout_level=? WHERE buy_order_id=?",
+            (breakout_level, buy_order_id),
+        )
+
+
+def update_highest_price(buy_order_id: str, price: float) -> None:
+    """Ratchet up highest_price_since_entry; never decreases."""
+    with _conn() as con:
+        con.execute(
+            """UPDATE trades
+               SET highest_price_since_entry = MAX(COALESCE(highest_price_since_entry, 0), ?)
+               WHERE buy_order_id=?""",
+            (price, buy_order_id),
+        )
+
+
+def save_position_evaluation(ev: dict) -> None:
+    """Persist one PME evaluation record."""
+    now = datetime.now(timezone.utc).isoformat()
+    day = date.today().isoformat()
+    with _conn() as con:
+        con.execute(
+            """INSERT INTO position_evaluations
+               (ts, date, symbol, buy_order_id, score, action,
+                r_multiple, rs_vs_spy, trap_triggered, reason, executed)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+            (
+                now, day,
+                ev.get("symbol"), ev.get("buy_order_id"),
+                ev.get("score"), ev.get("action"),
+                ev.get("r_multiple"), ev.get("rs_vs_spy"),
+                int(ev.get("trap_triggered", False)),
+                ev.get("reason", ""), int(ev.get("executed", False)),
+            ),
+        )
+
+
+def get_position_evaluations(buy_order_id: str | None = None, days: int = 30) -> list[dict]:
+    """Return PME evaluations, optionally filtered by trade."""
+    with _conn() as con:
+        if buy_order_id:
+            return _rows(con.execute(
+                "SELECT * FROM position_evaluations WHERE buy_order_id=? ORDER BY ts DESC",
+                (buy_order_id,),
+            ))
+        return _rows(con.execute(
+            """SELECT * FROM position_evaluations
+               WHERE ts >= datetime('now', ?)
+               ORDER BY ts DESC""",
+            (f"-{days} days",),
+        ))
 
 
 def query_performance(days: int = 90) -> dict:

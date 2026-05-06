@@ -53,7 +53,8 @@ class BreakoutSignals:
     atr_expansion:      SignalResult = field(default_factory=_default_signal)
     earnings_proximity: SignalResult = field(default_factory=_default_signal)
 
-    gap_pct: float = 0.0   # today open vs prior close; ≥0.08 = gap-up breakout
+    gap_pct: float = 0.0       # today open vs prior close; ≥0.08 = gap-up breakout
+    breakout_level: float = 0.0  # 20-day prior high — stored at trade entry for PME
 
     # ── Enhancement modules (populated after price-breakout gate) ─────────────
     # Type hints use strings to avoid circular imports at module load time.
@@ -71,14 +72,18 @@ def detect_all(
     earnings_date: Optional[datetime] = None,
     *,
     fast: bool = False,
+    require_breakout: bool = True,
 ) -> Optional[BreakoutSignals]:
     """
     Run the full signal pipeline on a single symbol's daily OHLCV DataFrame.
-    Returns None when the symbol fails base filters, has insufficient data,
-    or does not show any price breakout (the mandatory anchor signal).
+    Returns None when the symbol fails base filters or has insufficient data.
 
-    fast=True skips accumulation and bull-trap detection (used by the optimizer
-    to avoid redundant computation across 81+ backtest combinations).
+    require_breakout=True (default): also returns None when no price breakout
+    gate fires (used for new-entry scanning).
+    require_breakout=False: skips the breakout gate — used by PME to re-score
+    existing open positions that don't need to re-qualify as fresh breakouts.
+
+    fast=True skips accumulation and bull-trap detection (optimizer mode).
     """
     if df is None or len(df) < _MIN_BARS:
         return None
@@ -96,6 +101,9 @@ def detect_all(
     if len(df) >= 2:
         gap_pct = round(float(df["open"].iloc[-1] / df["close"].iloc[-2] - 1), 4)
 
+    # 20-day prior high stored for PME breakout-level tracking
+    breakout_level = float(close.iloc[-21:-1].max()) if len(close) >= 21 else 0.0
+
     sig = BreakoutSignals(
         symbol=symbol,
         current_price=current_price,
@@ -104,6 +112,7 @@ def detect_all(
         atr_14=atr14_val,
         support_level=support,
         gap_pct=gap_pct,
+        breakout_level=breakout_level,
     )
 
     sig.breakout_20d      = _check_price_breakout(df, 20)
@@ -111,19 +120,19 @@ def detect_all(
     sig.volume_surge      = _check_volume_surge(df)
     sig.relative_strength = _check_relative_strength(df, spy_df)
 
-    # Three-way entry gate — any one trigger qualifies the symbol:
-    #   A: classic 20-day high breakout
-    #   B: 10-day breakout + volume surge + relative strength (tight base thrust)
-    #   C: earnings/news gap-up (≥ GAP_UP_THRESHOLD) + volume surge
-    trigger_a = sig.breakout_20d.triggered
-    trigger_b = (sig.breakout_10d.triggered
-                 and sig.volume_surge.triggered
-                 and sig.relative_strength.triggered)
-    trigger_c = (gap_pct >= config.GAP_UP_THRESHOLD
-                 and sig.volume_surge.triggered)
-
-    if not (trigger_a or trigger_b or trigger_c):
-        return None
+    if require_breakout:
+        # Three-way entry gate — any one trigger qualifies the symbol:
+        #   A: classic 20-day high breakout
+        #   B: 10-day breakout + volume surge + relative strength (tight base thrust)
+        #   C: earnings/news gap-up (≥ GAP_UP_THRESHOLD) + volume surge
+        trigger_a = sig.breakout_20d.triggered
+        trigger_b = (sig.breakout_10d.triggered
+                     and sig.volume_surge.triggered
+                     and sig.relative_strength.triggered)
+        trigger_c = (gap_pct >= config.GAP_UP_THRESHOLD
+                     and sig.volume_surge.triggered)
+        if not (trigger_a or trigger_b or trigger_c):
+            return None
 
     sig.breakout_50d      = _check_price_breakout(df, 50)
     sig.consolidation     = _check_consolidation(df)

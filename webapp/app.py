@@ -37,7 +37,7 @@ ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
 from datetime import date as _date
-from data.store import init_db, query_day, query_history, get_open_trades, query_performance
+from data.store import init_db, query_day, query_history, get_open_trades, query_performance, get_position_evaluations
 
 ENV_PATH = ROOT / ".env"
 
@@ -171,6 +171,21 @@ CONFIG_DEFAULTS = {
     "BACKTEST_INITIAL_CAPITAL":        "100000",
     "WHATSAPP_PHONE":                  "",
     "WHATSAPP_APIKEY":                 "",
+    # Position Management Engine
+    "PME_ADD_SCORE_THRESHOLD":         "75",
+    "PME_HOLD_SCORE_MIN":              "60",
+    "PME_TRIM_LIGHT_SCORE_MIN":        "55",
+    "PME_TRIM_HEAVY_SCORE_MIN":        "45",
+    "PME_ADD_SIZE_PCT":                "0.20",
+    "PME_ADD_MAX_MULTIPLIER":          "1.50",
+    "PME_TRIM_LIGHT_PCT":              "0.25",
+    "PME_TRIM_HEAVY_PCT":              "0.60",
+    "PME_RS_ADD_MIN_PCT":              "8.0",
+    "PME_RS_DOWNGRADE_BELOW_PCT":      "2.0",
+    "PME_R_TRIM_FLOOR":                "2.0",
+    "PME_R_TRIM_ENFORCE":              "3.0",
+    "PME_FOLLOWTHROUGH_DAYS":          "2",
+    "PME_VOLUME_SELLOFF_MULT":         "2.0",
 }
 
 
@@ -315,6 +330,16 @@ def api_close_position(body: dict = Body(...)):
 @app.get("/api/performance")
 def api_performance(days: int = Query(default=90, ge=1, le=365)):
     return query_performance(days)
+
+
+# ── Position evaluations API ──────────────────────────────────────────────────
+
+@app.get("/api/position-evaluations")
+def api_position_evaluations(
+    buy_order_id: str | None = Query(default=None),
+    days: int = Query(default=30, ge=1, le=365),
+):
+    return get_position_evaluations(buy_order_id=buy_order_id, days=days)
 
 
 # ── Account API ───────────────────────────────────────────────────────────────
