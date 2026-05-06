@@ -135,10 +135,39 @@ def _handle_closed_position(tc, trade: dict) -> None:
                 return
         except Exception:
             pass
-    # Position gone but no filled exit found — mark closed manually
-    close_trade(buy_id, 0.0, "unknown")
-    logger.warning(f"{symbol}: position closed, exit order not identified")
-    notify(f"TRADE CLOSED: {symbol} — exit order unidentified, position gone")
+    # Position gone and no known order matched — try to recover exit price
+    # from the most recent filled sell order for this symbol before giving up.
+    exit_price = 0.0
+    exit_reason = "unknown"
+    try:
+        from alpaca.trading.requests import GetOrdersRequest
+        from alpaca.trading.enums import QueryOrderStatus as _QOS
+        recent = tc.get_orders(filter=GetOrdersRequest(
+            symbol=symbol, status=_QOS.ALL, limit=10
+        ))
+        for o in recent:
+            if (o.side == OrderSide.SELL
+                    and o.status == OrderStatus.FILLED
+                    and o.filled_avg_price):
+                exit_price  = float(o.filled_avg_price)
+                exit_reason = "unknown_recovered"
+                logger.info(
+                    f"{symbol}: recovered exit price ${exit_price:.2f} "
+                    f"from order {str(o.id)[:16]}"
+                )
+                break
+    except Exception as exc:
+        logger.debug(f"{symbol}: exit price recovery failed: {exc}")
+
+    close_trade(buy_id, exit_price, exit_reason)
+    logger.warning(
+        f"{symbol}: position closed, exit order not identified"
+        + (f" — recovered price ${exit_price:.2f}" if exit_price else " — no price recovered, exit=0")
+    )
+    notify(
+        f"TRADE CLOSED: {symbol} — exit order unidentified"
+        + (f", recovered price ${exit_price:.2f}" if exit_price else ", exit price unknown")
+    )
 
 
 def _upgrade_stop_to_trail(tc, trade: dict) -> None:
