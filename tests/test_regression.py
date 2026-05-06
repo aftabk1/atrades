@@ -1484,7 +1484,15 @@ class TestPositionManager:
 # ══════════════════════════════════════════════════════════════════════════════
 
 class TestPositionExecutor:
-    """Tests for PositionExecutor — uses mock Alpaca client, no real orders."""
+    """Tests for PositionExecutor — uses mock Alpaca client, no real orders.
+
+    notify() is patched for every test so no WhatsApp messages fire during CI.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _no_notify(self):
+        with patch("execution.position_executor.notify"):
+            yield
 
     def _make_eval(self, action: str, symbol: str = "AAPL",
                    shares: int = 100, fill_price: float = 100.0,
