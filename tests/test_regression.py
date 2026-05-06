@@ -18,6 +18,9 @@ Sections:
   9. Webapp API Endpoints
   10. End-to-End Pipeline
   11. Runner & Scan API
+  12. Position Manager (PME Decision Logic)
+  13. Position Executor
+  14. PME Webapp API Endpoints
 """
 from __future__ import annotations
 
@@ -92,6 +95,33 @@ class TestConfig:
     def test_paper_trading_enabled_by_default(self):
         import config
         assert config.IS_PAPER is True, "IS_PAPER should be True in .env for safety"
+
+    def test_pme_config_keys_present(self):
+        import config
+        pme_keys = [
+            "PME_ADD_SCORE_THRESHOLD", "PME_HOLD_SCORE_MIN",
+            "PME_TRIM_LIGHT_SCORE_MIN", "PME_TRIM_HEAVY_SCORE_MIN",
+            "PME_ADD_SIZE_PCT", "PME_ADD_MAX_MULTIPLIER",
+            "PME_TRIM_LIGHT_PCT", "PME_TRIM_HEAVY_PCT",
+            "PME_RS_ADD_MIN_PCT", "PME_RS_DOWNGRADE_BELOW_PCT",
+            "PME_R_TRIM_FLOOR", "PME_R_TRIM_ENFORCE",
+            "PME_FOLLOWTHROUGH_DAYS", "PME_VOLUME_SELLOFF_MULT",
+        ]
+        for key in pme_keys:
+            assert hasattr(config, key), f"Missing PME config key: {key}"
+
+    def test_pme_score_thresholds_ordered(self):
+        import config
+        assert config.PME_ADD_SCORE_THRESHOLD > config.PME_HOLD_SCORE_MIN
+        assert config.PME_HOLD_SCORE_MIN > config.PME_TRIM_LIGHT_SCORE_MIN
+        assert config.PME_TRIM_LIGHT_SCORE_MIN > config.PME_TRIM_HEAVY_SCORE_MIN
+        assert config.PME_TRIM_HEAVY_SCORE_MIN > 0
+
+    def test_pme_trim_percentages_valid(self):
+        import config
+        assert 0 < config.PME_TRIM_LIGHT_PCT < 1.0
+        assert 0 < config.PME_TRIM_HEAVY_PCT < 1.0
+        assert config.PME_TRIM_HEAVY_PCT > config.PME_TRIM_LIGHT_PCT
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -251,6 +281,155 @@ class TestStore:
         assert result["spy_above_200ma"] is True
         assert result["score_multiplier"] == pytest.approx(1.0)
 
+    def test_init_db_creates_position_evaluations_table(self, temp_db):
+        import sqlite3
+        con = sqlite3.connect(temp_db)
+        tables = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+        assert "position_evaluations" in tables
+        cols = {r[1] for r in con.execute("PRAGMA table_info(position_evaluations)").fetchall()}
+        assert {"symbol", "buy_order_id", "score", "action", "r_multiple", "executed"}.issubset(cols)
+        con.close()
+
+    def test_close_trade_computes_actual_r_and_hold_days(self, temp_db):
+        from data.store import save_trade, close_trade, get_open_trades
+        import sqlite3
+        order = {
+            "symbol": "AAPL", "buy_order_id": "close-test-001",
+            "shares": 10, "entry": 100.0, "stop_loss": 95.0,
+            "fill_price": 100.0, "partial_target": 110.0, "trail_atr": 2.0, "score": 70.0,
+        }
+        save_trade(order)
+        # Simulate fill recorded
+        from data.store import update_trade_fill
+        update_trade_fill("close-test-001", 100.0, datetime.now(timezone.utc).isoformat())
+        close_trade("close-test-001", exit_price=110.0, exit_reason="target_hit")
+        con = sqlite3.connect(temp_db)
+        con.row_factory = sqlite3.Row
+        row = con.execute("SELECT * FROM trades WHERE buy_order_id=?", ("close-test-001",)).fetchone()
+        assert row["status"] == "closed"
+        assert row["exit_price"] == pytest.approx(110.0)
+        assert row["actual_r"] == pytest.approx(2.0)  # (110-100)/(100-95) = 2.0
+        assert row["exit_reason"] == "target_hit"
+        con.close()
+
+    def test_update_trade_breakout_level(self, temp_db):
+        from data.store import save_trade, update_trade_breakout_level
+        import sqlite3
+        save_trade({
+            "symbol": "NVDA", "buy_order_id": "bl-001",
+            "shares": 5, "entry": 200.0, "stop_loss": 190.0,
+            "partial_target": 220.0, "trail_atr": 3.0, "score": 72.0,
+        })
+        update_trade_breakout_level("bl-001", 198.50)
+        con = sqlite3.connect(temp_db)
+        con.row_factory = sqlite3.Row
+        row = con.execute("SELECT breakout_level FROM trades WHERE buy_order_id=?", ("bl-001",)).fetchone()
+        assert row["breakout_level"] == pytest.approx(198.50)
+        con.close()
+
+    def test_update_highest_price_ratchets_up_never_down(self, temp_db):
+        from data.store import save_trade, update_highest_price
+        import sqlite3
+        save_trade({
+            "symbol": "AMD", "buy_order_id": "hp-001",
+            "shares": 20, "entry": 80.0, "stop_loss": 75.0,
+            "partial_target": 90.0, "trail_atr": 1.5, "score": 68.0,
+        })
+        update_highest_price("hp-001", 85.0)
+        update_highest_price("hp-001", 92.0)  # goes up
+        update_highest_price("hp-001", 88.0)  # should not go down
+        con = sqlite3.connect(temp_db)
+        con.row_factory = sqlite3.Row
+        row = con.execute("SELECT highest_price_since_entry FROM trades WHERE buy_order_id=?", ("hp-001",)).fetchone()
+        assert row["highest_price_since_entry"] == pytest.approx(92.0)
+        con.close()
+
+    def test_save_and_get_position_evaluation(self, temp_db):
+        from data.store import save_position_evaluation, get_position_evaluations
+        ev = {
+            "symbol": "MSFT", "buy_order_id": "pme-001",
+            "score": 78.5, "action": "HOLD",
+            "r_multiple": 1.8, "rs_vs_spy": 6.2,
+            "trap_triggered": False, "reason": "score=78 | holding",
+            "executed": False,
+        }
+        save_position_evaluation(ev)
+        results = get_position_evaluations(buy_order_id="pme-001")
+        assert len(results) == 1
+        assert results[0]["action"] == "HOLD"
+        assert results[0]["score"] == pytest.approx(78.5)
+        assert results[0]["buy_order_id"] == "pme-001"
+
+    def test_get_position_evaluations_without_filter_returns_recent(self, temp_db):
+        from data.store import save_position_evaluation, get_position_evaluations
+        for i in range(3):
+            save_position_evaluation({
+                "symbol": "GOOG", "buy_order_id": f"pme-goog-{i}",
+                "score": 60.0 + i, "action": "HOLD",
+                "r_multiple": 1.0, "rs_vs_spy": 3.0,
+                "trap_triggered": False, "reason": "test",
+                "executed": False,
+            })
+        results = get_position_evaluations(days=30)
+        assert len(results) == 3
+
+    def test_query_closed_trades_empty(self, temp_db):
+        from data.store import query_closed_trades
+        results = query_closed_trades(day=date.today().isoformat())
+        assert results == []
+
+    def test_query_closed_trades_by_day(self, temp_db):
+        from data.store import save_trade, update_trade_fill, close_trade, query_closed_trades
+        save_trade({
+            "symbol": "TSLA", "buy_order_id": "ct-001",
+            "shares": 10, "entry": 200.0, "stop_loss": 190.0,
+            "fill_price": 200.0, "partial_target": 220.0, "trail_atr": 3.0, "score": 75.0,
+        })
+        update_trade_fill("ct-001", 200.0, datetime.now(timezone.utc).isoformat())
+        close_trade("ct-001", exit_price=215.0, exit_reason="trailing_stop")
+        today = date.today().isoformat()
+        results = query_closed_trades(day=today)
+        assert len(results) == 1
+        assert results[0]["symbol"] == "TSLA"
+        assert results[0]["exit_price"] == pytest.approx(215.0)
+        assert results[0]["exit_reason"] == "trailing_stop"
+
+    def test_query_realized_pnl_sums_valid_trades(self, temp_db):
+        from data.store import save_trade, update_trade_fill, close_trade, query_realized_pnl
+        for i, (sym, fill, exit_px, shares) in enumerate([
+            ("AAA", 100.0, 110.0, 10),   # +$100
+            ("BBB", 50.0,  55.0,  20),   # +$100
+        ]):
+            oid = f"pnl-{i:03d}"
+            save_trade({
+                "symbol": sym, "buy_order_id": oid,
+                "shares": shares, "entry": fill, "stop_loss": fill * 0.95,
+                "fill_price": fill, "partial_target": exit_px, "trail_atr": 1.0, "score": 70.0,
+            })
+            update_trade_fill(oid, fill, datetime.now(timezone.utc).isoformat())
+            close_trade(oid, exit_price=exit_px, exit_reason="target_hit")
+        pnl = query_realized_pnl()
+        assert pnl == pytest.approx(200.0)
+
+    def test_query_realized_pnl_excludes_zero_exit_price(self, temp_db):
+        from data.store import save_trade, close_trade, query_realized_pnl
+        import sqlite3
+        save_trade({
+            "symbol": "ZZZ", "buy_order_id": "zero-exit-001",
+            "shares": 10, "entry": 100.0, "stop_loss": 90.0,
+            "fill_price": 100.0, "partial_target": 110.0, "trail_atr": 1.5, "score": 65.0,
+        })
+        # Write a bad closed record with exit_price=0
+        con = sqlite3.connect(temp_db)
+        con.execute(
+            "UPDATE trades SET status='closed', exit_price=0, fill_price=100, shares=10 WHERE buy_order_id=?",
+            ("zero-exit-001",)
+        )
+        con.commit()
+        con.close()
+        pnl = query_realized_pnl()
+        assert pnl == 0.0
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 4. BREAKOUT SIGNAL DETECTION
@@ -344,6 +523,30 @@ class TestBreakoutSignals:
         # accumulation and bull_trap should be populated
         assert signals.accumulation is not None
         assert signals.bull_trap is not None
+
+    def test_require_breakout_false_returns_signals_on_flat_data(self):
+        from strategy.breakout_signals import detect_all
+        # Flat trend would normally fail the breakout gate
+        df = make_ohlcv(100, trend=0.000, base_price=60.0, avg_vol=2_000_000)
+        signals = detect_all("AAPL", df, make_spy_df(), require_breakout=False, fast=True)
+        # Should return a result even though no fresh breakout
+        assert signals is not None
+
+    def test_require_breakout_true_rejects_flat_data(self):
+        from strategy.breakout_signals import detect_all
+        df = make_ohlcv(100, trend=-0.002, base_price=60.0, avg_vol=2_000_000)
+        signals = detect_all("AAPL", df, make_spy_df(), require_breakout=True)
+        assert signals is None
+
+    def test_breakout_level_populated_on_detection(self):
+        from strategy.breakout_signals import detect_all
+        df = make_breakout_df()
+        signals = detect_all("AAPL", df, make_spy_df(), fast=True)
+        assert signals is not None
+        assert signals.breakout_level > 0
+        # breakout_level should be close to the 20-day prior high
+        prior_20d_high = float(df["close"].iloc[-21:-1].max())
+        assert signals.breakout_level == pytest.approx(prior_20d_high, rel=0.05)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -772,6 +975,59 @@ class TestWebappAPI:
         r = api_client.get("/api/config")
         assert "SYMBOL_EXCLUSIONS" not in r.json()
 
+    def test_config_includes_pme_keys(self, api_client):
+        r = api_client.get("/api/config")
+        assert r.status_code == 200
+        data = r.json()
+        for key in ["PME_ADD_SCORE_THRESHOLD", "PME_HOLD_SCORE_MIN",
+                    "PME_TRIM_LIGHT_PCT", "PME_TRIM_HEAVY_PCT",
+                    "PME_R_TRIM_FLOOR", "PME_VOLUME_SELLOFF_MULT"]:
+            assert key in data, f"PME config key missing: {key}"
+
+    def test_closed_trades_returns_trades_key(self, api_client):
+        r = api_client.get("/api/closed-trades")
+        assert r.status_code == 200
+        data = r.json()
+        assert "trades" in data
+        assert isinstance(data["trades"], list)
+
+    def test_closed_trades_date_filter_empty(self, api_client):
+        r = api_client.get("/api/closed-trades?date=2000-01-01")
+        assert r.status_code == 200
+        assert r.json()["trades"] == []
+
+    def test_closed_trades_days_validation(self, api_client):
+        r = api_client.get("/api/closed-trades?days=0")
+        assert r.status_code == 422
+
+    def test_position_evaluations_returns_list(self, api_client):
+        r = api_client.get("/api/position-evaluations")
+        assert r.status_code == 200
+        assert isinstance(r.json(), list)
+
+    def test_position_evaluations_accepts_buy_order_id_filter(self, api_client):
+        r = api_client.get("/api/position-evaluations?buy_order_id=test-123")
+        assert r.status_code == 200
+        assert isinstance(r.json(), list)
+
+    def test_account_endpoint_includes_realized_pnl(self, api_client):
+        mock_account = MagicMock()
+        mock_account.equity = "100000.00"
+        mock_account.cash = "50000.00"
+        mock_account.buying_power = "50000.00"
+        mock_account.equity_previous_close = "99000.00"
+        with patch("alpaca.trading.client.TradingClient") as MockTC:
+            instance = MockTC.return_value
+            instance.get_account.return_value = mock_account
+            instance.get_all_positions.return_value = []
+            instance.get_clock.return_value = MagicMock(
+                is_open=True,
+                next_open=datetime(2025, 1, 2, 9, 30),
+            )
+            r = api_client.get("/api/account")
+        assert r.status_code == 200
+        assert "realized_pnl" in r.json()
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 10. END-TO-END PIPELINE
@@ -1054,3 +1310,311 @@ class TestRunnerAndScanAPI:
             assert r.json()["ok"] is False
         finally:
             app_module._scan_running = original
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 12. POSITION MANAGER (PME DECISION LOGIC)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestPositionManager:
+    """Tests for PositionManager._decide() — pure decision logic, no I/O."""
+
+    def _pm(self):
+        with patch("strategy.position_manager.MarketDataClient"), \
+             patch("strategy.position_manager.BreakoutScorer"):
+            from strategy.position_manager import PositionManager
+            return PositionManager()
+
+    def test_trap_always_exits(self):
+        pm = self._pm()
+        action, reason = pm._decide(score=85, r=3.0, rs=12.0,
+                                     trap=True, volume_selloff=False, already_added=False)
+        from strategy.position_manager import EXIT
+        assert action == EXIT
+        assert "trap" in reason.lower()
+
+    def test_volume_selloff_exits(self):
+        pm = self._pm()
+        action, reason = pm._decide(score=80, r=2.5, rs=10.0,
+                                     trap=False, volume_selloff=True, already_added=False)
+        from strategy.position_manager import EXIT
+        assert action == EXIT
+        assert "selloff" in reason.lower() or "distribution" in reason.lower()
+
+    def test_high_score_rs_ok_returns_add(self):
+        import config
+        from strategy.position_manager import ADD
+        pm = self._pm()
+        action, _ = pm._decide(
+            score=config.PME_ADD_SCORE_THRESHOLD + 5,
+            r=2.0,
+            rs=config.PME_RS_ADD_MIN_PCT + 2.0,
+            trap=False, volume_selloff=False, already_added=False,
+        )
+        assert action == ADD
+
+    def test_moderate_score_returns_hold(self):
+        import config
+        from strategy.position_manager import HOLD
+        pm = self._pm()
+        score = (config.PME_ADD_SCORE_THRESHOLD + config.PME_HOLD_SCORE_MIN) / 2
+        action, _ = pm._decide(
+            score=score, r=2.5,
+            rs=config.PME_RS_ADD_MIN_PCT + 2.0,
+            trap=False, volume_selloff=False, already_added=False,
+        )
+        assert action == HOLD
+
+    def test_trim_light_score_tier(self):
+        import config
+        from strategy.position_manager import TRIM_LIGHT
+        pm = self._pm()
+        score = (config.PME_HOLD_SCORE_MIN + config.PME_TRIM_LIGHT_SCORE_MIN) / 2
+        action, _ = pm._decide(
+            score=score, r=2.5, rs=5.0,
+            trap=False, volume_selloff=False, already_added=False,
+        )
+        assert action == TRIM_LIGHT
+
+    def test_trim_heavy_score_tier(self):
+        import config
+        from strategy.position_manager import TRIM_HEAVY
+        pm = self._pm()
+        score = (config.PME_TRIM_LIGHT_SCORE_MIN + config.PME_TRIM_HEAVY_SCORE_MIN) / 2
+        action, _ = pm._decide(
+            score=score, r=2.5, rs=5.0,
+            trap=False, volume_selloff=False, already_added=False,
+        )
+        assert action == TRIM_HEAVY
+
+    def test_very_low_score_exits(self):
+        import config
+        from strategy.position_manager import EXIT
+        pm = self._pm()
+        action, _ = pm._decide(
+            score=config.PME_TRIM_HEAVY_SCORE_MIN - 5,
+            r=1.0, rs=5.0,
+            trap=False, volume_selloff=False, already_added=False,
+        )
+        assert action == EXIT
+
+    def test_r_below_floor_downgrades_hold_to_trim_light(self):
+        import config
+        from strategy.position_manager import TRIM_LIGHT
+        pm = self._pm()
+        score = config.PME_HOLD_SCORE_MIN + 2  # would be HOLD
+        r = config.PME_R_TRIM_FLOOR - 0.5      # below floor
+        action, reason = pm._decide(
+            score=score, r=r, rs=5.0,
+            trap=False, volume_selloff=False, already_added=False,
+        )
+        assert action == TRIM_LIGHT
+        assert "floor" in reason.lower() or "below" in reason.lower()
+
+    def test_r_below_floor_downgrades_add_to_trim_light(self):
+        import config
+        from strategy.position_manager import TRIM_LIGHT
+        pm = self._pm()
+        score = config.PME_ADD_SCORE_THRESHOLD + 5  # would be ADD
+        r = config.PME_R_TRIM_FLOOR - 0.5           # below floor
+        rs = config.PME_RS_ADD_MIN_PCT + 5.0
+        action, _ = pm._decide(
+            score=score, r=r, rs=rs,
+            trap=False, volume_selloff=False, already_added=False,
+        )
+        assert action == TRIM_LIGHT
+
+    def test_rs_below_add_min_blocks_add(self):
+        import config
+        from strategy.position_manager import HOLD
+        pm = self._pm()
+        score = config.PME_ADD_SCORE_THRESHOLD + 5  # would be ADD
+        rs = config.PME_RS_ADD_MIN_PCT - 2.0        # below add minimum
+        r = config.PME_R_TRIM_FLOOR + 1.0           # above floor
+        action, reason = pm._decide(
+            score=score, r=r, rs=rs,
+            trap=False, volume_selloff=False, already_added=False,
+        )
+        assert action == HOLD
+        assert "rs" in reason.lower() or "add minimum" in reason.lower()
+
+    def test_rs_below_downgrade_below_converts_hold_to_trim(self):
+        import config
+        from strategy.position_manager import TRIM_LIGHT
+        pm = self._pm()
+        score = config.PME_HOLD_SCORE_MIN + 2       # would be HOLD
+        rs = config.PME_RS_DOWNGRADE_BELOW_PCT - 1  # very weak RS
+        r = config.PME_R_TRIM_FLOOR + 1.0
+        action, reason = pm._decide(
+            score=score, r=r, rs=rs,
+            trap=False, volume_selloff=False, already_added=False,
+        )
+        assert action == TRIM_LIGHT
+        assert "rs" in reason.lower() or "relative strength" in reason.lower()
+
+    def test_followthrough_guard_blocks_readd(self):
+        import config
+        from strategy.position_manager import HOLD
+        pm = self._pm()
+        score = config.PME_ADD_SCORE_THRESHOLD + 5
+        rs = config.PME_RS_ADD_MIN_PCT + 5.0
+        r = config.PME_R_TRIM_FLOOR + 1.0
+        action, reason = pm._decide(
+            score=score, r=r, rs=rs,
+            trap=False, volume_selloff=False, already_added=True,  # already added
+        )
+        assert action == HOLD
+        assert "added" in reason.lower() or "followthrough" in reason.lower() or "skip" in reason.lower()
+
+    def test_trap_overrides_high_score(self):
+        from strategy.position_manager import EXIT
+        import config
+        pm = self._pm()
+        # Even perfect score+RS should exit on trap
+        action, _ = pm._decide(
+            score=99, r=5.0,
+            rs=config.PME_RS_ADD_MIN_PCT + 20,
+            trap=True, volume_selloff=False, already_added=False,
+        )
+        assert action == EXIT
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 13. POSITION EXECUTOR
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestPositionExecutor:
+    """Tests for PositionExecutor — uses mock Alpaca client, no real orders."""
+
+    def _make_eval(self, action: str, symbol: str = "AAPL",
+                   shares: int = 100, fill_price: float = 100.0,
+                   current_price: float = 110.0, r: float = 2.0) -> "PositionEvaluation":
+        from strategy.position_manager import PositionEvaluation
+        return PositionEvaluation(
+            symbol=symbol,
+            buy_order_id=f"test-{symbol}-001",
+            action=action,
+            score=75.0,
+            r_multiple=r,
+            rs_vs_spy=8.0,
+            trap_triggered=False,
+            reason="test",
+            current_shares=shares,
+            fill_price=fill_price,
+            current_price=current_price,
+        )
+
+    def test_hold_returns_not_executed(self, mock_alpaca):
+        from execution.position_executor import PositionExecutor
+        from strategy.position_manager import HOLD
+        ex = PositionExecutor(mock_alpaca)
+        result = ex.execute(self._make_eval(HOLD))
+        assert result["executed"] is False
+        assert result["qty"] == 0
+        mock_alpaca.trading_client.submit_order.assert_not_called()
+
+    def test_market_closed_returns_not_executed(self, mock_alpaca):
+        from execution.position_executor import PositionExecutor
+        from strategy.position_manager import TRIM_LIGHT
+        mock_alpaca.is_market_open.return_value = False
+        ex = PositionExecutor(mock_alpaca)
+        result = ex.execute(self._make_eval(TRIM_LIGHT))
+        assert result["executed"] is False
+        assert result["error"] == "market_closed"
+        mock_alpaca.trading_client.submit_order.assert_not_called()
+
+    def test_trim_light_sells_correct_fraction(self, mock_alpaca):
+        import config
+        from execution.position_executor import PositionExecutor
+        from strategy.position_manager import TRIM_LIGHT
+        import math
+        live_qty = 100
+        pos_mock = MagicMock()
+        pos_mock.qty = str(live_qty)
+        mock_alpaca.get_position.return_value = pos_mock
+        mock_order = MagicMock()
+        mock_order.id = "order-trim-light"
+        mock_alpaca.trading_client.submit_order.return_value = mock_order
+        ex = PositionExecutor(mock_alpaca)
+        result = ex.execute(self._make_eval(TRIM_LIGHT, shares=live_qty))
+        expected_qty = max(1, math.floor(live_qty * config.PME_TRIM_LIGHT_PCT))
+        assert result["executed"] is True
+        assert result["qty"] == expected_qty
+
+    def test_trim_heavy_sells_more_than_trim_light(self, mock_alpaca):
+        import config
+        from execution.position_executor import PositionExecutor
+        from strategy.position_manager import TRIM_LIGHT, TRIM_HEAVY
+        import math
+        live_qty = 100
+        pos_mock = MagicMock()
+        pos_mock.qty = str(live_qty)
+        mock_alpaca.get_position.return_value = pos_mock
+        mock_order = MagicMock()
+        mock_order.id = "order-trim-heavy"
+        mock_alpaca.trading_client.submit_order.return_value = mock_order
+        ex = PositionExecutor(mock_alpaca)
+        light_result = ex.execute(self._make_eval(TRIM_LIGHT, shares=live_qty))
+        mock_alpaca.trading_client.submit_order.reset_mock()
+        heavy_result = ex.execute(self._make_eval(TRIM_HEAVY, shares=live_qty))
+        assert heavy_result["qty"] > light_result["qty"]
+
+    def test_exit_cancels_open_orders_and_sells_all(self, mock_alpaca):
+        from execution.position_executor import PositionExecutor
+        from strategy.position_manager import EXIT
+        live_qty = 50
+        pos_mock = MagicMock()
+        pos_mock.qty = str(live_qty)
+        mock_alpaca.get_position.return_value = pos_mock
+        # Two open orders to cancel
+        open_order1 = MagicMock()
+        open_order1.id = "stop-order-1"
+        open_order2 = MagicMock()
+        open_order2.id = "trail-order-2"
+        mock_alpaca.trading_client.get_orders.return_value = [open_order1, open_order2]
+        sell_order = MagicMock()
+        sell_order.id = "exit-market-order"
+        mock_alpaca.trading_client.submit_order.return_value = sell_order
+        ex = PositionExecutor(mock_alpaca)
+        result = ex.execute(self._make_eval(EXIT, shares=live_qty))
+        assert result["executed"] is True
+        assert result["qty"] == live_qty
+        assert result["cancelled_orders"] == 2
+        assert mock_alpaca.trading_client.cancel_order_by_id.call_count == 2
+
+    def test_exit_with_no_position_returns_not_executed(self, mock_alpaca):
+        from execution.position_executor import PositionExecutor
+        from strategy.position_manager import EXIT
+        mock_alpaca.get_position.return_value = None
+        ex = PositionExecutor(mock_alpaca)
+        result = ex.execute(self._make_eval(EXIT))
+        assert result["executed"] is False
+        assert result["error"] == "no_position"
+        mock_alpaca.trading_client.submit_order.assert_not_called()
+
+    def test_add_places_buy_order(self, mock_alpaca):
+        import config
+        from execution.position_executor import PositionExecutor
+        from strategy.position_manager import ADD
+        mock_alpaca.get_portfolio_value.return_value = 100_000.0
+        buy_order = MagicMock()
+        buy_order.id = "add-buy-order"
+        mock_alpaca.trading_client.submit_order.return_value = buy_order
+        ex = PositionExecutor(mock_alpaca)
+        # shares=200, fill=100 → orig_value=20000, max_add=20000*(1.5-1)=10000
+        # budget=100000*0.20=20000 → capped at 10000 → qty=floor(10000/110)=90
+        result = ex.execute(self._make_eval(ADD, shares=200, fill_price=100.0, current_price=110.0))
+        assert result["executed"] is True
+        assert result["qty"] >= 1
+        mock_alpaca.trading_client.submit_order.assert_called_once()
+
+    def test_add_skips_when_budget_too_small(self, mock_alpaca):
+        from execution.position_executor import PositionExecutor
+        from strategy.position_manager import ADD
+        mock_alpaca.get_portfolio_value.return_value = 100_000.0
+        # shares=1, fill=1 → orig_value=1, max_add=0.5 — cannot buy 1 share at $110
+        ex = PositionExecutor(mock_alpaca)
+        result = ex.execute(self._make_eval(ADD, shares=1, fill_price=1.0, current_price=110.0))
+        assert result["executed"] is False
+        assert result["error"] == "budget_too_small"
+        mock_alpaca.trading_client.submit_order.assert_not_called()
