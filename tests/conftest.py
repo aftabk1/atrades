@@ -164,9 +164,10 @@ def temp_universe(tmp_path, monkeypatch):
 
 @pytest.fixture
 def api_client(tmp_path, monkeypatch):
-    """TestClient with isolated DB and no real Alpaca calls."""
+    """TestClient with isolated DB, universe, and .env so tests never touch real files."""
     import data.store as store
     import data.universe as universe
+    import webapp.app as app_module
     from fastapi.testclient import TestClient
     from webapp.app import app
 
@@ -174,6 +175,10 @@ def api_client(tmp_path, monkeypatch):
     monkeypatch.setattr(store, "DB_PATH", tmp_path / "test_api.db")
     # Isolate universe override
     monkeypatch.setattr(universe, "_OVERRIDE_PATH", tmp_path / "universe_override.json")
+    # Isolate .env — prevents config POST tests from overwriting the real .env
+    fake_env = tmp_path / "test.env"
+    fake_env.write_text("", encoding="utf-8")
+    monkeypatch.setattr(app_module, "ENV_PATH", fake_env)
 
     with TestClient(app) as client:
         yield client
