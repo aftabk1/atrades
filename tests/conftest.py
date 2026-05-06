@@ -179,6 +179,8 @@ def api_client(tmp_path, monkeypatch):
     fake_env = tmp_path / "test.env"
     fake_env.write_text("", encoding="utf-8")
     monkeypatch.setattr(app_module, "ENV_PATH", fake_env)
+    # Disable auth so tests don't need valid credentials
+    monkeypatch.setattr(app_module, "_AUTH_ENABLED", False)
 
     with TestClient(app) as client:
         yield client

@@ -1,26 +1,26 @@
 """
-ATrades End-to-End Regression Test Suite
-=========================================
-Run all:        pytest tests/
-Run one section: pytest tests/ -k "config"
-With coverage:  pytest tests/ --cov=. --cov-report=term-missing
-Verbose output: pytest tests/ -v
+ATrades End-to-End Regression Test Suite  (178 tests)
+======================================================
+Run all:         pytest tests/
+Run one section: pytest tests/ -k "Security"
+With coverage:   pytest tests/ --cov=. --cov-report=term-missing
+Verbose output:  pytest tests/ -v
 
 Sections:
-  1. Config & Environment
-  2. Stock Universe
-  3. SQLite Data Store
-  4. Breakout Signal Detection
-  5. Breakout Scorer
-  6. Market Regime Detection
-  7. Trade Setup Calculation
-  8. Risk Manager
-  9. Webapp API Endpoints
-  10. End-to-End Pipeline
-  11. Runner & Scan API
-  12. Position Manager (PME Decision Logic)
-  13. Position Executor
-  14. PME Webapp API Endpoints
+  1.  Config & Environment           (9)
+  2.  Stock Universe                 (9)
+  3.  SQLite Data Store              (9)
+  4.  Breakout Signal Detection      (13)
+  5.  Breakout Scorer                (10)
+  6.  Market Regime Detection        (11)
+  7.  Trade Setup Calculation        (11)
+  8.  Risk Manager                   (8)
+  9.  Webapp API Endpoints           (19)
+  10. End-to-End Pipeline            (10)
+  11. Runner & Scan API              (11)
+  12. Position Manager (PME)         (12)
+  13. Position Executor              (13)
+  14. Security                       (13)
 """
 from __future__ import annotations
 
@@ -387,7 +387,8 @@ class TestStore:
         })
         update_trade_fill("ct-001", 200.0, datetime.now(timezone.utc).isoformat())
         close_trade("ct-001", exit_price=215.0, exit_reason="trailing_stop")
-        today = date.today().isoformat()
+        # Use UTC date to match what close_trade stores (timestamps are UTC)
+        today = datetime.now(timezone.utc).date().isoformat()
         results = query_closed_trades(day=today)
         assert len(results) == 1
         assert results[0]["symbol"] == "TSLA"
@@ -1028,6 +1029,42 @@ class TestWebappAPI:
         assert r.status_code == 200
         assert "realized_pnl" in r.json()
 
+    def test_recent_sells_returns_correct_shape(self, api_client):
+        with patch("alpaca.trading.client.TradingClient") as MockTC:
+            MockTC.return_value.get_orders.return_value = []
+            r = api_client.get("/api/recent-sells")
+        assert r.status_code == 200
+        data = r.json()
+        assert "sells" in data
+        assert isinstance(data["sells"], list)
+
+    def test_scan_next_returns_required_fields(self, api_client):
+        r = api_client.get("/api/scan/next")
+        assert r.status_code == 200
+        data = r.json()
+        for field in ("last_scan_ts", "next_scan_ts", "interval_minutes",
+                      "runner_running", "scan_running", "market_open", "next_open"):
+            assert field in data, f"Missing field in /api/scan/next: {field}"
+
+    def test_dashboard_rejects_invalid_date(self, api_client):
+        r = api_client.get("/api/dashboard?date=not-a-date")
+        assert r.status_code == 400
+
+    def test_dashboard_rejects_sql_injection_date(self, api_client):
+        r = api_client.get("/api/dashboard?date=2024-01-01;DROP TABLE scan_runs")
+        assert r.status_code == 400
+
+    def test_closed_trades_rejects_invalid_date(self, api_client):
+        r = api_client.get("/api/closed-trades?date=2024/01/01")
+        assert r.status_code == 400
+
+    def test_security_headers_on_api_response(self, api_client):
+        r = api_client.get("/api/dashboard")
+        assert r.headers.get("x-content-type-options") == "nosniff"
+        assert r.headers.get("x-frame-options") == "DENY"
+        assert "content-security-policy" in r.headers
+        assert r.headers.get("cache-control") == "no-store"
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 10. END-TO-END PIPELINE
@@ -1626,3 +1663,113 @@ class TestPositionExecutor:
         assert result["executed"] is False
         assert result["error"] == "budget_too_small"
         mock_alpaca.trading_client.submit_order.assert_not_called()
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 14. SECURITY
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestSecurity:
+    """Session auth, rate limiting, input validation, security headers."""
+
+    @pytest.fixture
+    def auth_client(self, tmp_path, monkeypatch):
+        """TestClient with auth ENABLED (user=testuser, pass=testpass)."""
+        import data.store as store
+        import data.universe as universe
+        import webapp.app as app_module
+        from collections import defaultdict
+        from fastapi.testclient import TestClient
+        from webapp.app import app
+
+        monkeypatch.setattr(store,      "DB_PATH",        tmp_path / "sec.db")
+        monkeypatch.setattr(universe,   "_OVERRIDE_PATH", tmp_path / "uni.json")
+        fake_env = tmp_path / "sec.env"
+        fake_env.write_text("", encoding="utf-8")
+        monkeypatch.setattr(app_module, "ENV_PATH",       fake_env)
+        monkeypatch.setattr(app_module, "_AUTH_USER",     "testuser")
+        monkeypatch.setattr(app_module, "_AUTH_PASS",     "testpass")
+        monkeypatch.setattr(app_module, "_AUTH_ENABLED",  True)
+        monkeypatch.setattr(app_module, "_SESSIONS",      {})
+        monkeypatch.setattr(app_module, "_RATE_HITS",     defaultdict(list))
+        store.init_db()
+
+        with TestClient(app, raise_server_exceptions=True) as client:
+            yield client
+
+    # ── Open endpoints ────────────────────────────────────────────────────────
+
+    def test_login_page_accessible_without_auth(self, auth_client):
+        r = auth_client.get("/login")
+        assert r.status_code == 200
+        assert "text/html" in r.headers["content-type"]
+
+    def test_logout_accessible_without_session(self, auth_client):
+        r = auth_client.post("/logout")
+        assert r.status_code == 200
+
+    def test_static_accessible_without_auth(self, auth_client):
+        r = auth_client.get("/static/login.html")
+        assert r.status_code == 200
+
+    # ── Protected endpoints ───────────────────────────────────────────────────
+
+    def test_api_returns_401_without_session(self, auth_client):
+        r = auth_client.get("/api/dashboard", follow_redirects=False)
+        assert r.status_code == 401
+        assert r.json()["detail"] == "not_authenticated"
+
+    def test_root_redirects_without_session(self, auth_client):
+        r = auth_client.get("/", follow_redirects=False)
+        assert r.status_code == 302
+        assert "/login" in r.headers.get("location", "")
+
+    # ── Login / logout ────────────────────────────────────────────────────────
+
+    def test_correct_credentials_return_session_cookie(self, auth_client):
+        r = auth_client.post("/login", json={"username": "testuser", "password": "testpass"})
+        assert r.status_code == 200
+        assert r.json()["ok"] is True
+        assert "a1t_sess" in r.cookies
+
+    def test_wrong_password_returns_401(self, auth_client):
+        r = auth_client.post("/login", json={"username": "testuser", "password": "wrong"})
+        assert r.status_code == 401
+        assert r.json()["ok"] is False
+
+    def test_authenticated_session_accesses_api(self, auth_client):
+        auth_client.post("/login", json={"username": "testuser", "password": "testpass"})
+        r = auth_client.get("/api/dashboard")
+        assert r.status_code == 200
+
+    def test_logout_clears_session(self, auth_client):
+        auth_client.post("/login", json={"username": "testuser", "password": "testpass"})
+        assert auth_client.get("/api/dashboard").status_code == 200
+        auth_client.post("/logout")
+        r = auth_client.get("/api/dashboard", follow_redirects=False)
+        assert r.status_code == 401
+
+    # ── Rate limiting ─────────────────────────────────────────────────────────
+
+    def test_rate_limit_blocks_after_max_attempts(self, auth_client):
+        import time
+        import webapp.app as app_module
+        now = time.time()
+        # Pre-fill the rate bucket for "testclient" (TestClient's default host)
+        app_module._RATE_HITS["testclient"] = [now] * app_module._RATE_MAX
+        r = auth_client.post("/login", json={"username": "x", "password": "y"})
+        assert r.status_code == 429
+
+    # ── Input validation ──────────────────────────────────────────────────────
+
+    def test_invalid_date_format_returns_400(self, api_client):
+        r = api_client.get("/api/dashboard?date=01-15-2024")
+        assert r.status_code == 400
+
+    def test_sql_injection_in_date_returns_400(self, api_client):
+        r = api_client.get("/api/dashboard?date=2024-01-01;DROP TABLE scan_runs--")
+        assert r.status_code == 400
+
+    def test_valid_date_passes_validation(self, api_client):
+        r = api_client.get("/api/dashboard?date=2024-06-15")
+        assert r.status_code == 200
