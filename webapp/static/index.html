@@ -43,8 +43,10 @@
   .tab-panel.active { display: block; }
 
   /* ── Controls ── */
-  input[type=date] { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 6px 10px; border-radius: 6px; font-size: 13px; cursor: pointer; }
+  input[type=date] { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 6px 10px; border-radius: 6px; font-size: 13px; cursor: pointer; color-scheme: dark; }
   input[type=date]:focus { outline: none; border-color: var(--accent); }
+  input[type=date]::-webkit-calendar-picker-indicator { filter: invert(0.7) brightness(1.4); cursor: pointer; opacity: 0.8; }
+  input[type=date]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
   input[type=text], input[type=number], input[type=password], select {
     background: var(--surface2); border: 1px solid var(--border); color: var(--text);
     padding: 6px 10px; border-radius: 6px; font-size: 12px; width: 100%;
@@ -273,19 +275,10 @@
   </div>
   <div id="regime-badge" class="regime"><span class="regime-dot" id="regime-dot"></span><span id="regime-text">Loading...</span></div>
   <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
-    <span class="refresh-info" id="refresh-countdown"></span>
     <span class="scan-next-info" id="scan-countdown" style="display:none"></span>
     <input type="date" id="date-picker">
-    <button onclick="loadToday()">Today</button>
     <button onclick="refresh()" id="refresh-btn">&#8635; Refresh</button>
-    <button onclick="logout()" title="Sign out" style="padding:6px 10px;color:var(--muted);font-size:12px;">&#x23FB;</button>
-    <div style="display:flex;align-items:center;gap:0;border:1px solid var(--border);border-radius:6px;overflow:hidden;">
-      <button onclick="onScanNowClick()" id="runner-btn" style="border:none;border-radius:0;"><span class="runner-dot" id="runner-dot"></span><span id="runner-label">Scan Now</span></button>
-      <div style="width:1px;background:var(--border);height:100%;align-self:stretch;"></div>
-      <div id="execute-toggle" onclick="toggleExecuteMode()" title="Toggle live order execution" style="padding:6px 10px;cursor:pointer;font-size:11px;color:var(--muted);background:var(--surface2);user-select:none;white-space:nowrap;">
-        DRY RUN
-      </div>
-    </div>
+    <button onclick="logout()" title="Sign out" style="padding:6px 12px;color:var(--muted);font-size:12px;">Sign Out</button>
   </div>
 </div>
 
@@ -363,6 +356,11 @@
       <div class="card-header">
         <span class="card-title">Scanner Candidates</span>
         <span class="muted" id="candidates-ts" style="font-size:11px;"></span>
+        <div style="display:flex;align-items:center;gap:0;border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-left:auto;">
+          <button onclick="onScanNowClick()" id="runner-btn" style="border:none;border-radius:0;"><span class="runner-dot" id="runner-dot"></span><span id="runner-label">Scan Now</span></button>
+          <div style="width:1px;background:var(--border);height:100%;align-self:stretch;"></div>
+          <div id="execute-toggle" onclick="toggleExecuteMode()" title="Toggle live order execution" style="padding:6px 10px;cursor:pointer;font-size:11px;color:var(--muted);background:var(--surface2);user-select:none;white-space:nowrap;">DRY RUN</div>
+        </div>
       </div>
       <div class="card-body table-scroll">
         <table id="candidates-table">
@@ -921,23 +919,6 @@
       </div>
     </div>
 
-    <!-- Alpaca Credentials -->
-    <div class="cfg-card" style="margin-bottom:80px;">
-      <div class="cfg-card-header"><span class="cfg-card-icon">&#128273;</span><span class="cfg-card-title">Alpaca Credentials</span></div>
-      <div class="cfg-card-body">
-        <div class="form-row">
-          <div class="form-label">API Key</div>
-          <div class="form-control" style="flex: 0 0 340px;"><input type="text" id="cfg-ALPACA_API_KEY" autocomplete="off"></div>
-        </div>
-        <div class="form-row">
-          <div class="form-label">Secret Key</div>
-          <div class="form-control" style="flex: 0 0 340px; display:flex; gap:6px;">
-            <input type="password" id="cfg-ALPACA_SECRET_KEY" autocomplete="off" style="flex:1;">
-            <button class="btn-sm" onclick="toggleSecretVisibility()" id="secret-eye">Show</button>
-          </div>
-        </div>
-      </div>
-    </div>
 
     <!-- Save bar -->
     <div class="save-bar">
@@ -961,7 +942,8 @@ let countdown     = 15 * 60; // seconds
 
 // ── Utilities ──────────────────────────────────────────────────────────────
 function todayStr() {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 function fmt(n, dec=2) {
   if (n == null) return '—';
@@ -1650,7 +1632,7 @@ function tickCountdown() {
   } else {
     const m = Math.floor(countdown / 60);
     const s = String(countdown % 60).padStart(2, '0');
-    document.getElementById('refresh-countdown').textContent = `Auto-refresh in ${m}:${s}`;
+    // refresh-countdown removed from header
   }
 }
 setInterval(tickCountdown, 1000);
@@ -1660,6 +1642,7 @@ resetCountdown();
 let _nextScanTs     = null;
 let _runnerActive   = false;
 let _scanInProgress = false;
+let _marketOpen     = null;   // null = unknown, true/false from API
 
 async function fetchNextScan() {
   try {
@@ -1667,20 +1650,46 @@ async function fetchNextScan() {
     _nextScanTs     = d.next_scan_ts ? new Date(d.next_scan_ts) : null;
     _runnerActive   = !!d.runner_running;
     _scanInProgress = !!d.scan_running;
+    if (d.market_open !== undefined) {
+      _marketOpen = d.market_open;  // true, false, or null (unknown)
+    }
   } catch(e) {}
 }
 
 function tickScanCountdown() {
   const el = document.getElementById('scan-countdown');
-  // Only show when runner is active or a scan is in progress
-  if (!_runnerActive && !_scanInProgress) { el.style.display = 'none'; return; }
+
+  // Always show something useful
   if (_scanInProgress) {
     el.textContent = 'Scanning…';
     el.className = 'scan-next-info imminent';
     el.style.display = '';
     return;
   }
-  if (!_nextScanTs) { el.style.display = 'none'; return; }
+
+  if (_marketOpen === false || (_marketOpen === null && !_runnerActive)) {
+    el.textContent = 'Market closed';
+    el.className = 'scan-next-info';
+    el.style.color = 'var(--muted)';
+    el.style.display = '';
+    return;
+  }
+
+  // Reset any inline color override before setting runner states
+  el.style.color = '';
+
+  if (!_runnerActive) {
+    el.style.display = 'none';
+    return;
+  }
+
+  if (!_nextScanTs) {
+    el.textContent = 'Runner active';
+    el.className = 'scan-next-info';
+    el.style.display = '';
+    return;
+  }
+
   const secsLeft = Math.round((_nextScanTs - Date.now()) / 1000);
   if (secsLeft <= 0) {
     el.textContent = 'Scan due…';
@@ -1915,7 +1924,7 @@ function populateConfig(data) {
     'SCORE_ACCUM_MAX_BONUS','SCORE_TRAP_MAX_PENALTY',
     'MAX_POSITION_SIZE','MAX_PORTFOLIO_RISK','MAX_CONCURRENT_TRADES','MAX_DAILY_LOSS_PCT',
     'BACKTEST_INITIAL_CAPITAL','BACKTEST_MAX_HOLD_DAYS','BACKTEST_SLIPPAGE_PCT',
-    'ALPACA_API_KEY','ALPACA_SECRET_KEY','ALPACA_BASE_URL',
+    'ALPACA_BASE_URL',
     'WHATSAPP_PHONE','WHATSAPP_APIKEY',
     'PME_ADD_SCORE_THRESHOLD','PME_HOLD_SCORE_MIN','PME_TRIM_LIGHT_SCORE_MIN','PME_TRIM_HEAVY_SCORE_MIN',
     'PME_ADD_SIZE_PCT','PME_ADD_MAX_MULTIPLIER','PME_TRIM_LIGHT_PCT','PME_TRIM_HEAVY_PCT',
@@ -2006,7 +2015,7 @@ function collectConfig() {
     'SCORE_ACCUM_MAX_BONUS','SCORE_TRAP_MAX_PENALTY',
     'MAX_POSITION_SIZE','MAX_PORTFOLIO_RISK','MAX_CONCURRENT_TRADES','MAX_DAILY_LOSS_PCT',
     'BACKTEST_INITIAL_CAPITAL','BACKTEST_MAX_HOLD_DAYS','BACKTEST_SLIPPAGE_PCT',
-    'ALPACA_API_KEY','ALPACA_SECRET_KEY','ALPACA_BASE_URL',
+    'ALPACA_BASE_URL',
     'WHATSAPP_PHONE','WHATSAPP_APIKEY',
     'PME_ADD_SCORE_THRESHOLD','PME_HOLD_SCORE_MIN','PME_TRIM_LIGHT_SCORE_MIN','PME_TRIM_HEAVY_SCORE_MIN',
     'PME_ADD_SIZE_PCT','PME_ADD_MAX_MULTIPLIER','PME_TRIM_LIGHT_PCT','PME_TRIM_HEAVY_PCT',
@@ -2178,12 +2187,8 @@ async function testWhatsapp() {
   }
 }
 
-// ── Secret key visibility ──────────────────────────────────────────────────
+// ── Secret key visibility (unused — Alpaca creds removed from UI) ─────────
 function toggleSecretVisibility() {
-  const inp = document.getElementById('cfg-ALPACA_SECRET_KEY');
-  const btn = document.getElementById('secret-eye');
-  if (inp.type === 'password') { inp.type = 'text';     btn.textContent = 'Hide'; }
-  else                         { inp.type = 'password'; btn.textContent = 'Show'; }
 }
 
 // ── Toast notification ─────────────────────────────────────────────────────

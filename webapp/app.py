@@ -59,7 +59,7 @@ _AUTH_PASS    = os.getenv("DASHBOARD_PASS", "")
 _AUTH_ENABLED = bool(_AUTH_USER and _AUTH_PASS)
 
 SESSION_COOKIE  = "a1t_sess"
-SESSION_TIMEOUT = 10 * 60          # 10 minutes inactivity
+SESSION_TIMEOUT = 8 * 60 * 60      # 8 hours server-side; JS idle timer handles 10-min frontend logout
 
 _SESSIONS: dict[str, float] = {}   # token → last-active epoch seconds
 
@@ -844,9 +844,44 @@ def notifications_test(body: dict = Body(...)):
         return JSONResponse(status_code=200, content={"ok": False, "error": str(exc)})
 
 
+# ── Cached market-open status (avoids calling Alpaca on every poll) ───────────
+_mkt_cache: dict = {"open": None, "next_open": None, "ts": 0.0}
+_MKT_CACHE_TTL = 120   # seconds
+
+
+def _get_market_status() -> dict:
+    now = _time_mod.time()
+    if now - _mkt_cache["ts"] < _MKT_CACHE_TTL:
+        return {"market_open": _mkt_cache["open"], "next_open": _mkt_cache["next_open"]}
+    try:
+        env = _parse_env(_read_env_lines())
+        from alpaca.trading.client import TradingClient
+        tc = TradingClient(
+            api_key=env.get("ALPACA_API_KEY", ""),
+            secret_key=env.get("ALPACA_SECRET_KEY", ""),
+            paper=(env.get("IS_PAPER", "true") or "true").lower() != "false",
+        )
+        clock = tc.get_clock()
+        _mkt_cache["open"]      = clock.is_open
+        _mkt_cache["next_open"] = clock.next_open.isoformat() if not clock.is_open else None
+        _mkt_cache["ts"]        = now
+    except Exception:
+        # Fallback: time-based estimate (Mon–Fri 9:30–16:00 ET)
+        import pytz as _pytz
+        from datetime import datetime as _dt
+        _et = _pytz.timezone("America/New_York")
+        _now_et = _dt.now(_et)
+        _mins = _now_et.hour * 60 + _now_et.minute
+        _is_open = _now_et.weekday() < 5 and 570 <= _mins < 960  # 9:30–16:00
+        _mkt_cache["open"]   = _is_open
+        _mkt_cache["next_open"] = None
+        _mkt_cache["ts"]     = now
+    return {"market_open": _mkt_cache["open"], "next_open": _mkt_cache["next_open"]}
+
+
 @app.get("/api/scan/next")
 def scan_next():
-    """Return last scan timestamp and when the next one is due."""
+    """Return last scan timestamp, when the next one is due, and market status."""
     try:
         env = _parse_env(_read_env_lines())
         interval = int(env.get("SCANNER_INTERVAL_MINUTES", "5") or "5")
@@ -877,12 +912,15 @@ def scan_next():
         except Exception:
             pass
 
+    mkt = _get_market_status()
     return {
         "last_scan_ts":    last_ts,
         "next_scan_ts":    next_ts,
         "interval_minutes": interval,
         "runner_running":  _runner_alive(),
         "scan_running":    _scan_running,
+        "market_open":     mkt["market_open"],
+        "next_open":       mkt["next_open"],
     }
 
 
