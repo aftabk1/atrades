@@ -1678,15 +1678,8 @@ function tickScanCountdown() {
   // Reset any inline color override before setting runner states
   el.style.color = '';
 
-  if (!_runnerActive) {
-    el.style.display = 'none';
-    return;
-  }
-
   if (!_nextScanTs) {
-    el.textContent = 'Runner active';
-    el.className = 'scan-next-info';
-    el.style.display = '';
+    el.style.display = 'none';
     return;
   }
 
