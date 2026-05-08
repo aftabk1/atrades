@@ -328,10 +328,16 @@ def reconcile_orphans(client: AlpacaClient) -> None:
     if not positions:
         return
 
-    # Fetch all open sell orders keyed by symbol
+    # Fetch ALL sell orders and filter to non-terminal statuses ourselves.
+    # IMPORTANT: Alpaca puts stop/trailing-stop orders into 'held' status (not
+    # 'open'), so QueryOrderStatus.OPEN misses them entirely — causing
+    # reconcile_orphans to see 0 covered and place a new emergency stop every
+    # scan cycle.  Using QueryOrderStatus.ALL and discarding terminal statuses
+    # is the correct approach.
+    _TERMINAL = {"filled", "canceled", "expired", "replaced", "done_for_day"}
     try:
-        open_orders = tc.get_orders(filter=GetOrdersRequest(
-            status=QueryOrderStatus.OPEN,
+        all_sell_orders = tc.get_orders(filter=GetOrdersRequest(
+            status=QueryOrderStatus.ALL,
             side=OrderSide.SELL,
             limit=500,
         ))
@@ -340,8 +346,9 @@ def reconcile_orphans(client: AlpacaClient) -> None:
         return
 
     sell_qty: dict[str, float] = {}
-    for o in open_orders:
-        sell_qty[o.symbol] = sell_qty.get(o.symbol, 0) + float(o.qty or 0)
+    for o in all_sell_orders:
+        if str(o.status.value if hasattr(o.status, "value") else o.status) not in _TERMINAL:
+            sell_qty[o.symbol] = sell_qty.get(o.symbol, 0) + float(o.qty or 0)
 
     db_trades = {t["symbol"]: t for t in get_open_trades()}
 
