@@ -21,6 +21,8 @@ import numpy as np
 import pandas as pd
 from loguru import logger
 
+import config
+
 
 class Regime(str, Enum):
     BULL_TREND      = "BULL_TREND"
@@ -71,6 +73,11 @@ def detect_regime(spy_df: pd.DataFrame) -> MarketRegime:
     Classify the current market regime from SPY daily OHLCV data.
     Requires at least 60 bars; falls back to SIDEWAYS with a warning.
     """
+    override = getattr(config, "REGIME_OVERRIDE", "")
+    if override and override in {r.value for r in Regime}:
+        logger.info(f"Market regime: OVERRIDE → {override}")
+        return _make_regime(Regime(override), 0.0, True, 0.0, 0.0, 0.0)
+
     if spy_df is None or len(spy_df) < 60:
         logger.warning("Insufficient SPY data — defaulting to SIDEWAYS regime")
         return _make_regime(Regime.SIDEWAYS, 0.0, True, 0.0, 0.0, 0.0)

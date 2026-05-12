@@ -760,18 +760,6 @@
               </select>
             </div>
           </div>
-          <div class="form-row">
-            <div class="form-label">Timeframe<div class="form-hint">Bar resolution for intraday data</div></div>
-            <div class="form-control">
-              <select id="cfg-TIMEFRAME">
-                <option value="1Min">1 Min</option>
-                <option value="5Min">5 Min</option>
-                <option value="15Min">15 Min</option>
-                <option value="1Hour">1 Hour</option>
-                <option value="1Day">1 Day</option>
-              </select>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -1939,7 +1927,7 @@ function populateConfig(data) {
     (data.IS_PAPER === 'false' || data.IS_PAPER === false) ? 'block' : 'none';
 
   // Selects
-  const selectFields = ['TIMEFRAME', 'SCANNER_INTERVAL_MINUTES', 'REGIME_OVERRIDE'];
+  const selectFields = ['SCANNER_INTERVAL_MINUTES', 'REGIME_OVERRIDE'];
   selectFields.forEach(k => {
     const el = document.getElementById('cfg-' + k);
     if (el && data[k] !== undefined) el.value = data[k];
@@ -2025,7 +2013,7 @@ function collectConfig() {
   cfg.REGIME_AWARE_SCANNING = document.getElementById('cfg-REGIME_AWARE_SCANNING').checked ? 'true' : 'false';
 
   // Selects
-  ['TIMEFRAME','SCANNER_INTERVAL_MINUTES','REGIME_OVERRIDE'].forEach(k => {
+  ['SCANNER_INTERVAL_MINUTES','REGIME_OVERRIDE'].forEach(k => {
     const el = document.getElementById('cfg-' + k);
     if (el) cfg[k] = el.value;
   });

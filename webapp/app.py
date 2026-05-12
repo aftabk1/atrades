@@ -149,7 +149,6 @@ CONFIG_DEFAULTS = {
     "ALPACA_BASE_URL":                 "https://paper-api.alpaca.markets",
     "IS_PAPER":                        "true",
     "SYMBOLS":                         "AAPL,MSFT,GOOGL",
-    "TIMEFRAME":                       "1Min",
     "MAX_POSITION_SIZE":               "0.10",
     "MAX_PORTFOLIO_RISK":              "0.01",
     "MAX_CONCURRENT_TRADES":           "4",

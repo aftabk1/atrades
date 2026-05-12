@@ -89,6 +89,9 @@ def calculate_setup(
     dollar_risk   = shares * risk_per_share
     dollar_reward = partial_shares * (target - entry)   # reward from partial exit only
     rr_achieved   = (target - entry) / risk_per_share
+    if rr_achieved < config.BREAKOUT_RR_RATIO:
+        return None
+
     portfolio_pct = (shares * entry) / portfolio_value * 100
 
     return TradeSetup(

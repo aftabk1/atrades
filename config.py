@@ -14,7 +14,6 @@ IS_PAPER = os.getenv("IS_PAPER", "true").lower() == "true"
 
 # ── Main trading loop ─────────────────────────────────────────────────────────
 SYMBOLS = [s.strip() for s in os.getenv("SYMBOLS", "AAPL,MSFT,GOOGL").split(",")]
-TIMEFRAME = os.getenv("TIMEFRAME", "1Min")
 
 # ── Portfolio risk limits ─────────────────────────────────────────────────────
 MAX_POSITION_SIZE = float(os.getenv("MAX_POSITION_SIZE", "0.10"))   # fraction of portfolio per trade
@@ -76,6 +75,7 @@ SCANNER_INTERVAL_MINUTES = int(os.getenv("SCANNER_INTERVAL_MINUTES", "60"))
 
 # ── Market regime ─────────────────────────────────────────────────────────────
 REGIME_AWARE_SCANNING = os.getenv("REGIME_AWARE_SCANNING", "true").lower() == "true"
+REGIME_OVERRIDE       = os.getenv("REGIME_OVERRIDE", "")   # blank = auto-detect; or BULL_TREND/SIDEWAYS/BEAR_TREND/HIGH_VOLATILITY
 
 # ── Backtest ──────────────────────────────────────────────────────────────────
 BACKTEST_MAX_HOLD_DAYS = int(os.getenv("BACKTEST_MAX_HOLD_DAYS", "20"))

@@ -25,6 +25,8 @@ from typing import NamedTuple
 import numpy as np
 import pandas as pd
 
+import config
+
 
 class _Sig(NamedTuple):
     triggered: bool
@@ -73,7 +75,7 @@ def detect_bull_trap(df: pd.DataFrame) -> BullTrapResult:
     result.trap_score = float(
         sum(_WEIGHTS[k] for k in _WEIGHTS if getattr(result, k).triggered)
     )
-    result.is_trap = result.trap_score >= TRAP_THRESHOLD
+    result.is_trap = result.trap_score >= config.BULL_TRAP_SCORE_THRESHOLD
     result.warnings = [
         getattr(result, k).description
         for k in _WEIGHTS
