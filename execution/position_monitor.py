@@ -120,7 +120,6 @@ def _handle_closed_position(tc, trade: dict) -> None:
     for order_id, reason in [
         (trade["stop_order_id"],    "stop_loss"),
         (trade["trail_order_id"],   "trailing_stop"),
-        (trade["partial_order_id"], "target_hit"),
     ]:
         if not order_id:
             continue
@@ -132,6 +131,33 @@ def _handle_closed_position(tc, trade: dict) -> None:
                 logger.info(f"{symbol}: closed via {reason} @ ${exit_price:.2f}")
                 notify(f"TRADE CLOSED: {symbol} via {reason.replace('_', ' ').title()} "
                        f"@ ${exit_price:.2f}")
+                return
+        except Exception:
+            pass
+
+    # Partial limit filled but trail_shares remain — Alpaca position briefly
+    # shows zero during settlement. Treat as partial exit, not a full close.
+    partial_id = trade["partial_order_id"]
+    if partial_id and (trade["trail_shares"] or 0) > 0:
+        try:
+            order = tc.get_order_by_id(partial_id)
+            if order.status == OrderStatus.FILLED:
+                logger.info(f"{symbol}: partial fill detected with position gone (settlement lag) "
+                            f"— upgrading to trailing stop")
+                _upgrade_stop_to_trail(tc, trade)
+                return
+        except Exception:
+            pass
+
+    # Full close at partial target (trail_shares == 0): treat as target_hit
+    if partial_id:
+        try:
+            order = tc.get_order_by_id(partial_id)
+            if order.status == OrderStatus.FILLED:
+                exit_price = float(order.filled_avg_price or 0)
+                close_trade(buy_id, exit_price, "target_hit")
+                logger.info(f"{symbol}: closed via target_hit @ ${exit_price:.2f}")
+                notify(f"TRADE CLOSED: {symbol} via Target Hit @ ${exit_price:.2f}")
                 return
         except Exception:
             pass
