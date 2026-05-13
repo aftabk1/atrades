@@ -1655,6 +1655,12 @@ function tickScanCountdown() {
     return;
   }
 
+  // No countdown unless the runner is actively managing scans
+  if (!_runnerActive) {
+    el.style.display = 'none';
+    return;
+  }
+
   if (_marketOpen === false || (_marketOpen === null && !_runnerActive)) {
     el.textContent = 'Market closed';
     el.className = 'scan-next-info';
