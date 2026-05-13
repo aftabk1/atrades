@@ -1673,8 +1673,9 @@ function tickScanCountdown() {
     return;
   }
 
-  // Runner active + market open: show countdown
+  // Market open: show countdown if runner active, otherwise show "Market open"
   if (!_nextScanTs) {
+    // No countdown yet (runner inactive or not yet reported)
     el.textContent = 'Market open';
     el.className = 'scan-next-info imminent';
     el.style.display = '';
