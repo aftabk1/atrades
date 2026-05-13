@@ -2199,13 +2199,19 @@ function showToast(msg, type='success') {
 
 // ── Boot ───────────────────────────────────────────────────────────────────
 async function bootLoadLatest() {
+  const today = todayStr();
+  document.getElementById('date-picker').value = today;
+  currentDate = today;
   try {
     const res  = await fetch('/api/history?days=30');
     const rows = await res.json();
-    const latest = rows.find(r => (r.symbols_scanned || 0) > 0);
-    loadDashboard(latest ? latest.date : todayStr());
+    // Load today's data if available, otherwise most recent date with data
+    const todayRow  = rows.find(r => r.date === today && (r.symbols_scanned || 0) > 0);
+    const latestRow = rows.find(r => (r.symbols_scanned || 0) > 0);
+    const loadDate  = todayRow ? today : (latestRow ? latestRow.date : today);
+    loadDashboard(loadDate);
   } catch {
-    loadDashboard(todayStr());
+    loadDashboard(today);
   }
 }
 bootLoadLatest();
