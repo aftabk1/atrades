@@ -1655,13 +1655,10 @@ function tickScanCountdown() {
     return;
   }
 
-  // No countdown unless the runner is actively managing scans
-  if (!_runnerActive) {
-    el.style.display = 'none';
-    return;
-  }
+  el.style.color = '';
 
-  if (_marketOpen === false || (_marketOpen === null && !_runnerActive)) {
+  // Always show market status
+  if (_marketOpen === false) {
     el.textContent = 'Market closed';
     el.className = 'scan-next-info';
     el.style.color = 'var(--muted)';
@@ -1669,11 +1666,18 @@ function tickScanCountdown() {
     return;
   }
 
-  // Reset any inline color override before setting runner states
-  el.style.color = '';
+  if (_marketOpen === true && !_runnerActive) {
+    el.textContent = 'Market open';
+    el.className = 'scan-next-info imminent';
+    el.style.display = '';
+    return;
+  }
 
+  // Runner active + market open: show countdown
   if (!_nextScanTs) {
-    el.style.display = 'none';
+    el.textContent = 'Market open';
+    el.className = 'scan-next-info imminent';
+    el.style.display = '';
     return;
   }
 
@@ -1690,6 +1694,11 @@ function tickScanCountdown() {
   el.textContent = `Next scan ${m}:${s}`;
   el.className = secsLeft < 60 ? 'scan-next-info imminent' : 'scan-next-info';
   el.style.display = '';
+
+  // Unknown market status — hide
+  if (_marketOpen === null) {
+    el.style.display = 'none';
+  }
 }
 
 setInterval(tickScanCountdown, 1000);
