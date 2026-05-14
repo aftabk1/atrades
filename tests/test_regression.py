@@ -1776,3 +1776,411 @@ class TestSecurity:
     def test_valid_date_passes_validation(self, api_client):
         r = api_client.get("/api/dashboard?date=2024-06-15")
         assert r.status_code == 200
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 15. VCP & 52-WEEK HIGH PROXIMITY SIGNALS
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestVCPAnd52wSignals:
+
+    def _make_vcp_df(self, bars: int = 80) -> "pd.DataFrame":
+        """DataFrame with clearly contracting high-low ranges over last 40 bars."""
+        np.random.seed(1)
+        dates  = pd.bdate_range(end="2025-01-31", periods=bars)
+        # Rising base price
+        close  = 100.0 * np.cumprod(1 + np.random.normal(0.001, 0.004, bars))
+        # Shrinking daily range: wide at start, tight at end
+        ranges = np.linspace(4.0, 0.5, bars)
+        high   = close + ranges / 2
+        low    = close - ranges / 2
+        return pd.DataFrame({"open": close, "high": high, "low": low,
+                             "close": close, "volume": np.full(bars, 1_500_000.0)},
+                            index=dates)
+
+    def _make_expanding_df(self, bars: int = 80) -> "pd.DataFrame":
+        """DataFrame with expanding high-low ranges (opposite of VCP)."""
+        np.random.seed(2)
+        dates  = pd.bdate_range(end="2025-01-31", periods=bars)
+        close  = 100.0 * np.cumprod(1 + np.random.normal(0.001, 0.004, bars))
+        ranges = np.linspace(0.5, 5.0, bars)   # expanding
+        high   = close + ranges / 2
+        low    = close - ranges / 2
+        return pd.DataFrame({"open": close, "high": high, "low": low,
+                             "close": close, "volume": np.full(bars, 1_500_000.0)},
+                            index=dates)
+
+    def test_vcp_triggered_with_contracting_swings(self):
+        from strategy.breakout_signals import _check_vcp
+        df  = self._make_vcp_df(80)
+        res = _check_vcp(df)
+        assert res.triggered is True
+        assert res.value >= 1
+
+    def test_vcp_not_triggered_with_expanding_ranges(self):
+        from strategy.breakout_signals import _check_vcp
+        df  = self._make_expanding_df(80)
+        res = _check_vcp(df)
+        # Expanding ranges → no contracting pairs → not triggered
+        assert res.triggered is False
+
+    def test_vcp_handles_insufficient_bars(self):
+        from strategy.breakout_signals import _check_vcp
+        df  = make_ohlcv(bars=20)
+        res = _check_vcp(df)
+        assert res.triggered is False
+        assert res.value == 0.0
+
+    def _make_near_52w_high_df(self, pct_below: float = 1.0, bars: int = 260) -> "pd.DataFrame":
+        """Close within pct_below% of 252-bar rolling high."""
+        dates = pd.bdate_range(end="2025-01-31", periods=bars)
+        close = np.full(bars, 100.0)
+        # Make one peak in the middle, then approach it from below
+        close[bars // 2] = 100.0 / (1 - pct_below / 100.0)
+        high  = close * 1.005
+        low   = close * 0.995
+        return pd.DataFrame({"open": close, "high": high, "low": low,
+                             "close": close, "volume": np.full(bars, 2_000_000.0)},
+                            index=dates)
+
+    def test_52w_high_proximity_full_pts_near_high(self):
+        from strategy.breakout_signals import _check_52w_high_proximity
+        np.random.seed(10)
+        df  = make_ohlcv(bars=260, base_price=100.0, trend=0.001)
+        # Force last close to 99% of 252-bar high (within 1%)
+        high_252 = df["close"].iloc[-253:-1].max()
+        df.iloc[-1, df.columns.get_loc("close")] = high_252 * 0.99
+        df.iloc[-1, df.columns.get_loc("high")]  = high_252 * 0.991
+        res = _check_52w_high_proximity(df)
+        assert res.triggered is True
+        assert res.value >= -3.0
+
+    def test_52w_high_proximity_partial_at_minus_7pct(self):
+        from strategy.breakout_signals import _check_52w_high_proximity
+        df  = make_ohlcv(bars=260, base_price=100.0, trend=0.001)
+        high_252 = df["close"].iloc[-253:-1].max()
+        df.iloc[-1, df.columns.get_loc("close")] = high_252 * 0.93   # -7%
+        df.iloc[-1, df.columns.get_loc("high")]  = high_252 * 0.931
+        res = _check_52w_high_proximity(df)
+        assert res.triggered is True
+        assert -10.0 < res.value < -3.0
+
+    def test_52w_high_proximity_not_triggered_beyond_minus_10pct(self):
+        from strategy.breakout_signals import _check_52w_high_proximity
+        df  = make_ohlcv(bars=260, base_price=100.0, trend=0.001)
+        high_252 = df["close"].iloc[-253:-1].max()
+        df.iloc[-1, df.columns.get_loc("close")] = high_252 * 0.84   # -16%
+        df.iloc[-1, df.columns.get_loc("high")]  = high_252 * 0.841
+        res = _check_52w_high_proximity(df)
+        assert res.triggered is False
+
+    def test_52w_high_proximity_handles_short_history(self):
+        from strategy.breakout_signals import _check_52w_high_proximity
+        df  = make_ohlcv(bars=60)   # well below 252 bars
+        res = _check_52w_high_proximity(df)
+        # Should not crash; triggered depends on data, value should be a float
+        assert isinstance(res.triggered, bool)
+        assert isinstance(res.value, float)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 16. SCORER — BREADTH & NEW SIGNAL CONTRIBUTIONS
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestBreakoutScorerExtended:
+
+    def test_breadth_pts_thresholds(self):
+        """_breadth_pts returns correct stepped values at each threshold."""
+        from strategy.breakout_scorer import BreakoutScorer
+        scorer   = BreakoutScorer()
+        max_pts  = 6.0  # SCORE_MARKET_BREADTH default
+        assert scorer._breadth_pts(0.75) == pytest.approx(max_pts,         abs=0.1)
+        assert scorer._breadth_pts(0.65) == pytest.approx(max_pts * 0.75,  abs=0.1)
+        assert scorer._breadth_pts(0.55) == pytest.approx(max_pts * 0.50,  abs=0.1)
+        assert scorer._breadth_pts(0.45) == pytest.approx(max_pts * 0.25,  abs=0.1)
+        assert scorer._breadth_pts(0.35) == pytest.approx(0.0,             abs=0.1)
+
+    def test_high_breadth_scores_more_than_low_breadth(self):
+        from strategy.breakout_scorer import BreakoutScorer
+        scorer  = BreakoutScorer()
+        signals = make_signals(all_triggered=True)
+        high    = scorer.score(signals, breadth_pct=0.80)
+        low     = scorer.score(signals, breadth_pct=0.30)
+        assert high > low
+
+    def test_breakdown_includes_market_breadth_key(self):
+        from strategy.breakout_scorer import BreakoutScorer
+        scorer = BreakoutScorer()
+        bd     = scorer.breakdown(make_signals(all_triggered=True), breadth_pct=0.65)
+        assert "market_breadth" in bd
+        assert bd["market_breadth"] == pytest.approx(6.0 * 0.75, abs=0.1)  # 4.5 pts
+
+    def test_vcp_signal_contributes_to_score(self):
+        from strategy.breakout_scorer import BreakoutScorer
+        from strategy.breakout_signals import SignalResult
+        scorer   = BreakoutScorer()
+        sig_on   = make_signals(all_triggered=True)    # vcp triggered
+        sig_off  = make_signals(all_triggered=True)
+        sig_off.vcp = SignalResult(triggered=False, value=0.0)
+        score_on  = scorer.score(sig_on,  breadth_pct=0.5)
+        score_off = scorer.score(sig_off, breadth_pct=0.5)
+        assert score_on > score_off
+        assert (score_on - score_off) == pytest.approx(14.0, abs=1.0)
+
+    def test_52w_proximity_signal_contributes_to_score(self):
+        from strategy.breakout_scorer import BreakoutScorer
+        from strategy.breakout_signals import SignalResult
+        scorer   = BreakoutScorer()
+        sig_on   = make_signals(all_triggered=True)
+        sig_off  = make_signals(all_triggered=True)
+        sig_off.high_52w_proximity = SignalResult(triggered=False, value=0.0)
+        score_on  = scorer.score(sig_on,  breadth_pct=0.5)
+        score_off = scorer.score(sig_off, breadth_pct=0.5)
+        assert score_on > score_off
+        assert (score_on - score_off) == pytest.approx(10.0, abs=1.0)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 17. MARKET REGIME — SCORE_MULTIPLIER FIELD STILL POPULATED
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestMarketRegimeMultiplier:
+
+    def test_score_multiplier_is_float_on_bull(self):
+        from strategy.market_regime import detect_regime
+        regime = detect_regime(make_bull_spy_df(bars=250))
+        assert isinstance(regime.score_multiplier, float)
+
+    def test_score_multiplier_is_float_on_bear(self):
+        from strategy.market_regime import detect_regime
+        regime = detect_regime(make_bear_spy_df(bars=250))
+        assert isinstance(regime.score_multiplier, float)
+
+    def test_bull_multiplier_is_one(self):
+        from strategy.market_regime import detect_regime, Regime
+        regime = detect_regime(make_bull_spy_df(bars=250))
+        assert regime.state == Regime.BULL_TREND
+        assert regime.score_multiplier == pytest.approx(1.0)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 18. POSITION MANAGER — DECIDE LOGIC
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestPositionManagerDecide:
+
+    def _pm(self):
+        from unittest.mock import patch, MagicMock
+        with patch("strategy.position_manager.MarketDataClient"):
+            from strategy.position_manager import PositionManager
+            pm = PositionManager.__new__(PositionManager)
+            from strategy.breakout_scorer import BreakoutScorer
+            pm._scorer = BreakoutScorer()
+            return pm
+
+    def test_decide_exits_on_bull_trap(self):
+        from strategy.position_manager import EXIT
+        pm = self._pm()
+        action, reason = pm._decide(
+            score=80, r=2.0, rs=10.0,
+            trap=True, volume_selloff=False, already_added=False
+        )
+        assert action == EXIT
+        assert "trap" in reason.lower()
+
+    def test_decide_exits_on_volume_selloff(self):
+        from strategy.position_manager import EXIT
+        pm = self._pm()
+        action, reason = pm._decide(
+            score=80, r=2.0, rs=10.0,
+            trap=False, volume_selloff=True, already_added=False
+        )
+        assert action == EXIT
+
+    def test_decide_adds_on_high_score_high_rs(self):
+        import config
+        from strategy.position_manager import ADD
+        pm = self._pm()
+        action, _ = pm._decide(
+            score=config.PME_ADD_SCORE_THRESHOLD + 5,
+            r=3.0,
+            rs=config.PME_RS_ADD_MIN_PCT + 2,
+            trap=False, volume_selloff=False, already_added=False
+        )
+        assert action == ADD
+
+    def test_decide_degrades_add_to_hold_on_low_rs(self):
+        import config
+        from strategy.position_manager import HOLD
+        pm = self._pm()
+        action, reason = pm._decide(
+            score=config.PME_ADD_SCORE_THRESHOLD + 5,
+            r=3.0,
+            rs=config.PME_RS_ADD_MIN_PCT - 2,   # below RS minimum
+            trap=False, volume_selloff=False, already_added=False
+        )
+        assert action == HOLD
+        assert "rs" in reason.lower() or "RS" in reason
+
+    def test_decide_trim_light_when_r_below_floor(self):
+        import config
+        from strategy.position_manager import TRIM_LIGHT
+        pm = self._pm()
+        # Score in HOLD tier but R below floor
+        action, reason = pm._decide(
+            score=config.PME_HOLD_SCORE_MIN + 2,
+            r=config.PME_R_TRIM_FLOOR - 0.5,   # below floor
+            rs=config.PME_RS_ADD_MIN_PCT + 2,
+            trap=False, volume_selloff=False, already_added=False
+        )
+        assert action == TRIM_LIGHT
+
+    def test_decide_hold_blocks_double_add(self):
+        import config
+        from strategy.position_manager import HOLD
+        pm = self._pm()
+        action, reason = pm._decide(
+            score=config.PME_ADD_SCORE_THRESHOLD + 5,
+            r=3.0,
+            rs=config.PME_RS_ADD_MIN_PCT + 2,
+            trap=False, volume_selloff=False, already_added=True  # already added
+        )
+        assert action == HOLD
+        assert "added" in reason.lower()
+
+    def test_decide_exits_on_very_low_score(self):
+        import config
+        from strategy.position_manager import EXIT
+        pm = self._pm()
+        action, _ = pm._decide(
+            score=config.PME_TRIM_HEAVY_SCORE_MIN - 5,
+            r=0.5, rs=1.0,
+            trap=False, volume_selloff=False, already_added=False
+        )
+        assert action == EXIT
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 19. OPTIMIZER MODEL — _SymMetrics & _fast_score ALIGNED TO CURRENT SIGNALS
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestOptimizerModel:
+
+    def _make_metrics(self, pct_52w: float = -1.0, vol_ratio: float = 2.0,
+                      rsi: float = 58.0, rs: float = 5.0) -> "object":
+        from backtest.optimizer import _SymMetrics
+        import pandas as pd, numpy as np
+        idx = pd.bdate_range(end="2025-01-31", periods=5)
+        def s(v): return pd.Series([v] * 5, index=idx)
+        return _SymMetrics(
+            symbol="TEST",
+            df=pd.DataFrame({"open": s(100), "high": s(101), "low": s(99),
+                             "close": s(100), "volume": s(1_500_000)}, index=idx),
+            breakout_20d=s(True),
+            vol_ratio=s(vol_ratio),
+            rsi=s(rsi),
+            rs_vs_spy=s(rs),
+            pct_from_52w_high=s(pct_52w),
+            base_ok=s(True),
+            atr14=s(1.0),
+        )
+
+    def test_sym_metrics_has_no_breakout_50d_field(self):
+        from backtest.optimizer import _SymMetrics
+        import dataclasses
+        field_names = {f.name for f in dataclasses.fields(_SymMetrics)}
+        assert "breakout_50d" not in field_names
+
+    def test_sym_metrics_has_no_atr_exp_field(self):
+        from backtest.optimizer import _SymMetrics
+        import dataclasses
+        field_names = {f.name for f in dataclasses.fields(_SymMetrics)}
+        assert "atr_exp" not in field_names
+
+    def test_sym_metrics_has_pct_from_52w_high_field(self):
+        from backtest.optimizer import _SymMetrics
+        import dataclasses
+        field_names = {f.name for f in dataclasses.fields(_SymMetrics)}
+        assert "pct_from_52w_high" in field_names
+
+    def test_default_grid_has_three_keys_no_atr_expansion(self):
+        from backtest.optimizer import DEFAULT_GRID
+        assert len(DEFAULT_GRID) == 3
+        assert "BREAKOUT_ATR_EXPANSION_THRESHOLD" not in DEFAULT_GRID
+
+    def test_fast_score_near_52w_high_includes_proximity_pts(self):
+        from backtest.optimizer import _fast_score
+        m   = self._make_metrics(pct_52w=-1.0)   # within 3% → 10 pts
+        idx = m.pct_from_52w_high.index[-1]
+        score_near = _fast_score(m, idx)
+        m2  = self._make_metrics(pct_52w=-15.0)  # beyond -10% → 0 pts
+        score_far  = _fast_score(m2, idx)
+        assert score_near > score_far
+        assert (score_near - score_far) == pytest.approx(10.0, abs=1.0)
+
+    def test_fast_score_capped_at_100(self):
+        from backtest.optimizer import _fast_score
+        m   = self._make_metrics(pct_52w=-1.0, vol_ratio=10.0, rsi=58.0, rs=20.0)
+        idx = m.vol_ratio.index[-1]
+        assert _fast_score(m, idx) <= 100.0
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 20. WHATSAPP NOTIFICATIONS
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestNotifications:
+
+    def test_notify_sends_when_credentials_set(self, monkeypatch):
+        import config
+        from unittest.mock import patch, MagicMock
+        monkeypatch.setattr(config, "WHATSAPP_PHONE",  "+1234567890")
+        monkeypatch.setattr(config, "WHATSAPP_APIKEY", "testkey123")
+        mock_resp = MagicMock()
+        mock_resp.status = 200
+        mock_resp.__enter__ = lambda s: mock_resp
+        mock_resp.__exit__  = MagicMock(return_value=False)
+        with patch("urllib.request.urlopen", return_value=mock_resp) as mock_open:
+            from notifications.whatsapp import notify
+            notify("test message")
+            assert mock_open.called
+
+    def test_notify_noop_when_no_credentials(self, monkeypatch):
+        import config
+        from unittest.mock import patch
+        monkeypatch.setattr(config, "WHATSAPP_PHONE",  "")
+        monkeypatch.setattr(config, "WHATSAPP_APIKEY", "")
+        with patch("urllib.request.urlopen") as mock_open:
+            from notifications.whatsapp import notify
+            notify("test message")
+            assert not mock_open.called
+
+    def test_notify_swallows_network_error(self, monkeypatch):
+        import config
+        from unittest.mock import patch
+        monkeypatch.setattr(config, "WHATSAPP_PHONE",  "+1234567890")
+        monkeypatch.setattr(config, "WHATSAPP_APIKEY", "testkey123")
+        with patch("urllib.request.urlopen", side_effect=OSError("network down")):
+            from notifications.whatsapp import notify
+            notify("test message")   # must not raise
+
+    def test_notify_url_encodes_message(self, monkeypatch):
+        import config
+        from unittest.mock import patch, MagicMock
+        monkeypatch.setattr(config, "WHATSAPP_PHONE",  "+1234567890")
+        monkeypatch.setattr(config, "WHATSAPP_APIKEY", "testkey123")
+        captured = []
+        mock_resp = MagicMock()
+        mock_resp.status = 200
+        mock_resp.__enter__ = lambda s: mock_resp
+        mock_resp.__exit__  = MagicMock(return_value=False)
+        def capture(url, **kw):
+            captured.append(url)
+            return mock_resp
+        with patch("urllib.request.urlopen", side_effect=capture):
+            from notifications.whatsapp import notify
+            notify("hello world")
+            assert captured
+            assert "hello" in captured[0]
+            # spaces must be encoded in the URL
+            assert " " not in captured[0]
