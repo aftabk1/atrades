@@ -33,9 +33,9 @@ def notify(message: str) -> None:
         return
 
     try:
-        # POST body keeps apikey out of server access logs and browser history
-        data = urllib.parse.urlencode({"phone": phone, "text": message, "apikey": apikey}).encode()
-        req  = urllib.request.Request(_API_URL, data=data, method="POST")
+        # CallMeBot is GET-only; apikey exposure is limited to their server logs (acceptable)
+        url = _API_URL + "?" + urllib.parse.urlencode({"phone": phone, "text": message, "apikey": apikey})
+        req = urllib.request.Request(url)
         with urllib.request.urlopen(req, timeout=10) as resp:
             if not (200 <= resp.status < 300):
                 logger.warning(f"WhatsApp notify: HTTP {resp.status}")

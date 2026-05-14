@@ -912,12 +912,8 @@ def notifications_test(request: Request, body: dict = Body(...)):
     if not phone or not apikey:
         return JSONResponse(status_code=400, content={"ok": False, "error": "phone and apikey are required"})
     msg    = "A1TRADES: test notification — WhatsApp alerts are working."
-    params = urllib.parse.urlencode({"phone": phone, "text": msg, "apikey": apikey}).encode()
-    req    = urllib.request.Request(
-        "https://api.callmebot.com/whatsapp.php",
-        data=params,
-        method="POST",
-    )
+    url    = "https://api.callmebot.com/whatsapp.php?" + urllib.parse.urlencode({"phone": phone, "text": msg, "apikey": apikey})
+    req    = urllib.request.Request(url)
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
             body_text = resp.read().decode("utf-8", errors="replace")
