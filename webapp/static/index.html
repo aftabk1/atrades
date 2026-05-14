@@ -274,8 +274,12 @@
     A1<span class="logo-one">TRADES</span>
   </div>
   <div id="regime-badge" class="regime"><span class="regime-dot" id="regime-dot"></span><span id="regime-text">Loading...</span></div>
+  <div id="header-runner-pill" class="regime" onclick="onScanNowClick()" title="Click to start / stop runner" style="cursor:pointer;user-select:none;">
+    <span class="runner-dot" id="header-runner-dot"></span>
+    <span id="header-runner-label" style="color:var(--muted)">Runner OFF</span>
+  </div>
   <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
-    <span class="scan-next-info" id="scan-countdown" style="display:none"></span>
+    <span class="scan-next-info" id="scan-countdown"></span>
     <input type="date" id="date-picker">
     <button onclick="refresh()" id="refresh-btn">&#8635; Refresh</button>
     <button onclick="logout()" title="Sign out" style="padding:6px 12px;color:var(--muted);font-size:12px;">Sign Out</button>
@@ -1662,39 +1666,43 @@ async function fetchNextScan() {
 
 function tickScanCountdown() {
   const el = document.getElementById('scan-countdown');
+  el.style.display = '';   // always visible
 
-  // Always show something useful
   if (_scanInProgress) {
     el.textContent = 'Scanning…';
     el.className = 'scan-next-info imminent';
-    el.style.display = '';
+    el.style.color = '';
     return;
   }
 
-  el.style.color = '';
+  // Market status unknown (initial load) — show placeholder
+  if (_marketOpen === null) {
+    el.textContent = '—';
+    el.className = 'scan-next-info';
+    el.style.color = 'var(--muted)';
+    return;
+  }
 
-  // Always show market status
   if (_marketOpen === false) {
     el.textContent = 'Market closed';
     el.className = 'scan-next-info';
     el.style.color = 'var(--muted)';
-    el.style.display = '';
     return;
   }
 
-  if (_marketOpen === true && !_runnerActive) {
+  // Market is open
+  if (!_runnerActive) {
     el.textContent = 'Market open';
     el.className = 'scan-next-info imminent';
-    el.style.display = '';
+    el.style.color = '';
     return;
   }
 
-  // Market open: show countdown if runner active, otherwise show "Market open"
+  // Runner active — show countdown
   if (!_nextScanTs) {
-    // No countdown yet (runner inactive or not yet reported)
-    el.textContent = 'Market open';
-    el.className = 'scan-next-info imminent';
-    el.style.display = '';
+    el.textContent = 'Next scan …';
+    el.className = 'scan-next-info';
+    el.style.color = '';
     return;
   }
 
@@ -1702,7 +1710,7 @@ function tickScanCountdown() {
   if (secsLeft <= 0) {
     el.textContent = 'Scan due…';
     el.className = 'scan-next-info imminent';
-    el.style.display = '';
+    el.style.color = '';
     fetchNextScan();
     return;
   }
@@ -1710,12 +1718,7 @@ function tickScanCountdown() {
   const s = String(secsLeft % 60).padStart(2, '0');
   el.textContent = `Next scan ${m}:${s}`;
   el.className = secsLeft < 60 ? 'scan-next-info imminent' : 'scan-next-info';
-  el.style.display = '';
-
-  // Unknown market status — hide
-  if (_marketOpen === null) {
-    el.style.display = 'none';
-  }
+  el.style.color = '';
 }
 
 setInterval(tickScanCountdown, 1000);
@@ -1737,6 +1740,7 @@ async function updateRunnerStatus() {
 }
 
 function setRunnerUI(running) {
+  // Tab button (Today tab)
   const dot   = document.getElementById('runner-dot');
   const label = document.getElementById('runner-label');
   const btn   = document.getElementById('runner-btn');
@@ -1750,6 +1754,21 @@ function setRunnerUI(running) {
     label.textContent = 'Scan Now';
     btn.classList.remove('btn-danger');
     btn.classList.add('btn-green');
+  }
+  // Header pill
+  const hDot   = document.getElementById('header-runner-dot');
+  const hLabel = document.getElementById('header-runner-label');
+  const hPill  = document.getElementById('header-runner-pill');
+  if (running) {
+    hDot.classList.add('on');
+    hLabel.textContent = 'Runner ON';
+    hLabel.style.color = 'var(--green)';
+    hPill.style.borderColor = 'rgba(34,197,94,.4)';
+  } else {
+    hDot.classList.remove('on');
+    hLabel.textContent = 'Runner OFF';
+    hLabel.style.color = 'var(--muted)';
+    hPill.style.borderColor = '';
   }
 }
 
