@@ -243,6 +243,12 @@ def _wait_for_close(scanner: BreakoutScanner) -> None:
 
 def _end_of_day(scanner: BreakoutScanner) -> None:
     """Post-close housekeeping: sync positions, ratchet trailing stops, record PME."""
+    mode = "LIVE" if (scanner._execute and not config.IS_PAPER) else ("PAPER" if scanner._execute else "DRY RUN")
+    notify(
+        f"A1TRADES Session ENDED\n"
+        f"Mode: {mode}\n"
+        f"Time: {datetime.now(NY).strftime('%Y-%m-%d %H:%M ET')}"
+    )
     if not scanner._execute:
         return
     try:
