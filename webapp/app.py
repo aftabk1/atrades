@@ -58,8 +58,16 @@ _AUTH_USER    = os.getenv("DASHBOARD_USER", "")
 _AUTH_PASS    = os.getenv("DASHBOARD_PASS", "")
 _AUTH_ENABLED = bool(_AUTH_USER and _AUTH_PASS)
 
+# Refuse to start without credentials in production (PYTEST_CURRENT_TEST is set by pytest)
+if not _AUTH_ENABLED and "PYTEST_CURRENT_TEST" not in os.environ:
+    raise RuntimeError(
+        "DASHBOARD_USER and DASHBOARD_PASS must be set in .env — "
+        "the dashboard controls live trading and must never run unauthenticated."
+    )
+
 SESSION_COOKIE  = "a1t_sess"
-SESSION_TIMEOUT = 8 * 60 * 60      # 8 hours server-side; JS idle timer handles 10-min frontend logout
+CSRF_COOKIE     = "a1t_csrf"
+SESSION_TIMEOUT = 90 * 60      # 90 minutes; re-login required after idle
 
 _SESSIONS: dict[str, float] = {}   # token → last-active epoch seconds
 
@@ -78,6 +86,16 @@ if not _auth_log.handlers:
     _auth_log.addHandler(_fh)
     _auth_log.setLevel(logging.INFO)
 
+# Audit logger → logs/audit.log  (financial operations)
+_audit_log = logging.getLogger("a1trades.audit")
+if not _audit_log.handlers:
+    _log_dir = ROOT / "logs"
+    _log_dir.mkdir(exist_ok=True)
+    _afh = logging.FileHandler(_log_dir / "audit.log", encoding="utf-8")
+    _afh.setFormatter(logging.Formatter("%(asctime)s  %(message)s"))
+    _audit_log.addHandler(_afh)
+    _audit_log.setLevel(logging.INFO)
+
 # Date validation regex
 _DATE_RE = re.compile(r"^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$")
 
@@ -89,12 +107,34 @@ def _cleanup_sessions() -> None:
         _SESSIONS.pop(t, None)
 
 
+def _rate_check(ip: str, bucket: str, max_hits: int, window: int) -> bool:
+    """Return True if request is allowed; False if rate limit exceeded."""
+    if "PYTEST_CURRENT_TEST" in os.environ:
+        return True
+    key = f"{bucket}:{ip}"
+    now = _time_mod.time()
+    hits = _RATE_HITS[key]
+    _RATE_HITS[key] = [t for t in hits if now - t < window]
+    if len(_RATE_HITS[key]) >= max_hits:
+        return False
+    _RATE_HITS[key].append(now)
+    return True
+
+
 def _validate_date(date_str: str | None) -> str | None:
-    """Raise 400 if date_str is present but not YYYY-MM-DD."""
+    """Raise 400 if date_str is present but not YYYY-MM-DD, or outside [today-365, today+1]."""
     if date_str is None:
         return None
     if not _DATE_RE.match(date_str):
         raise HTTPException(status_code=400, detail="Invalid date — expected YYYY-MM-DD")
+    from datetime import date as _date, timedelta as _td
+    try:
+        d = _date.fromisoformat(date_str)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date value")
+    today = _date.today()
+    if d < today - _td(days=365) or d > today + _td(days=1):
+        raise HTTPException(status_code=400, detail="Date out of range — must be within the last 365 days")
     return date_str
 
 
@@ -141,6 +181,7 @@ def _write_env(updates: dict) -> None:
     for key, val in updates.items():
         if key not in updated:
             new_lines.append(f"{key}={val}")
+    # Write with sanitised values — newlines are stripped at call sites in save_config
     ENV_PATH.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
 
 CONFIG_DEFAULTS = {
@@ -232,6 +273,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC)), name="static")
 # ── Security middleware ───────────────────────────────────────────────────────
 
 _OPEN_PATHS = {"/login", "/logout"}   # never require auth
+_CSRF_SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 
 @app.middleware("http")
 async def security_middleware(request: Request, call_next):
@@ -247,6 +289,13 @@ async def security_middleware(request: Request, call_next):
             return Response(status_code=302, headers={"Location": "/login"})
         _SESSIONS[token] = _time_mod.time()   # refresh idle timer
 
+        # 2. CSRF check — all state-changing requests must carry the CSRF token
+        if request.method not in _CSRF_SAFE_METHODS:
+            csrf_cookie = request.cookies.get(CSRF_COOKIE, "")
+            csrf_header = request.headers.get("X-CSRF-Token", "")
+            if not csrf_cookie or not hmac.compare_digest(csrf_cookie, csrf_header):
+                return JSONResponse(status_code=403, content={"detail": "invalid_csrf_token"})
+
     response = await call_next(request)
 
     # 2. Security headers on every response
@@ -255,7 +304,7 @@ async def security_middleware(request: Request, call_next):
     response.headers["Referrer-Policy"]         = "strict-origin-when-cross-origin"
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "script-src 'self' https://cdn.jsdelivr.net; "
         "style-src  'self' 'unsafe-inline' https://fonts.googleapis.com; "
         "font-src   'self' https://fonts.gstatic.com; "
         "img-src    'self' data:; "
@@ -305,17 +354,27 @@ async def do_login(request: Request):
         _auth_log.warning("FAILED_LOGIN  ip=%s  user=%s", client_ip, username)
         return JSONResponse(status_code=401, content={"ok": False, "detail": "Invalid credentials"})
 
-    token = secrets.token_urlsafe(32)
+    token      = secrets.token_urlsafe(32)
+    csrf_token = secrets.token_urlsafe(32)
     _SESSIONS[token] = _time_mod.time()
     _auth_log.info("LOGIN_OK  ip=%s  user=%s", client_ip, username)
 
+    _secure = os.getenv("SECURE_COOKIE", "true").lower() != "false"
     resp = JSONResponse(content={"ok": True})
     resp.set_cookie(
         SESSION_COOKIE,
         token,
         httponly=True,
         samesite="lax",
-        secure=False,      # set True if using HTTPS
+        secure=_secure,
+        max_age=SESSION_TIMEOUT,
+    )
+    resp.set_cookie(
+        CSRF_COOKIE,
+        csrf_token,
+        httponly=False,    # JS must be able to read this to send X-CSRF-Token
+        samesite="lax",
+        secure=_secure,
         max_age=SESSION_TIMEOUT,
     )
     return resp
@@ -328,6 +387,7 @@ async def do_logout(request: Request):
         _SESSIONS.pop(token, None)
     resp = JSONResponse(content={"ok": True})
     resp.delete_cookie(SESSION_COOKIE)
+    resp.delete_cookie(CSRF_COOKIE)
     return resp
 
 
@@ -387,10 +447,14 @@ def api_positions():
 # ── Close Position API ────────────────────────────────────────────────────────
 
 @app.post("/api/positions/close")
-def api_close_position(body: dict = Body(...)):
+def api_close_position(request: Request, body: dict = Body(...)):
+    ip = request.client.host
+    if not _rate_check(ip, "close", max_hits=5, window=60):
+        return JSONResponse(status_code=429, content={"ok": False, "error": "rate limit exceeded"})
     symbol = str(body.get("symbol", "")).strip().upper()
     if not symbol:
         return JSONResponse(status_code=400, content={"ok": False, "error": "symbol required"})
+    _audit_log.info("CLOSE_POSITION | ip=%s | symbol=%s", ip, symbol)
     try:
         env = _parse_env(_read_env_lines())
         from alpaca.trading.client import TradingClient
@@ -714,10 +778,16 @@ def api_live_trades():
 
 # ── Config API ────────────────────────────────────────────────────────────────
 
+_SECRET_KEYS = {"ALPACA_API_KEY", "ALPACA_SECRET_KEY", "WHATSAPP_APIKEY", "DASHBOARD_PASS"}
+
 @app.get("/api/config")
 def get_config():
     env = _parse_env(_read_env_lines())
-    return {k: env.get(k, v) or v for k, v in CONFIG_DEFAULTS.items()}
+    result = {}
+    for k, default in CONFIG_DEFAULTS.items():
+        val = env.get(k, default) or default
+        result[k] = "***" if (k in _SECRET_KEYS and val) else val
+    return result
 
 
 @app.get("/api/symbols/fallback")
@@ -759,15 +829,20 @@ def reset_fallback_symbols():
 
 
 @app.post("/api/config")
-def save_config(body: dict = Body(...)):
+def save_config(request: Request, body: dict = Body(...)):
+    ip = request.client.host
+    if not _rate_check(ip, "config", max_hits=5, window=60):
+        return JSONResponse(status_code=429, content={"ok": False, "error": "rate limit exceeded"})
     try:
         # REGIME_OVERRIDE is a select that legitimately stores an empty string (= "Auto")
         _allow_empty = {"REGIME_OVERRIDE"}
         safe = {
-            k: str(v) for k, v in body.items()
+            k: str(v).replace("\n", "").replace("\r", "") for k, v in body.items()
             if k in CONFIG_DEFAULTS and (str(v).strip() != "" or k in _allow_empty)
         }
         _write_env(safe)
+        keys_changed = list(safe.keys())
+        _audit_log.info("CONFIG_SAVE | ip=%s | keys=%s", ip, keys_changed)
         # Reload config in the running process so new values take effect immediately
         import config as _cfg
         importlib.reload(_cfg)
@@ -786,14 +861,19 @@ _scan_running: bool      = False
 
 
 @app.post("/api/scan/start")
-def scan_start(body: dict = Body(default={})):
+def scan_start(request: Request, body: dict = Body(default={})):
     global _scan_proc, _scan_lines, _scan_running
+    ip = request.client.host
+    if not _rate_check(ip, "scan", max_hits=1, window=30):
+        return JSONResponse(status_code=429, content={"ok": False, "error": "rate limit exceeded — wait 30 s between scans"})
     if _scan_running:
         return {"ok": False, "message": "scan already running"}
+    execute = bool(body.get("execute"))
+    _audit_log.info("SCAN_START | ip=%s | execute=%s", ip, execute)
     _scan_lines   = []
     _scan_running = True
     cmd = [sys.executable, str(ROOT / "scanner.py")]
-    if body.get("execute"):
+    if execute:
         cmd.append("--execute")
     _scan_proc    = subprocess.Popen(
         cmd,
@@ -823,17 +903,23 @@ def scan_output(offset: int = Query(default=0)):
 
 
 @app.post("/api/notifications/test")
-def notifications_test(body: dict = Body(...)):
+def notifications_test(request: Request, body: dict = Body(...)):
+    if not _rate_check(request.client.host, "notif", max_hits=3, window=60):
+        return JSONResponse(status_code=429, content={"ok": False, "error": "rate limit exceeded"})
     import urllib.parse, urllib.request, urllib.error
     phone  = str(body.get("phone",  "")).strip()
     apikey = str(body.get("apikey", "")).strip()
     if not phone or not apikey:
         return JSONResponse(status_code=400, content={"ok": False, "error": "phone and apikey are required"})
     msg    = "A1TRADES: test notification — WhatsApp alerts are working."
-    params = urllib.parse.urlencode({"phone": phone, "text": msg, "apikey": apikey})
-    url    = f"https://api.callmebot.com/whatsapp.php?{params}"
+    params = urllib.parse.urlencode({"phone": phone, "text": msg, "apikey": apikey}).encode()
+    req    = urllib.request.Request(
+        "https://api.callmebot.com/whatsapp.php",
+        data=params,
+        method="POST",
+    )
     try:
-        with urllib.request.urlopen(url, timeout=15) as resp:
+        with urllib.request.urlopen(req, timeout=15) as resp:
             body_text = resp.read().decode("utf-8", errors="replace")
             return {"ok": True, "response": body_text}
     except urllib.error.HTTPError as exc:
@@ -957,11 +1043,15 @@ def runner_status():
 
 
 @app.post("/api/runner/start")
-def runner_start(body: dict = Body(default={})):
+def runner_start(request: Request, body: dict = Body(default={})):
     global _runner_proc
+    ip = request.client.host
+    if not _rate_check(ip, "runner", max_hits=1, window=30):
+        return JSONResponse(status_code=429, content={"ok": False, "error": "rate limit exceeded"})
     if _runner_alive():
         return {"ok": True, "running": True, "message": "already running"}
     dry_run = body.get("dry_run", False)
+    _audit_log.info("RUNNER_START | ip=%s | dry_run=%s", ip, dry_run)
     cmd = [sys.executable, str(ROOT / "runner.py")]
     if dry_run:
         cmd.append("--dry-run")
@@ -970,10 +1060,14 @@ def runner_start(body: dict = Body(default={})):
 
 
 @app.post("/api/runner/stop")
-def runner_stop():
+def runner_stop(request: Request):
     global _runner_proc
+    ip = request.client.host
+    if not _rate_check(ip, "runner", max_hits=1, window=30):
+        return JSONResponse(status_code=429, content={"ok": False, "error": "rate limit exceeded"})
     if not _runner_alive():
         return {"ok": True, "running": False, "message": "not running"}
+    _audit_log.info("RUNNER_STOP | ip=%s", ip)
     _runner_proc.terminate()
     try:
         _runner_proc.wait(timeout=5)

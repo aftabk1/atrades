@@ -1,5 +1,5 @@
 Get-WmiObject Win32_Process | Where-Object {
-    $_.CommandLine -like "*runner.py*"
+    $_.CommandLine -like "*atrades*runner.py*"
 } | ForEach-Object {
     Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
 }

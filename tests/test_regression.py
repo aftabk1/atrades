@@ -877,12 +877,16 @@ class TestWebappAPI:
         assert "trades" in data
 
     def test_dashboard_specific_date(self, api_client):
-        r = api_client.get("/api/dashboard?date=2024-01-15")
+        from datetime import date, timedelta
+        recent = (date.today() - timedelta(days=30)).isoformat()
+        r = api_client.get(f"/api/dashboard?date={recent}")
         assert r.status_code == 200
-        assert r.json()["date"] == "2024-01-15"
+        assert r.json()["date"] == recent
 
     def test_dashboard_empty_day_returns_zeros(self, api_client):
-        r = api_client.get("/api/dashboard?date=2000-01-01")
+        from datetime import date, timedelta
+        recent = (date.today() - timedelta(days=7)).isoformat()
+        r = api_client.get(f"/api/dashboard?date={recent}")
         data = r.json()
         assert data["scan_count"] == 0
         assert data["candidates_found"] == 0
@@ -996,7 +1000,9 @@ class TestWebappAPI:
         assert isinstance(data["trades"], list)
 
     def test_closed_trades_date_filter_empty(self, api_client):
-        r = api_client.get("/api/closed-trades?date=2000-01-01")
+        from datetime import date, timedelta
+        recent = (date.today() - timedelta(days=7)).isoformat()
+        r = api_client.get(f"/api/closed-trades?date={recent}")
         assert r.status_code == 200
         assert r.json()["trades"] == []
 
@@ -1695,6 +1701,7 @@ class TestSecurity:
         monkeypatch.setattr(app_module, "_AUTH_ENABLED",  True)
         monkeypatch.setattr(app_module, "_SESSIONS",      {})
         monkeypatch.setattr(app_module, "_RATE_HITS",     defaultdict(list))
+        monkeypatch.setenv("SECURE_COOKIE", "false")  # TestClient uses HTTP, not HTTPS
         store.init_db()
 
         with TestClient(app, raise_server_exceptions=True) as client:
@@ -1774,5 +1781,7 @@ class TestSecurity:
         assert r.status_code == 400
 
     def test_valid_date_passes_validation(self, api_client):
-        r = api_client.get("/api/dashboard?date=2024-06-15")
+        from datetime import date, timedelta
+        recent = (date.today() - timedelta(days=30)).isoformat()
+        r = api_client.get(f"/api/dashboard?date={recent}")
         assert r.status_code == 200
