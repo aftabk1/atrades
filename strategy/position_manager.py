@@ -99,6 +99,13 @@ class PositionManager:
 
         bars = self._market.get_daily_bars(symbols, days=120)
 
+        # Compute breadth from available bars (open positions only — proxy, not full universe)
+        breadth_count = sum(
+            1 for df in bars.values()
+            if len(df) >= 22 and df["close"].iloc[-1] > df["close"].iloc[-22:-1].mean()
+        )
+        breadth_pct = breadth_count / max(len(bars), 1) if bars else 0.5
+
         today = date.today().isoformat()
         results: list[PositionEvaluation] = []
         for trade in trades:
@@ -116,7 +123,7 @@ class PositionManager:
                 continue
 
             try:
-                ev = self._evaluate_one(trade, df, spy_df)
+                ev = self._evaluate_one(trade, df, spy_df, breadth_pct)
             except Exception as exc:
                 logger.error(f"PME: error evaluating {sym}: {exc}")
                 continue
@@ -160,6 +167,7 @@ class PositionManager:
         trade: dict,
         df: pd.DataFrame,
         spy_df: pd.DataFrame | None,
+        breadth_pct: float = 0.5,
     ) -> PositionEvaluation:
         sym      = trade["symbol"]
         boid     = trade.get("buy_order_id", "")
@@ -187,16 +195,8 @@ class PositionManager:
         trap_triggered = False
 
         if signals is not None:
-            score     = self._scorer.score(signals)
+            score     = self._scorer.score(signals, breadth_pct)
             rs_vs_spy = round(signals.relative_strength.value, 2)
-            # Apply score multiplier from regime if available
-            try:
-                from strategy.market_regime import classify_regime
-                regime = classify_regime(spy_df) if spy_df is not None else None
-                if regime and regime.score_multiplier != 1.0:
-                    score = round(score * regime.score_multiplier, 1)
-            except Exception:
-                pass
 
             # Refresh bull trap directly on the current df
             try:

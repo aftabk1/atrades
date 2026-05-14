@@ -9,6 +9,7 @@ or None if the symbol fails base filters or lacks a price breakout.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Optional
 
 import numpy as np
@@ -294,29 +295,6 @@ def _check_relative_strength(
     )
 
 
-def _check_atr_expansion(df: pd.DataFrame) -> SignalResult:
-    """
-    Short-term ATR > long-term ATR by BREAKOUT_ATR_EXPANSION_THRESHOLD.
-    Signals volatility contraction breaking out into expansion.
-    """
-    if len(df) < 25:
-        return SignalResult(False, 0.0)
-
-    atr5  = float(_atr(df, 5).iloc[-1])
-    atr20 = float(_atr(df, 20).iloc[-1])
-
-    if atr20 == 0:
-        return SignalResult(False, 0.0)
-
-    ratio     = atr5 / atr20
-    threshold = config.BREAKOUT_ATR_EXPANSION_THRESHOLD
-
-    return SignalResult(
-        triggered=ratio > threshold,
-        value=ratio,
-        description=f"ATR expansion: {ratio:.2f}x (ATR5={atr5:.2f}, ATR20={atr20:.2f}, need >{threshold})",
-    )
-
 
 def _check_52w_high_proximity(df: pd.DataFrame) -> SignalResult:
     """
@@ -458,5 +436,3 @@ def _find_support(df: pd.DataFrame, lookback: int = config.BREAKOUT_SUPPORT_LOOK
     return float(min(swing_lows)) if swing_lows else float(np.min(lows))
 
 
-# Fix missing import referenced in _check_earnings_proximity
-from datetime import datetime  # noqa: E402 — used in type hint only

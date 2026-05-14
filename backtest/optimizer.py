@@ -46,12 +46,11 @@ from backtest.engine import Trade, BacktestResults, _try_exit, _build_date_index
 
 
 # ── Parameter grid ────────────────────────────────────────────────────────────
-# 3⁴ = 81 combinations.  Each uses only precomputed arrays — very fast.
+# 3³ = 27 combinations.  Each uses only precomputed arrays — very fast.
 DEFAULT_GRID: dict[str, list[Any]] = {
-    "BREAKOUT_RSI_LOW":                  [50,   55,   60],
-    "BREAKOUT_VOLUME_SURGE_MULT":        [1.3,  1.5,  2.0],
-    "BREAKOUT_ATR_EXPANSION_THRESHOLD":  [1.0,  1.2,  1.5],
-    "BACKTEST_MAX_HOLD_DAYS":            [10,   15,   20],
+    "BREAKOUT_RSI_LOW":            [50,   55,   60],
+    "BREAKOUT_VOLUME_SURGE_MULT":  [1.3,  1.5,  2.0],
+    "BACKTEST_MAX_HOLD_DAYS":      [10,   15,   20],
 }
 
 
@@ -75,13 +74,12 @@ class _SymMetrics:
     df: pd.DataFrame            # full OHLCV
 
     # Vectorized signal series (index = trading dates)
-    breakout_20d: pd.Series     # bool: close > rolling max(20).shift(1)
-    breakout_50d: pd.Series     # bool
-    vol_ratio:    pd.Series     # float: today_vol / avg_vol_20d (lagged)
-    rsi:          pd.Series     # float: RSI(14)
-    atr_exp:      pd.Series     # float: ATR(5) / ATR(20)
-    rs_vs_spy:    pd.Series     # float: stock 20d return minus SPY 20d return
-    base_ok:      pd.Series     # bool: price ≥ 10 AND avg_vol ≥ 1M
+    breakout_20d:     pd.Series  # bool: close > rolling max(20).shift(1)
+    vol_ratio:        pd.Series  # float: today_vol / avg_vol_20d (lagged)
+    rsi:              pd.Series  # float: RSI(14)
+    rs_vs_spy:        pd.Series  # float: stock 20d return minus SPY 20d return
+    pct_from_52w_high: pd.Series # float: (close / rolling_max_252 - 1) * 100
+    base_ok:          pd.Series  # bool: price ≥ min AND avg_vol ≥ min
 
     atr14:        pd.Series     # float: ATR(14) — for stop/target calculation
 
@@ -184,7 +182,6 @@ class ParameterOptimizer:
     def _evaluate(self, params: dict[str, Any]) -> BacktestResults:
         rsi_low     = params["BREAKOUT_RSI_LOW"]
         vol_mult    = params["BREAKOUT_VOLUME_SURGE_MULT"]
-        atr_thresh  = params["BREAKOUT_ATR_EXPANSION_THRESHOLD"]
         hold_days   = params["BACKTEST_MAX_HOLD_DAYS"]
 
         results  = BacktestResults(initial_capital=self._initial_capital)
@@ -208,7 +205,7 @@ class ParameterOptimizer:
                 & (m.vol_ratio   >= vol_mult)
                 & (m.rsi         >= rsi_low)
                 & (m.rsi         <= 70.0)
-                & (m.atr_exp     >= atr_thresh)
+                & (m.pct_from_52w_high >= -10.0)   # within 10% of 52w high
             )
             signal_masks[sym] = mask
 
@@ -398,9 +395,8 @@ def _compute_metrics(
 ) -> _SymMetrics:
     close, high, low, vol = df["close"], df["high"], df["low"], df["volume"]
 
-    # 20/50-day high breakout (use prior window — shift(1) ensures no lookahead)
+    # 20-day high breakout (shift(1) ensures no lookahead)
     breakout_20d = close > close.rolling(20, min_periods=20).max().shift(1)
-    breakout_50d = close > close.rolling(50, min_periods=50).max().shift(1)
 
     # Volume ratio (vs lagged 20-day average — lagged to avoid lookahead)
     avg_vol_20 = vol.rolling(20, min_periods=10).mean().shift(1)
@@ -415,10 +411,11 @@ def _compute_metrics(
     # ATR expansion: ATR(5) / ATR(20)
     prev_c = close.shift(1)
     tr     = pd.concat([high - low, (high - prev_c).abs(), (low - prev_c).abs()], axis=1).max(axis=1)
-    atr5   = tr.rolling(5,  min_periods=3).mean()
-    atr20  = tr.rolling(20, min_periods=10).mean()
     atr14  = tr.rolling(14, min_periods=7).mean()
-    atr_exp = atr5 / atr20.replace(0, np.nan)
+
+    # 52-week high proximity: % distance from rolling 252-bar high (lagged)
+    high_252 = close.rolling(252, min_periods=60).max().shift(1)
+    pct_from_52w_high = ((close / high_252.replace(0, np.nan)) - 1.0) * 100.0
 
     # RS vs SPY: 20-day return differential
     if spy_close is not None and not spy_close.empty:
@@ -435,31 +432,62 @@ def _compute_metrics(
         symbol=symbol,
         df=df,
         breakout_20d=breakout_20d.fillna(False),
-        breakout_50d=breakout_50d.fillna(False),
         vol_ratio=vol_ratio.fillna(0.0),
         rsi=rsi.fillna(50.0),
-        atr_exp=atr_exp.fillna(0.0),
         rs_vs_spy=rs_vs_spy.fillna(0.0),
+        pct_from_52w_high=pct_from_52w_high.fillna(-100.0),
         base_ok=base_ok.fillna(False),
         atr14=atr14.fillna(0.0),
     )
 
 
 def _fast_score(m: _SymMetrics, signal_date: pd.Timestamp) -> float:
-    """Quick 0–100 score from precomputed metrics (no full detect_all needed)."""
+    """Quick 0–100 score from precomputed metrics matching current live scoring model.
+
+    Weights mirror breakout_scorer.py (signals scorable via vectorized data):
+      Volume surge     14 pts  (graded by ratio)
+      Breakout 20D     12 pts  (confirmed = signal gate, partial by proximity)
+      RSI zone         10 pts  (50–65)
+      Relative strength 4 pts  (graded)
+      52W high prox    10 pts  (within 10% of 52w high, graded)
+      VCP / consolid.  26 pts  (not vectorizable — omitted, backtest conservative)
+      Higher lows      12 pts  (not vectorizable — omitted)
+      Market breadth    6 pts  (not available per-symbol — omitted, use neutral 3)
+      Earnings prox     6 pts  (not vectorizable — omitted)
+    Max from vectorized signals: 40 pts + 3 pts breadth neutral = 43 pts
+    """
     def _get(s: pd.Series) -> float:
         return float(s.loc[signal_date]) if signal_date in s.index else 0.0
 
     score = 0.0
-    score += 20.0                                         # base: breakout confirmed
-    score += min(_get(m.vol_ratio) / 3.0 * 25.0, 25.0)  # volume surge (scaled)
-    rsi_v  = _get(m.rsi)
-    score += 15.0 if 55 <= rsi_v <= 70 else 0.0          # RSI zone
-    rs_v   = _get(m.rs_vs_spy)
-    score += min(rs_v * 100 / 10.0 * 15.0, 15.0) if rs_v > 0 else 0.0   # RS
-    score += 10.0 if bool(m.breakout_50d.loc[signal_date]
-                          if signal_date in m.breakout_50d.index else False) else 0.0
-    score += 10.0 if _get(m.atr_exp) > 1.2 else 0.0     # ATR expansion
+
+    # Breakout 20D: 12 pts (confirmed)
+    score += 12.0
+
+    # Volume surge: 14 pts graded (ratio vs threshold)
+    vol_ratio = _get(m.vol_ratio)
+    thresh = config.BREAKOUT_VOLUME_SURGE_MULT
+    if vol_ratio >= thresh:
+        score += min((vol_ratio - 1.0) / 2.0 * 14.0, 14.0)
+
+    # RSI zone: 10 pts (50–65)
+    rsi_v = _get(m.rsi)
+    score += 10.0 if config.BREAKOUT_RSI_LOW <= rsi_v <= config.BREAKOUT_RSI_HIGH else 0.0
+
+    # Relative strength: 4 pts graded
+    rs_v = _get(m.rs_vs_spy)
+    score += min(rs_v / 10.0 * 4.0, 4.0) if rs_v > 0 else 0.0
+
+    # 52W high proximity: 10 pts (within 3% = full, linear decay to -10%)
+    pct = _get(m.pct_from_52w_high)
+    if pct >= -3.0:
+        score += 10.0
+    elif pct >= -10.0:
+        score += 10.0 * (pct + 10.0) / 7.0
+
+    # Market breadth neutral proxy: 3 pts (50th percentile default)
+    score += 3.0
+
     return min(score, 100.0)
 
 
