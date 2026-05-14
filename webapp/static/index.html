@@ -575,8 +575,8 @@
             <div class="form-control"><input type="number" id="cfg-BREAKOUT_RSI_HIGH" step="1" min="1" max="100"></div>
           </div>
           <div class="form-row">
-            <div class="form-label">ATR Expansion Threshold<span class="wt-badge wt-neut">not scored</span><div class="form-hint">Legacy threshold — signal replaced by VCP</div></div>
-            <div class="form-control"><input type="number" id="cfg-BREAKOUT_ATR_EXPANSION_THRESHOLD" step="0.05" min="1"></div>
+            <div class="form-label">Gap-Up Threshold<span class="wt-badge wt-neut">entry gate</span><div class="form-hint">Min open vs prior close gap % to qualify as a gap-up entry (e.g. 0.08 = 8%)</div></div>
+            <div class="form-control"><input type="number" id="cfg-GAP_UP_THRESHOLD" step="0.01" min="0" max="1"></div>
           </div>
           <div class="form-row">
             <div class="form-label">Consolidation Lookback (days)<span class="wt-badge wt-pos" id="wt-SCORE_CONSOLIDATION">12 pts</span><div class="form-hint">Low daily volatility in this window = tight base</div></div>
@@ -668,7 +668,7 @@
 
       <!-- Signal Weights -->
       <div class="cfg-card" style="grid-column: 1 / -1">
-        <div class="cfg-card-header"><span class="cfg-card-icon">&#9878;</span><span class="cfg-card-title">Signal Weights</span><span style="color:var(--muted);font-size:10px;margin-left:8px;">9 base signals + market breadth must sum to 100 &mdash; accumulation &amp; trap are applied on top</span><span id="weights-total-badge" style="margin-left:auto;font-size:11px;font-weight:700;"></span></div>
+        <div class="cfg-card-header"><span class="cfg-card-icon">&#9878;</span><span class="cfg-card-title">Signal Weights</span><span style="color:var(--muted);font-size:10px;margin-left:8px;">10 signals must sum to 100 &mdash; accumulation bonus &amp; trap penalty are applied on top and excluded from the total</span><span id="weights-total-badge" style="margin-left:auto;font-size:11px;font-weight:700;"></span></div>
         <div class="cfg-card-body">
           <div style="margin-bottom:8px;font-size:10px;color:var(--muted);">
             <strong style="color:var(--text);">Predictive (setup quality):</strong> VCP, Consolidation, Higher Lows, 52w High, Earnings &nbsp;|&nbsp;
@@ -1918,7 +1918,7 @@ function populateConfig(data) {
   // Simple text/number inputs
   const fields = [
     'BREAKOUT_MIN_PRICE','BREAKOUT_MIN_AVG_VOLUME','BREAKOUT_VOLUME_SURGE_MULT',
-    'BREAKOUT_RSI_LOW','BREAKOUT_RSI_HIGH','BREAKOUT_ATR_EXPANSION_THRESHOLD',
+    'BREAKOUT_RSI_LOW','BREAKOUT_RSI_HIGH','GAP_UP_THRESHOLD',
     'BREAKOUT_CONSOLIDATION_LOOKBACK','BREAKOUT_HIGHER_LOWS_LOOKBACK','BREAKOUT_MIN_SCORE',
     'BREAKOUT_ATR_STOP_MULT','BREAKOUT_MAX_STOP_PCT','BREAKOUT_RR_RATIO',
     'PARTIAL_EXIT_R','PARTIAL_EXIT_PCT','TRAIL_ATR_MULT',
@@ -2012,7 +2012,7 @@ function collectConfig() {
   // Text/number inputs
   const fields = [
     'BREAKOUT_MIN_PRICE','BREAKOUT_MIN_AVG_VOLUME','BREAKOUT_VOLUME_SURGE_MULT',
-    'BREAKOUT_RSI_LOW','BREAKOUT_RSI_HIGH','BREAKOUT_ATR_EXPANSION_THRESHOLD',
+    'BREAKOUT_RSI_LOW','BREAKOUT_RSI_HIGH','GAP_UP_THRESHOLD',
     'BREAKOUT_CONSOLIDATION_LOOKBACK','BREAKOUT_HIGHER_LOWS_LOOKBACK','BREAKOUT_MIN_SCORE',
     'BREAKOUT_ATR_STOP_MULT','BREAKOUT_MAX_STOP_PCT','BREAKOUT_RR_RATIO',
     'PARTIAL_EXIT_R','PARTIAL_EXIT_PCT','TRAIL_ATR_MULT',
