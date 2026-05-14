@@ -583,6 +583,10 @@
             <div class="form-control"><input type="number" id="cfg-BREAKOUT_CONSOLIDATION_LOOKBACK" step="1" min="3"></div>
           </div>
           <div class="form-row">
+            <div class="form-label">Consolidation Vol Threshold<span class="wt-badge wt-neut">same signal</span><div class="form-hint">Max daily return std dev to qualify as tight base (0.015 = 1.5%)</div></div>
+            <div class="form-control"><input type="number" id="cfg-BREAKOUT_CONSOLIDATION_DAILY_VOL" step="0.001" min="0.005" max="0.05"></div>
+          </div>
+          <div class="form-row">
             <div class="form-label">Higher Lows Lookback (days)<span class="wt-badge wt-pos" id="wt-SCORE_HIGHER_LOWS">12 pts</span><div class="form-hint">Ascending swing lows over this window = demand building</div></div>
             <div class="form-control"><input type="number" id="cfg-BREAKOUT_HIGHER_LOWS_LOOKBACK" step="1" min="3"></div>
           </div>
@@ -625,12 +629,16 @@
         <div class="cfg-card-header"><span class="cfg-card-icon">&#127919;</span><span class="cfg-card-title">Trade Setup</span></div>
         <div class="cfg-card-body">
           <div class="form-row">
-            <div class="form-label">ATR Stop Multiplier<div class="form-hint">Stop = Entry − (N × ATR)</div></div>
+            <div class="form-label">ATR Stop Multiplier<div class="form-hint">Stop = Entry − (N × ATR14)</div></div>
             <div class="form-control"><input type="number" id="cfg-BREAKOUT_ATR_STOP_MULT" step="0.1" min="0.5"></div>
           </div>
           <div class="form-row">
-            <div class="form-label">Max Stop %<div class="form-hint">Stop never below entry × (1 − this)</div></div>
+            <div class="form-label">Max Stop %<div class="form-hint">Stop floor — never below entry × (1 − this) (0.20 = 20%)</div></div>
             <div class="form-control"><input type="number" id="cfg-BREAKOUT_MAX_STOP_PCT" step="0.01" min="0.01" max="0.5"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-label">Support Lookback (days)<div class="form-hint">Swing-low window used to set stop price</div></div>
+            <div class="form-control"><input type="number" id="cfg-BREAKOUT_SUPPORT_LOOKBACK" step="1" min="3" max="30"></div>
           </div>
           <div class="form-row">
             <div class="form-label">R:R Ratio<div class="form-hint">Minimum risk-to-reward required</div></div>
@@ -1919,8 +1927,9 @@ function populateConfig(data) {
   const fields = [
     'BREAKOUT_MIN_PRICE','BREAKOUT_MIN_AVG_VOLUME','BREAKOUT_VOLUME_SURGE_MULT',
     'BREAKOUT_RSI_LOW','BREAKOUT_RSI_HIGH','GAP_UP_THRESHOLD',
-    'BREAKOUT_CONSOLIDATION_LOOKBACK','BREAKOUT_HIGHER_LOWS_LOOKBACK','BREAKOUT_MIN_SCORE',
-    'BREAKOUT_ATR_STOP_MULT','BREAKOUT_MAX_STOP_PCT','BREAKOUT_RR_RATIO',
+    'BREAKOUT_CONSOLIDATION_LOOKBACK','BREAKOUT_CONSOLIDATION_DAILY_VOL',
+    'BREAKOUT_HIGHER_LOWS_LOOKBACK','BREAKOUT_MIN_SCORE',
+    'BREAKOUT_ATR_STOP_MULT','BREAKOUT_MAX_STOP_PCT','BREAKOUT_SUPPORT_LOOKBACK','BREAKOUT_RR_RATIO',
     'PARTIAL_EXIT_R','PARTIAL_EXIT_PCT','TRAIL_ATR_MULT',
     'ACCUM_LOOKBACK_DAYS','BULL_TRAP_SCORE_THRESHOLD',
     'SCORE_VCP','SCORE_CONSOLIDATION','SCORE_HIGHER_LOWS',
@@ -2013,8 +2022,9 @@ function collectConfig() {
   const fields = [
     'BREAKOUT_MIN_PRICE','BREAKOUT_MIN_AVG_VOLUME','BREAKOUT_VOLUME_SURGE_MULT',
     'BREAKOUT_RSI_LOW','BREAKOUT_RSI_HIGH','GAP_UP_THRESHOLD',
-    'BREAKOUT_CONSOLIDATION_LOOKBACK','BREAKOUT_HIGHER_LOWS_LOOKBACK','BREAKOUT_MIN_SCORE',
-    'BREAKOUT_ATR_STOP_MULT','BREAKOUT_MAX_STOP_PCT','BREAKOUT_RR_RATIO',
+    'BREAKOUT_CONSOLIDATION_LOOKBACK','BREAKOUT_CONSOLIDATION_DAILY_VOL',
+    'BREAKOUT_HIGHER_LOWS_LOOKBACK','BREAKOUT_MIN_SCORE',
+    'BREAKOUT_ATR_STOP_MULT','BREAKOUT_MAX_STOP_PCT','BREAKOUT_SUPPORT_LOOKBACK','BREAKOUT_RR_RATIO',
     'PARTIAL_EXIT_R','PARTIAL_EXIT_PCT','TRAIL_ATR_MULT',
     'ACCUM_LOOKBACK_DAYS','BULL_TRAP_SCORE_THRESHOLD',
     'SCORE_VCP','SCORE_CONSOLIDATION','SCORE_HIGHER_LOWS',
