@@ -33,9 +33,10 @@ def notify(message: str) -> None:
         return
 
     try:
-        params = urllib.parse.urlencode({"phone": phone, "text": message, "apikey": apikey})
-        url    = f"{_API_URL}?{params}"
-        with urllib.request.urlopen(url, timeout=10) as resp:
+        # POST body keeps apikey out of server access logs and browser history
+        data = urllib.parse.urlencode({"phone": phone, "text": message, "apikey": apikey}).encode()
+        req  = urllib.request.Request(_API_URL, data=data, method="POST")
+        with urllib.request.urlopen(req, timeout=10) as resp:
             if not (200 <= resp.status < 300):
                 logger.warning(f"WhatsApp notify: HTTP {resp.status}")
     except Exception as exc:

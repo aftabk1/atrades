@@ -127,6 +127,9 @@ def init_db() -> None:
 
         # Migrate existing DB: add new columns if absent
         existing = {r[1] for r in con.execute("PRAGMA table_info(trades)").fetchall()}
+        import re as _re
+        _COL_RE   = _re.compile(r"^[a-z_]+$")
+        _SAFE_TYPES = {"TEXT", "REAL", "INTEGER"}
         for col, defn in [
             ("stop_order_id",             "TEXT"),
             ("fill_price",                "REAL"),
@@ -140,6 +143,10 @@ def init_db() -> None:
             ("breakout_level",            "REAL"),
             ("highest_price_since_entry", "REAL"),
         ]:
+            # SQLite doesn't support parameterized DDL; guard against injection explicitly.
+            base_type = defn.split()[0].upper()
+            if not _COL_RE.match(col) or base_type not in _SAFE_TYPES:
+                raise ValueError(f"Unsafe migration column: {col!r} {defn!r}")
             if col not in existing:
                 con.execute(f"ALTER TABLE trades ADD COLUMN {col} {defn}")
 
