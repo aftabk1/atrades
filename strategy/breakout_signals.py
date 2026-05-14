@@ -42,16 +42,20 @@ class BreakoutSignals:
     atr_14: float = 0.0
     support_level: float = 0.0
 
-    breakout_20d:       SignalResult = field(default_factory=_default_signal)
-    breakout_10d:       SignalResult = field(default_factory=_default_signal)
-    breakout_50d:       SignalResult = field(default_factory=_default_signal)
-    consolidation:      SignalResult = field(default_factory=_default_signal)
-    higher_lows:        SignalResult = field(default_factory=_default_signal)
-    volume_surge:       SignalResult = field(default_factory=_default_signal)
-    rsi_zone:           SignalResult = field(default_factory=_default_signal)
-    relative_strength:  SignalResult = field(default_factory=_default_signal)
-    atr_expansion:      SignalResult = field(default_factory=_default_signal)
-    earnings_proximity: SignalResult = field(default_factory=_default_signal)
+    breakout_20d:        SignalResult = field(default_factory=_default_signal)
+    breakout_10d:        SignalResult = field(default_factory=_default_signal)
+    consolidation:       SignalResult = field(default_factory=_default_signal)
+    higher_lows:         SignalResult = field(default_factory=_default_signal)
+    volume_surge:        SignalResult = field(default_factory=_default_signal)
+    rsi_zone:            SignalResult = field(default_factory=_default_signal)
+    relative_strength:   SignalResult = field(default_factory=_default_signal)
+    earnings_proximity:  SignalResult = field(default_factory=_default_signal)
+    high_52w_proximity:  SignalResult = field(default_factory=_default_signal)
+    vcp:                 SignalResult = field(default_factory=_default_signal)
+
+    # Legacy fields — no longer scored; kept for DB/JSON backward compat
+    breakout_50d:        SignalResult = field(default_factory=_default_signal)
+    atr_expansion:       SignalResult = field(default_factory=_default_signal)
 
     gap_pct: float = 0.0       # today open vs prior close; ≥0.08 = gap-up breakout
     breakout_level: float = 0.0  # 20-day prior high — stored at trade entry for PME
@@ -134,11 +138,11 @@ def detect_all(
         if not (trigger_a or trigger_b or trigger_c):
             return None
 
-    sig.breakout_50d      = _check_price_breakout(df, 50)
-    sig.consolidation     = _check_consolidation(df)
-    sig.higher_lows       = _check_higher_lows(df)
-    sig.rsi_zone          = _check_rsi(df)
-    sig.atr_expansion     = _check_atr_expansion(df)
+    sig.consolidation      = _check_consolidation(df)
+    sig.higher_lows        = _check_higher_lows(df)
+    sig.rsi_zone           = _check_rsi(df)
+    sig.high_52w_proximity = _check_52w_high_proximity(df)
+    sig.vcp                = _check_vcp(df)
 
     if earnings_date is not None:
         sig.earnings_proximity = _check_earnings_proximity(df, earnings_date)
@@ -311,6 +315,96 @@ def _check_atr_expansion(df: pd.DataFrame) -> SignalResult:
         triggered=ratio > threshold,
         value=ratio,
         description=f"ATR expansion: {ratio:.2f}x (ATR5={atr5:.2f}, ATR20={atr20:.2f}, need >{threshold})",
+    )
+
+
+def _check_52w_high_proximity(df: pd.DataFrame) -> SignalResult:
+    """
+    Proximity to the 52-week high. At or within 3% = full points (no overhead supply).
+    -3% to -10% = partial. Beyond -10% = not triggered (significant resistance above).
+    """
+    n = min(252, len(df) - 1)
+    if n < 50:
+        return SignalResult(False, 0.0)
+
+    high_52w  = float(df["high"].iloc[-n:-1].max())
+    current   = float(df["close"].iloc[-1])
+    if high_52w == 0:
+        return SignalResult(False, 0.0)
+
+    pct_from_high = (current - high_52w) / high_52w * 100   # 0 = at high, negative = below
+
+    return SignalResult(
+        triggered=pct_from_high >= -10.0,
+        value=pct_from_high,
+        description=(
+            f"52w high: {pct_from_high:+.1f}% from ${high_52w:.2f} — "
+            + ("at new highs (no overhead supply)"  if pct_from_high >= -3.0
+               else f"{abs(pct_from_high):.1f}% below 52w high")
+        ),
+    )
+
+
+def _check_vcp(df: pd.DataFrame, lookback: int = 35) -> SignalResult:
+    """
+    Volatility Contraction Pattern (Minervini): successive narrowing price
+    swings within the base. Each contraction range ≥15% smaller than prior.
+    Minimum 1 contracting pair to trigger; 2+ for full score.
+    """
+    if len(df) < lookback + 5:
+        return SignalResult(False, 0.0)
+
+    window = df.iloc[-(lookback + 1):-1]
+    highs  = window["high"].values
+    lows   = window["low"].values
+    n      = len(highs)
+
+    if n < 10:
+        return SignalResult(False, 0.0)
+
+    # Swing highs/lows using 2-bar confirmation each side
+    peaks   = [highs[i] for i in range(2, n - 2)
+               if highs[i] >= highs[i-1] and highs[i] >= highs[i+1]
+               and highs[i] >= highs[i-2] and highs[i] >= highs[i+2]]
+    troughs_idx = [(i, lows[i]) for i in range(2, n - 2)
+                   if lows[i] <= lows[i-1]  and lows[i] <= lows[i+1]
+                   and lows[i] <= lows[i-2] and lows[i] <= lows[i+2]]
+
+    if len(peaks) < 2 or not troughs_idx:
+        return SignalResult(False, 0.0)
+
+    # Build contraction ranges: peak → nearest subsequent trough
+    peak_indices = [i for i in range(2, n - 2)
+                    if highs[i] >= highs[i-1] and highs[i] >= highs[i+1]
+                    and highs[i] >= highs[i-2] and highs[i] >= highs[i+2]]
+    contraction_ranges: list[float] = []
+    for pi in peak_indices:
+        pval = highs[pi]
+        next_t = [(ti, tv) for ti, tv in troughs_idx if ti > pi]
+        if next_t:
+            tv = next_t[0][1]
+            contraction_ranges.append((pval - tv) / pval)
+
+    if len(contraction_ranges) < 2:
+        return SignalResult(False, 0.0)
+
+    n_contracting = sum(
+        1 for i in range(1, len(contraction_ranges))
+        if contraction_ranges[i] <= contraction_ranges[i - 1] * 0.85
+    )
+
+    latest_range = contraction_ranges[-1]
+    triggered    = n_contracting >= 1
+
+    return SignalResult(
+        triggered=triggered,
+        value=float(n_contracting),
+        description=(
+            f"VCP: {n_contracting}/{len(contraction_ranges)-1} contracting swing(s), "
+            f"latest range {latest_range:.1%}"
+            + (" — volatility compressing ✓" if n_contracting >= 2
+               else " — early contraction")
+        ),
     )
 
 

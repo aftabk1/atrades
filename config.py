@@ -57,19 +57,32 @@ MAX_DAILY_LOSS_PCT = float(os.getenv("MAX_DAILY_LOSS_PCT", "0.04"))  # halt if d
 # ── Gap-up detection ──────────────────────────────────────────────────────────
 GAP_UP_THRESHOLD = float(os.getenv("GAP_UP_THRESHOLD", "0.08"))  # ≥8% open vs prior close = gap-up
 
-# ── Signal score weights (must sum to 100 for a clean score scale) ────────────
-# Reweighted toward predictive setup quality vs reactive confirmation.
-# Predictive (setup forming):  consolidation 18, higher_lows 16, earnings 8, rsi 14  → 56 pts
-# Reactive   (confirmation):   volume 14, breakout_20d 12, breakout_50d 8, rs 6, atr 4 → 44 pts
-SCORE_CONSOLIDATION      = float(os.getenv("SCORE_CONSOLIDATION",      "18.0"))  # was 8
-SCORE_HIGHER_LOWS        = float(os.getenv("SCORE_HIGHER_LOWS",        "16.0"))  # was 8
-SCORE_RSI_ZONE           = float(os.getenv("SCORE_RSI_ZONE",           "14.0"))  # was 12
-SCORE_EARNINGS_PROXIMITY = float(os.getenv("SCORE_EARNINGS_PROXIMITY",  "8.0"))  # was 4
-SCORE_VOLUME_SURGE       = float(os.getenv("SCORE_VOLUME_SURGE",       "14.0"))  # was 20
-SCORE_BREAKOUT_20D       = float(os.getenv("SCORE_BREAKOUT_20D",       "12.0"))  # was 16
-SCORE_BREAKOUT_50D       = float(os.getenv("SCORE_BREAKOUT_50D",        "8.0"))  # was 12
-SCORE_RELATIVE_STRENGTH  = float(os.getenv("SCORE_RELATIVE_STRENGTH",   "6.0"))  # was 12
-SCORE_ATR_EXPANSION      = float(os.getenv("SCORE_ATR_EXPANSION",        "4.0"))  # was 8
+# ── Signal score weights ──────────────────────────────────────────────────────
+# Base 9 signals sum to 94; market breadth adds up to 6 → effective max 100.
+# Breakdown: predictive (VCP+consolidation+higher_lows+52w+earnings) = 54 pts
+#            confirmation (volume+breakout_20d+rsi+rs)               = 40 pts
+#            breadth (market participation)                           =  6 pts
+#
+# Removed: breakout_50d (replaced by high_52w_proximity)
+#          atr_expansion (replaced by vcp)
+#          regime score multiplier (replaced by market_breadth)
+
+# Predictive / setup-quality
+SCORE_VCP                = float(os.getenv("SCORE_VCP",                "14.0"))
+SCORE_CONSOLIDATION      = float(os.getenv("SCORE_CONSOLIDATION",      "12.0"))
+SCORE_HIGHER_LOWS        = float(os.getenv("SCORE_HIGHER_LOWS",        "12.0"))
+SCORE_52W_HIGH_PROXIMITY = float(os.getenv("SCORE_52W_HIGH_PROXIMITY", "10.0"))
+SCORE_EARNINGS_PROXIMITY = float(os.getenv("SCORE_EARNINGS_PROXIMITY",  "6.0"))
+
+# Confirmation
+SCORE_VOLUME_SURGE       = float(os.getenv("SCORE_VOLUME_SURGE",       "14.0"))
+SCORE_BREAKOUT_20D       = float(os.getenv("SCORE_BREAKOUT_20D",       "12.0"))
+SCORE_RSI_ZONE           = float(os.getenv("SCORE_RSI_ZONE",           "10.0"))
+SCORE_RELATIVE_STRENGTH  = float(os.getenv("SCORE_RELATIVE_STRENGTH",   "4.0"))
+
+# Market breadth (computed at scan level, not per-symbol)
+SCORE_MARKET_BREADTH     = float(os.getenv("SCORE_MARKET_BREADTH",      "6.0"))
+
 SCORE_ACCUM_MAX_BONUS    = float(os.getenv("SCORE_ACCUM_MAX_BONUS",    "12.0"))
 SCORE_TRAP_MAX_PENALTY   = float(os.getenv("SCORE_TRAP_MAX_PENALTY",   "32.0"))
 

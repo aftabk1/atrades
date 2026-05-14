@@ -64,11 +64,12 @@ class BreakoutScanner:
         self._universe     = StockUniverse()
         self._market       = MarketDataClient()
         self._scorer       = BreakoutScorer()
-        self._broker       = AlpacaClient()
-        self._executor     = BracketOrderExecutor(self._broker) if execute else None
-        self._execute      = execute
-        self._regime_aware = regime_aware and config.REGIME_AWARE_SCANNING
-        self._last_regime: MarketRegime | None = None
+        self._broker        = AlpacaClient()
+        self._executor      = BracketOrderExecutor(self._broker) if execute else None
+        self._execute       = execute
+        self._regime_aware  = regime_aware and config.REGIME_AWARE_SCANNING
+        self._last_regime:  MarketRegime | None = None
+        self._last_breadth: float = 0.5   # fraction of stocks above 20MA, updated each scan
 
     # ── Main scan ─────────────────────────────────────────────────────────────
 
@@ -100,12 +101,23 @@ class BreakoutScanner:
                 f"({effective_min_score:.0f}). Consider pausing new positions."
             )
 
+        # ── Market breadth: % of scanned stocks above 20-day MA ──────────────
+        breadth_above = sum(
+            1 for df in market_data.values()
+            if df is not None and len(df) >= 22
+            and float(df["close"].iloc[-1]) > float(df["close"].iloc[-22:-1].mean())
+        )
+        breadth_total  = sum(1 for df in market_data.values() if df is not None and len(df) >= 22)
+        breadth_pct    = breadth_above / breadth_total if breadth_total > 0 else 0.5
+        self._last_breadth = breadth_pct
+
         portfolio_value = self._broker.get_portfolio_value()
         open_positions  = {p.symbol for p in self._broker.get_all_positions()}
         logger.info(
             f"Portfolio: ${portfolio_value:,.2f} | "
             f"Open: {', '.join(open_positions) or 'none'} | "
-            f"Regime: {regime.state.value} (×{regime.score_multiplier})"
+            f"Regime: {regime.state.value} | "
+            f"Breadth: {breadth_above}/{breadth_total} ({breadth_pct:.0%}) above 20MA"
         )
 
         candidates: list[dict] = []
@@ -120,14 +132,8 @@ class BreakoutScanner:
             if signals is None:
                 continue
 
-            # Raw score from scorer (already includes accum bonus + trap penalty)
-            raw_score = self._scorer.score(signals)
-
-            # Apply regime multiplier
-            score = (
-                round(raw_score * regime.score_multiplier, 1)
-                if self._regime_aware else raw_score
-            )
+            # Score includes per-symbol signals + market breadth component
+            score = self._scorer.score(signals, breadth_pct)
 
             if score < effective_min_score:
                 continue
@@ -136,7 +142,7 @@ class BreakoutScanner:
             if setup is None:
                 continue
 
-            candidates.append(_build_candidate(signals, setup, self._scorer, regime))
+            candidates.append(_build_candidate(signals, setup, self._scorer, regime, breadth_pct))
 
         candidates.sort(key=lambda c: c["score"], reverse=True)
         top = candidates[:_TOP_N]
@@ -182,7 +188,7 @@ class BreakoutScanner:
                 f"  MARKET REGIME: {rlabel:18s} | "
                 f"ADX={r.adx:.1f} | SPY {'^^' if r.spy_above_200ma else 'vv'} 200MA | "
                 f"Slope={r.spy_slope_20d:+.1f}% | Vol={r.realized_vol_20d:.1f}% | "
-                f"Score x{r.score_multiplier:.2f}"
+                f"Breadth={self._last_breadth:.0%} above 20MA"
             )
             if not r.scan_recommended:
                 print("  [!] Regime not favourable -- new positions carry elevated risk")
@@ -274,11 +280,13 @@ class BreakoutScanner:
                         "portfolio_pct":  c["portfolio_pct"],
                     },
                     "metrics": {
-                        "volume_ratio": c["volume_ratio"],
-                        "rsi": c["rsi"],
-                        "rs_vs_spy_pct": c["rs_vs_spy"],
-                        "breakout_20d": c["breakout_20d"],
-                        "breakout_50d": c["breakout_50d"],
+                        "volume_ratio":       c["volume_ratio"],
+                        "rsi":                c["rsi"],
+                        "rs_vs_spy_pct":      c["rs_vs_spy"],
+                        "breakout_20d":       c["breakout_20d"],
+                        "high_52w_pct":       c["high_52w_pct"],
+                        "vcp_contractions":   c["vcp_contractions"],
+                        "market_breadth_pct": c["market_breadth_pct"],
                     },
                     "score_breakdown": c["score_breakdown"],
                     "signal_detail": c["signals"],
@@ -402,7 +410,8 @@ def run_optimize(
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _build_candidate(signals, setup: TradeSetup, scorer: BreakoutScorer, regime: MarketRegime) -> dict:
+def _build_candidate(signals, setup: TradeSetup, scorer: BreakoutScorer,
+                     regime: MarketRegime, breadth_pct: float = 0.5) -> dict:
     accum   = signals.accumulation
     trap    = signals.bull_trap
 
@@ -431,32 +440,34 @@ def _build_candidate(signals, setup: TradeSetup, scorer: BreakoutScorer, regime:
         "dollar_reward":  setup.dollar_reward,
         "risk_reward":    setup.risk_reward,
         "portfolio_pct":  setup.portfolio_pct,
-        "gap_pct":      round(signals.gap_pct * 100, 2),
-        "volume_ratio": round(signals.volume_surge.value, 2),
-        "rsi":          round(signals.rsi_zone.value, 1),
-        "rs_vs_spy":    round(signals.relative_strength.value, 2),
-        "breakout_level": round(signals.breakout_level, 2),
-        "breakout_20d": signals.breakout_20d.triggered,
-        "breakout_10d": signals.breakout_10d.triggered,
-        "breakout_50d": signals.breakout_50d.triggered,
-        "accum_score":  accum.composite_score if accum else 0.0,
-        "is_trap":      trap.is_trap if trap else False,
-        "trap_score":   trap.trap_score if trap else 0.0,
-        "trap_warnings": trap_warnings,
-        "accum_detail": accum_detail,
-        "regime":       regime.state.value,
-        "score_breakdown": scorer.breakdown(signals),
+        "gap_pct":            round(signals.gap_pct * 100, 2),
+        "volume_ratio":       round(signals.volume_surge.value, 2),
+        "rsi":                round(signals.rsi_zone.value, 1),
+        "rs_vs_spy":          round(signals.relative_strength.value, 2),
+        "breakout_level":     round(signals.breakout_level, 2),
+        "breakout_20d":       signals.breakout_20d.triggered,
+        "breakout_10d":       signals.breakout_10d.triggered,
+        "high_52w_pct":       round(signals.high_52w_proximity.value, 2),
+        "vcp_contractions":   int(signals.vcp.value),
+        "market_breadth_pct": round(breadth_pct * 100, 1),
+        "accum_score":        accum.composite_score if accum else 0.0,
+        "is_trap":            trap.is_trap if trap else False,
+        "trap_score":         trap.trap_score if trap else 0.0,
+        "trap_warnings":      trap_warnings,
+        "accum_detail":       accum_detail,
+        "regime":             regime.state.value,
+        "score_breakdown":    scorer.breakdown(signals, breadth_pct),
         "signals": {
-            "breakout_20d":      signals.breakout_20d.description,
-            "breakout_10d":      signals.breakout_10d.description,
-            "breakout_50d":      signals.breakout_50d.description,
-            "consolidation":     signals.consolidation.description,
-            "higher_lows":       signals.higher_lows.description,
-            "volume_surge":      signals.volume_surge.description,
-            "rsi":               signals.rsi_zone.description,
-            "relative_strength": signals.relative_strength.description,
-            "atr_expansion":     signals.atr_expansion.description,
-            "earnings":          signals.earnings_proximity.description,
+            "breakout_20d":        signals.breakout_20d.description,
+            "breakout_10d":        signals.breakout_10d.description,
+            "consolidation":       signals.consolidation.description,
+            "higher_lows":         signals.higher_lows.description,
+            "vcp":                 signals.vcp.description,
+            "high_52w_proximity":  signals.high_52w_proximity.description,
+            "volume_surge":        signals.volume_surge.description,
+            "rsi":                 signals.rsi_zone.description,
+            "relative_strength":   signals.relative_strength.description,
+            "earnings":            signals.earnings_proximity.description,
         },
     }
 
