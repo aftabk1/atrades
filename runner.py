@@ -26,6 +26,7 @@ Windows autostart (Task Scheduler):
 from __future__ import annotations
 
 import argparse
+import signal
 import sys
 import time
 from datetime import datetime, timedelta
@@ -34,6 +35,7 @@ import pytz
 from loguru import logger
 
 import config
+from notifications.whatsapp import notify
 from data.store import init_db, save_scan, save_trade
 from execution.position_executor import PositionExecutor
 from execution.position_monitor import (
@@ -283,6 +285,25 @@ def main() -> None:
                 f"risk {config.MAX_PORTFOLIO_RISK:.0%}/trade")
     logger.info("=" * 58)
 
+    # WhatsApp: runner started
+    notify(
+        f"A1TRADES Runner STARTED\n"
+        f"Mode: {mode}\n"
+        f"Scan: {rescan}\n"
+        f"Time: {datetime.now(NY).strftime('%Y-%m-%d %H:%M ET')}"
+    )
+
+    # SIGTERM handler so pkill/systemctl stop also sends a shutdown message
+    def _on_sigterm(signum, frame):
+        logger.info("Runner received SIGTERM — shutting down")
+        notify(
+            f"A1TRADES Runner STOPPED (SIGTERM)\n"
+            f"Time: {datetime.now(NY).strftime('%Y-%m-%d %H:%M ET')}"
+        )
+        sys.exit(0)
+
+    signal.signal(signal.SIGTERM, _on_sigterm)
+
     if execute and not config.IS_PAPER:
         logger.warning("!" * 58)
         logger.warning("  LIVE TRADING ACTIVE — orders will use REAL MONEY")
@@ -298,16 +319,23 @@ def main() -> None:
 
     scanner = BreakoutScanner(execute=execute)
 
-    while True:
-        try:
-            _wait_for_open(scanner)
-            run_session(scanner, rescan_interval=args.interval)
-        except KeyboardInterrupt:
-            logger.info("Runner stopped by user")
-            break
-        except Exception as exc:
-            logger.error(f"Unexpected error: {exc} -- restarting in 60s")
-            time.sleep(60)
+    try:
+        while True:
+            try:
+                _wait_for_open(scanner)
+                run_session(scanner, rescan_interval=args.interval)
+            except KeyboardInterrupt:
+                logger.info("Runner stopped by user")
+                notify(
+                    f"A1TRADES Runner STOPPED (manual)\n"
+                    f"Time: {datetime.now(NY).strftime('%Y-%m-%d %H:%M ET')}"
+                )
+                break
+            except Exception as exc:
+                logger.error(f"Unexpected error: {exc} -- restarting in 60s")
+                time.sleep(60)
+    except SystemExit:
+        raise  # SIGTERM handler already sent notification
 
 
 if __name__ == "__main__":
