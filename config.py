@@ -38,7 +38,7 @@ BREAKOUT_ATR_STOP_MULT    = float(os.getenv("BREAKOUT_ATR_STOP_MULT",    "2.0"))
 BREAKOUT_MAX_STOP_PCT     = float(os.getenv("BREAKOUT_MAX_STOP_PCT",     "0.20")) # stop floor: never below 80% of entry
 BREAKOUT_SUPPORT_LOOKBACK = int(os.getenv("BREAKOUT_SUPPORT_LOOKBACK",   "10"))   # days for swing-low support
 BREAKOUT_RR_RATIO         = float(os.getenv("BREAKOUT_RR_RATIO",         "2.0"))  # partial exit at 2R
-BREAKOUT_MIN_SCORE        = float(os.getenv("BREAKOUT_MIN_SCORE",        "60.0")) # 0–100 score floor
+BREAKOUT_MIN_SCORE        = float(os.getenv("BREAKOUT_MIN_SCORE",        "65.0")) # 0–100 score floor
 
 # ── Partial exit + trailing stop ──────────────────────────────────────────────
 PARTIAL_EXIT_R   = float(os.getenv("PARTIAL_EXIT_R",   "2.0"))   # take partial profit at this R multiple
