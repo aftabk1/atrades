@@ -617,9 +617,12 @@ class TestBreakoutScorer:
     def test_breakdown_returns_all_factors(self):
         from strategy.breakout_scorer import BreakoutScorer
         bd = BreakoutScorer().breakdown(make_signals(all_triggered=True))
-        expected = ["volume_surge", "breakout_20d", "relative_strength", "rsi_zone",
-                    "breakout_50d", "atr_expansion", "consolidation", "higher_lows",
-                    "earnings_proximity"]
+        expected = [
+            "vcp", "consolidation", "higher_lows", "high_52w_proximity",
+            "earnings_proximity", "volume_surge", "breakout_20d",
+            "rsi_zone", "relative_strength", "market_breadth",
+            "accum_bonus", "trap_penalty",
+        ]
         for factor in expected:
             assert factor in bd, f"Missing factor in breakdown: {factor}"
 

@@ -111,14 +111,18 @@ def make_signals(
         support_level=support,
         breakout_20d=sig(all_triggered, 0.025),
         breakout_10d=sig(all_triggered, 0.015),
-        breakout_50d=sig(all_triggered, 0.015),
         consolidation=sig(all_triggered, 0.012),
         higher_lows=sig(all_triggered, 1.0),
         volume_surge=sig(all_triggered, 2.5),
         rsi_zone=sig(all_triggered, 62.0),
         relative_strength=sig(all_triggered, 5.0),
-        atr_expansion=sig(all_triggered, 1.35),
         earnings_proximity=sig(False, 0.0),
+        # New predictive signals
+        high_52w_proximity=sig(all_triggered, -1.5),  # 1.5% below 52w high → full pts
+        vcp=sig(all_triggered, 2.0),                  # 2 contracting swings → full pts
+        # Legacy fields (no longer scored)
+        breakout_50d=sig(False, 0.0),
+        atr_expansion=sig(False, 0.0),
         accumulation=None,
         bull_trap=None,
     )
