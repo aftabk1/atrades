@@ -26,8 +26,8 @@ BREAKOUT_MIN_AVG_VOLUME = int(os.getenv("BREAKOUT_MIN_AVG_VOLUME", "1000000"))
 
 # ── Breakout scanner — signal thresholds ─────────────────────────────────────
 BREAKOUT_VOLUME_SURGE_MULT = float(os.getenv("BREAKOUT_VOLUME_SURGE_MULT", "1.5"))
-BREAKOUT_RSI_LOW = float(os.getenv("BREAKOUT_RSI_LOW", "55.0"))
-BREAKOUT_RSI_HIGH = float(os.getenv("BREAKOUT_RSI_HIGH", "70.0"))
+BREAKOUT_RSI_LOW = float(os.getenv("BREAKOUT_RSI_LOW", "50.0"))   # was 55 — catch momentum earlier
+BREAKOUT_RSI_HIGH = float(os.getenv("BREAKOUT_RSI_HIGH", "65.0"))  # was 70 — exclude extended stocks
 BREAKOUT_ATR_EXPANSION_THRESHOLD = float(os.getenv("BREAKOUT_ATR_EXPANSION_THRESHOLD", "1.2"))
 BREAKOUT_CONSOLIDATION_DAILY_VOL = float(os.getenv("BREAKOUT_CONSOLIDATION_DAILY_VOL", "0.015"))
 BREAKOUT_CONSOLIDATION_LOOKBACK = int(os.getenv("BREAKOUT_CONSOLIDATION_LOOKBACK", "15"))
@@ -58,15 +58,18 @@ MAX_DAILY_LOSS_PCT = float(os.getenv("MAX_DAILY_LOSS_PCT", "0.04"))  # halt if d
 GAP_UP_THRESHOLD = float(os.getenv("GAP_UP_THRESHOLD", "0.08"))  # ≥8% open vs prior close = gap-up
 
 # ── Signal score weights (must sum to 100 for a clean score scale) ────────────
-SCORE_VOLUME_SURGE       = float(os.getenv("SCORE_VOLUME_SURGE",       "20.0"))
-SCORE_BREAKOUT_20D       = float(os.getenv("SCORE_BREAKOUT_20D",       "16.0"))
-SCORE_RELATIVE_STRENGTH  = float(os.getenv("SCORE_RELATIVE_STRENGTH",  "12.0"))
-SCORE_RSI_ZONE           = float(os.getenv("SCORE_RSI_ZONE",           "12.0"))
-SCORE_BREAKOUT_50D       = float(os.getenv("SCORE_BREAKOUT_50D",       "12.0"))
-SCORE_ATR_EXPANSION      = float(os.getenv("SCORE_ATR_EXPANSION",       "8.0"))
-SCORE_CONSOLIDATION      = float(os.getenv("SCORE_CONSOLIDATION",       "8.0"))
-SCORE_HIGHER_LOWS        = float(os.getenv("SCORE_HIGHER_LOWS",         "8.0"))
-SCORE_EARNINGS_PROXIMITY = float(os.getenv("SCORE_EARNINGS_PROXIMITY",  "4.0"))
+# Reweighted toward predictive setup quality vs reactive confirmation.
+# Predictive (setup forming):  consolidation 18, higher_lows 16, earnings 8, rsi 14  → 56 pts
+# Reactive   (confirmation):   volume 14, breakout_20d 12, breakout_50d 8, rs 6, atr 4 → 44 pts
+SCORE_CONSOLIDATION      = float(os.getenv("SCORE_CONSOLIDATION",      "18.0"))  # was 8
+SCORE_HIGHER_LOWS        = float(os.getenv("SCORE_HIGHER_LOWS",        "16.0"))  # was 8
+SCORE_RSI_ZONE           = float(os.getenv("SCORE_RSI_ZONE",           "14.0"))  # was 12
+SCORE_EARNINGS_PROXIMITY = float(os.getenv("SCORE_EARNINGS_PROXIMITY",  "8.0"))  # was 4
+SCORE_VOLUME_SURGE       = float(os.getenv("SCORE_VOLUME_SURGE",       "14.0"))  # was 20
+SCORE_BREAKOUT_20D       = float(os.getenv("SCORE_BREAKOUT_20D",       "12.0"))  # was 16
+SCORE_BREAKOUT_50D       = float(os.getenv("SCORE_BREAKOUT_50D",        "8.0"))  # was 12
+SCORE_RELATIVE_STRENGTH  = float(os.getenv("SCORE_RELATIVE_STRENGTH",   "6.0"))  # was 12
+SCORE_ATR_EXPANSION      = float(os.getenv("SCORE_ATR_EXPANSION",        "4.0"))  # was 8
 SCORE_ACCUM_MAX_BONUS    = float(os.getenv("SCORE_ACCUM_MAX_BONUS",    "12.0"))
 SCORE_TRAP_MAX_PENALTY   = float(os.getenv("SCORE_TRAP_MAX_PENALTY",   "32.0"))
 
