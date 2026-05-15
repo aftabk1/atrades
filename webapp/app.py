@@ -320,8 +320,25 @@ async def security_middleware(request: Request, call_next):
 
 @app.get("/login", include_in_schema=False)
 def login_page(request: Request):
-    # Redirect away if credentials are in the URL (leaked via browser history/autofill)
-    if "username" in request.query_params or "password" in request.query_params:
+    # Handle password-manager GET submissions (credentials leaked into URL).
+    # Authenticate on the spot so the user isn't stuck in a redirect loop.
+    username = request.query_params.get("username", "")
+    password = request.query_params.get("password", "")
+    if username or password:
+        user_ok = _AUTH_ENABLED and hmac.compare_digest(username.encode(), _AUTH_USER.encode())
+        pass_ok = _AUTH_ENABLED and hmac.compare_digest(password.encode(), _AUTH_PASS.encode())
+        if user_ok and pass_ok:
+            token      = secrets.token_urlsafe(32)
+            csrf_token = secrets.token_urlsafe(32)
+            _SESSIONS[token] = _time_mod.time()
+            _secure = os.getenv("SECURE_COOKIE", "true").lower() != "false"
+            resp = Response(status_code=302, headers={"Location": "/"})
+            resp.set_cookie(SESSION_COOKIE, token, httponly=True, samesite="lax",
+                            secure=_secure, max_age=SESSION_TIMEOUT)
+            resp.set_cookie(CSRF_COOKIE, csrf_token, httponly=False, samesite="lax",
+                            secure=_secure, max_age=SESSION_TIMEOUT)
+            return resp
+        # Wrong credentials — redirect to clean login page
         return Response(status_code=302, headers={"Location": "/login"})
     resp = FileResponse(str(STATIC / "login.html"))
     resp.headers["Cache-Control"] = "no-store"
