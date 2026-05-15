@@ -120,7 +120,7 @@
   <div class="notice" id="notice"></div>
   <div class="error"  id="error-msg"></div>
 
-  <form id="login-form" onsubmit="doLogin(event)">
+  <form id="login-form" method="post" action="/login" onsubmit="doLogin(event)">
     <label for="username">Username</label>
     <input type="text" id="username" name="username" autocomplete="username" autofocus required>
 
