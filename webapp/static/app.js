@@ -870,7 +870,7 @@ function setRunnerUI(running) {
     hRunnerPill.className = 'h-pill h-pill-on';
     hRunnerPill.textContent = 'RUNNER ON';
     if (hStopBtn)    hStopBtn.style.display = '';
-    if (hScanNowBtn) hScanNowBtn.style.display = 'none';
+    if (hScanNowBtn) hScanNowBtn.style.display = '';
   } else {
     hRunnerPill.className = 'h-pill h-pill-off';
     hRunnerPill.textContent = 'RUNNER OFF';
