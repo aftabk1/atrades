@@ -1036,7 +1036,17 @@ _runner_proc: subprocess.Popen | None = None
 
 
 def _runner_alive() -> bool:
-    return _runner_proc is not None and _runner_proc.poll() is None
+    if _runner_proc is not None and _runner_proc.poll() is None:
+        return True
+    # Detect runner.py started outside the webapp (e.g. command line)
+    import subprocess as _sp
+    try:
+        out = _sp.check_output(
+            ["pgrep", "-f", "runner.py"], text=True, stderr=_sp.DEVNULL
+        ).strip()
+        return bool(out)
+    except Exception:
+        return False
 
 
 @app.get("/api/trading-mode")
