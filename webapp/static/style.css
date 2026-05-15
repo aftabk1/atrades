@@ -16,11 +16,24 @@
   body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 13px; min-height: 100vh; }
 
   /* ── Layout ── */
-  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-  .logo   { font-family: 'Exo 2', 'Segoe UI', sans-serif; font-size: 20px; font-weight: 800; letter-spacing: 2px; color: var(--cyan); flex: 1; display: flex; align-items: center; gap: 10px; }
+  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 20px; display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; min-height: 52px; }
+  .logo   { font-family: 'Exo 2', 'Segoe UI', sans-serif; font-size: 19px; font-weight: 800; letter-spacing: 2px; color: var(--cyan); display: flex; align-items: center; gap: 8px; flex-shrink: 0; margin-right: 4px; }
   .logo span.logo-one { color: #fff; }
-  .logo img.logo-icon { width: 40px; height: 40px; border-radius: 9px; flex-shrink: 0; margin: -4px 0; }
+  .logo img.logo-icon { width: 34px; height: 34px; border-radius: 8px; flex-shrink: 0; }
   .main   { padding: 20px 24px; max-width: 1400px; margin: 0 auto; }
+
+  /* ── Header status pills ── */
+  .h-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: .06em; flex-shrink: 0; white-space: nowrap; }
+  .h-pill-open    { background: #16a34a; color: #fff; }
+  .h-pill-closed  { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+  .h-pill-on      { background: #16a34a; color: #fff; }
+  .h-pill-off     { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+  .h-pill-scanning{ background: #0e7490; color: #fff; animation: pulse 1.2s infinite; }
+  .h-mkt-time  { font-size: 12px; color: var(--muted); flex-shrink: 0; white-space: nowrap; }
+  .h-last-scan { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .header-right { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-shrink: 0; }
+  .h-action-btn { font-size: 12px; padding: 5px 13px; font-weight: 600; white-space: nowrap; }
+  .h-signout-btn { font-size: 11px; padding: 5px 10px; color: var(--muted); }
 
   /* ── Tabs ── */
   .tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid var(--border); }

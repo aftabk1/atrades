@@ -38,20 +38,33 @@
 
 <!-- Header -->
 <div class="header">
+  <!-- Logo -->
   <div class="logo">
     <img class="logo-icon" src="/static/A1Trades.png?v=2" alt="A1TRADES">
     A1<span class="logo-one">TRADES</span>
   </div>
-  <div id="regime-badge" class="regime"><span class="regime-dot" id="regime-dot"></span><span id="regime-text">Loading...</span></div>
-  <div id="header-runner-pill" class="regime" title="Click to start / stop runner" style="cursor:pointer;user-select:none;">
-    <span class="runner-dot" id="header-runner-dot"></span>
-    <span id="header-runner-label" style="color:var(--muted)">Runner OFF</span>
-  </div>
-  <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
-    <span class="scan-next-info" id="scan-countdown"></span>
+
+  <!-- Status pills -->
+  <span id="h-mkt-pill"    class="h-pill h-pill-closed">CLOSED</span>
+  <span id="h-runner-pill" class="h-pill h-pill-off">RUNNER OFF</span>
+  <span id="h-scan-pill"   class="h-pill h-pill-scanning" style="display:none">SCANNING&#8230;</span>
+
+  <!-- Market time text -->
+  <span id="h-mkt-time" class="h-mkt-time"></span>
+
+  <!-- Hidden elements kept for JS compatibility -->
+  <div id="regime-badge"       style="display:none"><span class="regime-dot" id="regime-dot"></span><span id="regime-text"></span></div>
+  <div id="header-runner-pill" style="display:none"><span class="runner-dot" id="header-runner-dot"></span><span id="header-runner-label"></span></div>
+  <span id="scan-countdown"    style="display:none"></span>
+
+  <!-- Right cluster -->
+  <div class="header-right">
+    <span id="h-last-scan" class="h-last-scan"></span>
     <input type="date" id="date-picker">
     <button id="refresh-btn">&#8635; Refresh</button>
-    <button id="logout-btn" title="Sign out" style="padding:6px 12px;color:var(--muted);font-size:12px;">Sign Out</button>
+    <button id="h-stop-runner-btn" class="btn-danger h-action-btn" style="display:none">&#9632; Stop Runner</button>
+    <button id="h-scan-now-btn"    class="btn-primary h-action-btn">&#9654; Scan Now</button>
+    <button id="logout-btn" class="h-signout-btn">Sign Out</button>
   </div>
 </div>
 

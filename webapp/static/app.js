@@ -726,8 +726,47 @@ async function fetchNextScan() {
     _nextScanTs     = d.next_scan_ts ? new Date(d.next_scan_ts) : null;
     _runnerActive   = !!d.runner_running;
     _scanInProgress = !!d.scan_running;
-    if (d.market_open !== undefined) {
-      _marketOpen = d.market_open;  // true, false, or null (unknown)
+    if (d.market_open !== undefined) _marketOpen = d.market_open;
+
+    // ── Market status pill
+    const mktPill = document.getElementById('h-mkt-pill');
+    const mktTime = document.getElementById('h-mkt-time');
+    if (d.market_open) {
+      mktPill.className = 'h-pill h-pill-open';
+      mktPill.textContent = 'OPEN';
+      mktTime.textContent = 'Closes 16:00 ET';
+    } else {
+      mktPill.className = 'h-pill h-pill-closed';
+      mktPill.textContent = 'CLOSED';
+      if (d.next_open) {
+        const t = new Date(d.next_open).toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit', timeZone:'America/New_York'});
+        mktTime.textContent = `Opens ${t} ET`;
+      } else {
+        mktTime.textContent = '';
+      }
+    }
+
+    // ── Scanning pill
+    const scanPill = document.getElementById('h-scan-pill');
+    scanPill.style.display = d.scan_running ? '' : 'none';
+
+    // ── Last scan text
+    if (d.last_scan_ts) {
+      const ls = new Date(d.last_scan_ts);
+      const lsStr = ls.toLocaleString('en-US', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit', timeZone:'America/New_York'}).replace(',','');
+      document.getElementById('h-last-scan').textContent = `Last scan: ${lsStr} ET`;
+    }
+
+    // ── Scan Now / scanning button state
+    const scanBtn = document.getElementById('h-scan-now-btn');
+    if (scanBtn) {
+      if (d.scan_running) {
+        scanBtn.textContent = '● Scanning…';
+        scanBtn.disabled = true;
+      } else {
+        scanBtn.textContent = '▶ Scan Now';
+        scanBtn.disabled = false;
+      }
     }
   } catch(e) {}
 }
@@ -823,21 +862,26 @@ function setRunnerUI(running) {
     btn.classList.remove('btn-danger');
     btn.classList.add('btn-green');
   }
-  // Header pill
-  const hDot   = document.getElementById('header-runner-dot');
-  const hLabel = document.getElementById('header-runner-label');
-  const hPill  = document.getElementById('header-runner-pill');
+  // Header pills & action buttons
+  const hRunnerPill   = document.getElementById('h-runner-pill');
+  const hStopBtn      = document.getElementById('h-stop-runner-btn');
+  const hScanNowBtn   = document.getElementById('h-scan-now-btn');
   if (running) {
-    hDot.classList.add('on');
-    hLabel.textContent = 'Runner ON';
-    hLabel.style.color = 'var(--green)';
-    hPill.style.borderColor = 'rgba(34,197,94,.4)';
+    hRunnerPill.className = 'h-pill h-pill-on';
+    hRunnerPill.textContent = 'RUNNER ON';
+    if (hStopBtn)    hStopBtn.style.display = '';
+    if (hScanNowBtn) hScanNowBtn.style.display = 'none';
   } else {
-    hDot.classList.remove('on');
-    hLabel.textContent = 'Runner OFF';
-    hLabel.style.color = 'var(--muted)';
-    hPill.style.borderColor = '';
+    hRunnerPill.className = 'h-pill h-pill-off';
+    hRunnerPill.textContent = 'RUNNER OFF';
+    if (hStopBtn)    hStopBtn.style.display = 'none';
+    if (hScanNowBtn) hScanNowBtn.style.display = '';
   }
+  // Legacy hidden elements (kept for compat)
+  const hDot = document.getElementById('header-runner-dot');
+  const hLabel = document.getElementById('header-runner-label');
+  if (hDot) running ? hDot.classList.add('on') : hDot.classList.remove('on');
+  if (hLabel) hLabel.textContent = running ? 'Runner ON' : 'Runner OFF';
 }
 
 async function onScanNowClick() {
@@ -1391,7 +1435,9 @@ document.getElementById('history-body').addEventListener('click', function(e) {
   $('scan-again-btn').addEventListener('click', startScan);
 
   // Header controls
-  $('header-runner-pill').addEventListener('click', onScanNowClick);
+  $('header-runner-pill').addEventListener('click', onScanNowClick);  // legacy (hidden)
+  $('h-scan-now-btn').addEventListener('click', onScanNowClick);
+  $('h-stop-runner-btn').addEventListener('click', onScanNowClick);
   $('refresh-btn').addEventListener('click', refresh);
   $('logout-btn').addEventListener('click', logout);
 
