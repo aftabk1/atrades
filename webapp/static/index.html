@@ -166,7 +166,9 @@
         <span class="card-title">Scanner Candidates</span>
         <span class="muted" id="candidates-ts" style="font-size:11px;"></span>
         <div style="display:flex;align-items:center;gap:0;border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-left:auto;">
-          <button id="runner-btn" style="border:none;border-radius:0;"><span class="runner-dot" id="runner-dot"></span><span id="runner-label">Scan Now</span></button>
+          <button id="runner-btn" class="btn-green" style="border:none;border-radius:0;display:flex;align-items:center;gap:6px;">
+            <span class="runner-dot" id="runner-dot" title="Runner status indicator"></span>▶ Scan Now
+          </button>
           <div style="width:1px;background:var(--border);height:100%;align-self:stretch;"></div>
           <div id="execute-toggle" title="Toggle live order execution" style="padding:6px 10px;cursor:pointer;font-size:11px;color:var(--muted);background:var(--surface2);user-select:none;white-space:nowrap;">DRY RUN</div>
         </div>

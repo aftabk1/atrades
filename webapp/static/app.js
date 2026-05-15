@@ -878,60 +878,53 @@ async function updateRunnerStatus() {
 }
 
 function setRunnerUI(running) {
-  // Tab button (Today tab)
-  const dot   = document.getElementById('runner-dot');
-  const label = document.getElementById('runner-label');
-  const btn   = document.getElementById('runner-btn');
+  // Today tab: dot shows runner state; label always stays "Scan Now"
+  const dot = document.getElementById('runner-dot');
   if (running) {
     dot.classList.add('on');
-    label.textContent = 'Stop Runner';
-    btn.classList.remove('btn-green');
-    btn.classList.add('btn-danger');
   } else {
     dot.classList.remove('on');
-    label.textContent = 'Scan Now';
-    btn.classList.remove('btn-danger');
-    btn.classList.add('btn-green');
   }
   // Header pills & action buttons
-  const hRunnerPill   = document.getElementById('h-runner-pill');
-  const hStopBtn      = document.getElementById('h-stop-runner-btn');
-  const hScanNowBtn   = document.getElementById('h-scan-now-btn');
+  const hRunnerPill = document.getElementById('h-runner-pill');
+  const hStopBtn    = document.getElementById('h-stop-runner-btn');
   if (running) {
-    hRunnerPill.className = 'h-pill h-pill-on';
+    hRunnerPill.className   = 'h-pill h-pill-on';
     hRunnerPill.textContent = 'RUNNER ON';
-    if (hStopBtn)    hStopBtn.style.display = '';
-    if (hScanNowBtn) hScanNowBtn.style.display = '';
+    if (hStopBtn) hStopBtn.style.display = '';
   } else {
-    hRunnerPill.className = 'h-pill h-pill-off';
+    hRunnerPill.className   = 'h-pill h-pill-off';
     hRunnerPill.textContent = 'RUNNER OFF';
-    if (hStopBtn)    hStopBtn.style.display = 'none';
-    if (hScanNowBtn) hScanNowBtn.style.display = '';
+    if (hStopBtn) hStopBtn.style.display = 'none';
   }
   // Legacy hidden elements (kept for compat)
-  const hDot = document.getElementById('header-runner-dot');
+  const hDot   = document.getElementById('header-runner-dot');
   const hLabel = document.getElementById('header-runner-label');
-  if (hDot) running ? hDot.classList.add('on') : hDot.classList.remove('on');
+  if (hDot)   running ? hDot.classList.add('on') : hDot.classList.remove('on');
   if (hLabel) hLabel.textContent = running ? 'Runner ON' : 'Runner OFF';
 }
 
-async function onScanNowClick() {
-  const isRunning = document.getElementById('runner-dot').classList.contains('on');
-  if (isRunning) {
-    // Stop the daemon
-    const btn = document.getElementById('runner-btn');
-    btn.disabled = true;
-    try {
-      const r = await fetch('/api/runner/stop', { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
-      const d = await r.json();
-      setRunnerUI(d.running);
-    } finally { btn.disabled = false; }
-  } else {
-    // Open panel and start a one-shot scan
-    openScanPanel();
-    startScan();
+// Always starts a one-shot scan regardless of runner state
+async function doScan() {
+  openScanPanel();
+  startScan();
+}
+
+// Stops the runner daemon
+async function doStopRunner() {
+  const btn = document.getElementById('h-stop-runner-btn');
+  if (btn) btn.disabled = true;
+  try {
+    const r = await fetch('/api/runner/stop', { method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':_getCsrfToken()}, body:'{}' });
+    const d = await r.json();
+    setRunnerUI(d.running);
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
+
+// Legacy alias kept so any stray references don't crash
+async function onScanNowClick() { await doScan(); }
 
 updateRunnerStatus();
 setInterval(updateRunnerStatus, 10000);
@@ -1466,9 +1459,9 @@ document.getElementById('history-body').addEventListener('click', function(e) {
   $('scan-again-btn').addEventListener('click', startScan);
 
   // Header controls
-  $('header-runner-pill').addEventListener('click', onScanNowClick);  // legacy (hidden)
-  $('h-scan-now-btn').addEventListener('click', onScanNowClick);
-  $('h-stop-runner-btn').addEventListener('click', onScanNowClick);
+  $('header-runner-pill').addEventListener('click', doScan);  // legacy (hidden)
+  $('h-scan-now-btn').addEventListener('click', doScan);
+  $('h-stop-runner-btn').addEventListener('click', doStopRunner);
   $('refresh-btn').addEventListener('click', refresh);
   $('logout-btn').addEventListener('click', logout);
 
@@ -1478,8 +1471,8 @@ document.getElementById('history-body').addEventListener('click', function(e) {
     if (tab) switchTab(tab.dataset.tab, tab);
   });
 
-  // Today tab scanner controls
-  $('runner-btn').addEventListener('click', onScanNowClick);
+  // Today tab scanner controls — always scan, never stop-runner
+  $('runner-btn').addEventListener('click', doScan);
   $('execute-toggle').addEventListener('click', toggleExecuteMode);
 
   // Overview tab
