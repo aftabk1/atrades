@@ -44,7 +44,7 @@ from datetime import date as _date
 from data.store import (
     init_db, query_day, query_history, get_open_trades,
     query_performance, get_position_evaluations,
-    query_closed_trades, query_realized_pnl,
+    query_closed_trades, query_realized_pnl, query_scan_top5,
 )
 
 ENV_PATH = ROOT / ".env"
@@ -922,6 +922,16 @@ def scan_output(offset: int = Query(default=0)):
         "offset":  len(_scan_lines),
         "running": _scan_running,
     }
+
+
+@app.get("/api/scan/top5")
+def scan_top5(date_str: str = Query(default=None, alias="date")):
+    """Return top 5 near-miss candidates (qualified=0) from the most recent scan."""
+    try:
+        rows = query_scan_top5(day=date_str)
+        return {"candidates": rows, "count": len(rows)}
+    except Exception as exc:
+        return JSONResponse(status_code=500, content={"error": str(exc)})
 
 
 @app.post("/api/notifications/test")

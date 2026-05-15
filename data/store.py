@@ -100,10 +100,14 @@ def init_db() -> None:
             CREATE INDEX IF NOT EXISTS idx_scan_candidates_date  ON scan_candidates(date);
             CREATE INDEX IF NOT EXISTS idx_trades_date           ON trades(date);
         """)
-        # Migrate scan_candidates: add gap_pct if absent
+        # Migrate scan_candidates: add new columns if absent
         sc_cols = {r[1] for r in con.execute("PRAGMA table_info(scan_candidates)").fetchall()}
         if "gap_pct" not in sc_cols:
             con.execute("ALTER TABLE scan_candidates ADD COLUMN gap_pct REAL DEFAULT 0")
+        if "qualified" not in sc_cols:
+            con.execute("ALTER TABLE scan_candidates ADD COLUMN qualified INTEGER DEFAULT 1")
+        if "current_price" not in sc_cols:
+            con.execute("ALTER TABLE scan_candidates ADD COLUMN current_price REAL DEFAULT 0")
 
         # position_evaluations — one record per PME evaluation cycle per trade
         con.executescript("""
@@ -156,9 +160,14 @@ def init_db() -> None:
 def save_scan(
     candidates: list[dict],
     symbols_scanned: int,
-    regime,          # MarketRegime dataclass
+    regime,                          # MarketRegime dataclass
+    top_unqualified: list[dict] | None = None,  # top scorers below threshold
 ) -> None:
-    """Persist one scan run and all its candidates."""
+    """Persist one scan run and all its candidates.
+
+    top_unqualified: up to 5 slim dicts for candidates that scored below the
+    threshold. Saved with qualified=0 so the UI can show a radar of near-misses.
+    """
     now  = datetime.now(timezone.utc).isoformat()
     day  = date.today().isoformat()
 
@@ -185,8 +194,8 @@ def save_scan(
                    (scan_run_id, ts, date, symbol, score, entry, stop, target,
                     trail_atr, shares, partial_shares, trail_shares,
                     dollar_risk, risk_reward, volume_ratio, rsi, rs_vs_spy,
-                    is_trap, regime, gap_pct)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    is_trap, regime, gap_pct, qualified, current_price)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     run_id, now, day,
                     c["symbol"], c["score"], c["entry"], c["stop"], c["target"],
@@ -196,6 +205,33 @@ def save_scan(
                     int(c.get("is_trap", False)),
                     c.get("regime", ""),
                     c.get("gap_pct", 0),
+                    1,  # qualified
+                    c.get("current_price", c.get("entry", 0)),
+                ),
+            )
+
+        # Persist near-miss radar candidates (below threshold, qualified=0)
+        for c in (top_unqualified or []):
+            con.execute(
+                """INSERT INTO scan_candidates
+                   (scan_run_id, ts, date, symbol, score, entry, stop, target,
+                    trail_atr, shares, partial_shares, trail_shares,
+                    dollar_risk, risk_reward, volume_ratio, rsi, rs_vs_spy,
+                    is_trap, regime, gap_pct, qualified, current_price)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    run_id, now, day,
+                    c["symbol"], c["score"],
+                    c.get("entry", 0), c.get("stop", 0), c.get("target", 0),
+                    c.get("trail_atr", 0), c.get("shares", 0),
+                    c.get("partial_shares", 0), c.get("trail_shares", 0),
+                    c.get("dollar_risk", 0), c.get("risk_reward", 0),
+                    c.get("volume_ratio", 0), c.get("rsi", 0), c.get("rs_vs_spy", 0),
+                    int(c.get("is_trap", False)),
+                    c.get("regime", ""),
+                    c.get("gap_pct", 0),
+                    0,  # not qualified
+                    c.get("current_price", 0),
                 ),
             )
 
@@ -508,6 +544,36 @@ def query_day(day: str) -> dict:
         "candidates":       candidates,
         "trades":           trades,
     }
+
+
+def query_scan_top5(day: str | None = None) -> list[dict]:
+    """Return top 5 non-qualifying (qualified=0) candidates for a given date.
+
+    If day is None, uses the most recent date that has scan data.
+    """
+    with _conn() as con:
+        if day is None:
+            row = con.execute(
+                "SELECT date FROM scan_runs ORDER BY ts DESC LIMIT 1"
+            ).fetchone()
+            if not row:
+                return []
+            day = row["date"]
+
+        return _rows(con.execute(
+            """SELECT sc.*
+               FROM scan_candidates sc
+               WHERE sc.date=?
+                 AND sc.qualified=0
+                 AND sc.id = (
+                   SELECT sc2.id FROM scan_candidates sc2
+                   WHERE sc2.date=? AND sc2.symbol=sc.symbol AND sc2.qualified=0
+                   ORDER BY sc2.score DESC LIMIT 1
+                 )
+               ORDER BY sc.score DESC
+               LIMIT 5""",
+            (day, day),
+        ))
 
 
 def query_history(days: int = 30) -> list[dict]:

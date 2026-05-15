@@ -30,9 +30,10 @@ python runner.py --interval 30      # rescan every 30 min
 python -m webapp.app                # http://localhost:8000
 
 # Run regression tests
-python run_tests.py                 # run all 117 tests
+python run_tests.py                 # run all 178 tests
 python run_tests.py -k TestConfig   # run one test class
 python run_tests.py -k "e2e"        # run E2E tests only
+python run_tests.py -k "Security"   # run security tests only
 python run_tests.py --cov           # with coverage report
 python run_tests.py -v              # verbose output
 
@@ -137,9 +138,17 @@ Key config values live in `config.py` (all overridable via `.env`): `BREAKOUT_AT
 
 | Endpoint | Purpose |
 |---|---|
-| `GET /api/dashboard?date=` | Single-day scan results |
+| `GET /login` | Login page (no auth required) |
+| `POST /login` | Validate credentials, set session cookie |
+| `POST /logout` | Clear session cookie |
+| `GET /api/dashboard?date=` | Single-day scan results (`date` must be YYYY-MM-DD) |
 | `GET /api/history?days=30` | 30-day summary |
-| `GET /api/positions` | Live Alpaca positions (direct API call, reflects all account positions) |
+| `GET /api/positions` | Live Alpaca positions (direct API call) |
+| `GET /api/account` | Portfolio summary (equity, cash, P&L, realized P&L via FIFO) |
+| `GET /api/live-trades` | Open DB trades merged with live Alpaca positions |
+| `GET /api/closed-trades?date=&days=30` | Closed trades from DB |
+| `GET /api/recent-sells` | Recent Alpaca sell fills (full closes + partial trims) with FIFO P&L |
+| `GET /api/performance?days=90` | Win rate, avg hold, exit breakdown |
 | `GET /api/config` | All config settings merged with defaults |
 | `POST /api/config` | Write settings back to `.env` |
 | `GET /api/symbols/fallback` | Returns custom override list or default 503 S&P 500 symbols |
@@ -150,38 +159,57 @@ Key config values live in `config.py` (all overridable via `.env`): `BREAKOUT_AT
 | `POST /api/runner/stop` | Stop runner.py daemon |
 | `POST /api/scan/start` | Run scanner.py immediately (accepts `{"execute": bool}`) |
 | `GET /api/scan/output?offset=N` | Poll scanner subprocess output lines since offset |
+| `GET /api/scan/next` | Next scan timestamp, runner status, market open/closed |
 
-The web dashboard (`webapp/static/index.html`) has three tabs:
-- **Today** — Open Positions (live) → Trades Placed → Scanner Candidates
-- **Last 30 Days** — historical summary table and chart
-- **Config** — editable configuration (see Config Tab below)
+Every endpoint except `/login`, `/logout`, and `/static/*` requires a valid session cookie. See Security section below.
 
-The dashboard auto-refreshes every **15 minutes** with a live countdown timer in the header. On load it automatically shows the most recent date that has scan data (not necessarily today).
+The web dashboard (`webapp/static/index.html`) has four tabs (each refreshes data on click):
+- **Overview** — Portfolio KPIs → Open Positions + Trades Placed Today (inline) → Recently Closed & Trims
+- **Today** — Stats bar → Trades Placed → Scanner Candidates (with Scan Now button)
+- **Last 30 Days** — daily chart + summary table + closed trades
+- **Config** — editable configuration
+
+The header shows: **Logo | Regime badge | Scan countdown | Date picker | Refresh | Sign Out**. The scan countdown shows `Scanning…` / `Next scan X:XX` / `Market closed` depending on state.
 
 ### Scan Now button
 
-The header contains a **Scan Now** button with a **DRY RUN / LIVE** toggle:
+Located in the **Scanner Candidates card header** on the Today tab, right side:
 - **DRY RUN** (default, grey) — runs `scanner.py` immediately, streams output to a slide-in panel, no orders placed.
-- **LIVE** (red, requires confirmation) — runs `scanner.py --execute`, placing real bracket orders for qualifying setups.
+- **EXECUTE** (red, requires confirmation) — runs `scanner.py --execute`, placing real bracket orders.
 - If the runner daemon is already active, the button shows **Stop Runner** and stops it instead.
-- The slide-in panel shows colour-coded output (green = signals, yellow = warnings, red = errors) with a summary on completion and a Scan Again button.
 
 ### Config Tab
 
-The Config tab in the web UI exposes all system settings. Sections (in order):
+The Config tab exposes all system settings. Sections (in order):
 
 - **Scanner Thresholds** — min score, min price, min volume, ATR multipliers, RSI zone bounds
 - **Risk Management** — max portfolio risk %, max position size %, max open trades
 - **Trade Setup** — partial exit R, partial exit %, trailing stop ATR multiplier
 - **Bull Trap & Accumulation** — individual penalty/bonus weights
-- **Market Regime** — ADX threshold, regime penalty multiplier
-- **Scanner Schedule** — scan interval, market open buffer
-- **Backtest Settings** — max hold days, slippage
+- **Signal Weights** — individual signal point allocations (must sum to 100)
+- **Market Regime** — regime-aware toggle, override
+- **Scanner Schedule** — scan interval, timeframe
+- **Position Management Engine (PME)** — all PME thresholds and multipliers
+- **Backtest Settings** — max hold days, slippage, initial capital
 - **Trading Mode** — paper trading toggle, Alpaca base URL
-- **Scanner Universe** — view all fallback symbols as chips, filter, add new, remove individual, or reset to S&P 500 defaults. Saves to `data/universe_override.json`.
-- **Alpaca Credentials** — API key, secret key
+- **Scanner Universe** — symbol chips, filter, add/remove, reset to S&P 500 defaults
+- **WhatsApp Notifications** — phone, API key, test button
+
+Alpaca API key and secret key are **not editable in the UI** — edit `.env` directly to change them.
 
 Clicking "Save Configuration" POSTs to both `/api/config` and `/api/symbols/fallback` in parallel.
+
+### Security
+
+`webapp/app.py` uses **session-cookie authentication** (not HTTP Basic Auth):
+- Set `DASHBOARD_USER` and `DASHBOARD_PASS` in `.env` to enable auth. If not set, auth is disabled (safe for local-only use).
+- On successful login, a random 32-byte `a1t_sess` `HttpOnly; SameSite=lax` cookie is issued. The password is never stored in the browser.
+- Sessions expire after **8 hours** server-side (in-memory — restarting the server clears all sessions). The browser idle timer logs out after **10 minutes of no activity**.
+- **Rate limiting** — max 10 login attempts per IP per 5-minute window (HTTP 429).
+- **Failed auth logging** — every failed login is written to `logs/auth.log` with timestamp and IP.
+- **Security headers** — all responses include `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Content-Security-Policy`, `Referrer-Policy`, and `Cache-Control: no-store` on API endpoints.
+- **Date validation** — `?date=` params on `/api/dashboard` and `/api/closed-trades` reject non-`YYYY-MM-DD` values with HTTP 400.
+- Login page: `webapp/static/login.html`
 
 ### Symbol Universe Management
 
@@ -195,7 +223,7 @@ Clicking "Save Configuration" POSTs to both `/api/config` and `/api/symbols/fall
 
 ### Regression Test Suite
 
-`tests/test_regression.py` — 117 tests across 11 test classes. `tests/conftest.py` holds shared fixtures. `run_tests.py` is a convenience runner.
+`tests/test_regression.py` — 178 tests across 14 test classes. `tests/conftest.py` holds shared fixtures. `run_tests.py` is a convenience runner.
 
 Test classes:
 - `TestConfig` (9) — config/env loading
@@ -206,16 +234,20 @@ Test classes:
 - `TestMarketRegime` (11) — regime classification
 - `TestTradeSetup` (11) — trade setup calculation
 - `TestRiskManager` (8) — risk approval logic
-- `TestWebappAPI` (16) — REST API endpoints
+- `TestWebappAPI` (19) — REST API endpoints
 - `TestE2EPipeline` (10) — full end-to-end pipeline
 - `TestRunnerAndScanAPI` (11) — runner daemon and scan subprocess API
+- `TestPositionManager` (12) — PME decision logic
+- `TestPositionExecutor` (13) — PME execution (trim/exit/add)
+- `TestSecurity` (13) — session auth, rate limiting, input validation, security headers
 
 Key test fixtures (in `conftest.py`):
 - `make_ohlcv()`, `make_breakout_df()`, `make_spy_df()`, `make_bull_spy_df()`, `make_bear_spy_df()` — OHLCV data generators
 - `mock_alpaca` — MagicMock Alpaca client
 - `temp_db` — monkeypatches `store.DB_PATH` to a temp file
 - `temp_universe` — monkeypatches `universe._OVERRIDE_PATH` to a temp dir
-- `api_client` — FastAPI `TestClient` with isolated DB and universe
+- `api_client` — FastAPI `TestClient` with isolated DB, universe, and `.env` (auth disabled — `DASHBOARD_USER`/`PASS` not set)
+- `auth_client` — same isolation but with auth enabled (used by `TestSecurity`)
 
 ### Server restart after code changes
 
@@ -240,14 +272,17 @@ Start-Process python -ArgumentList "-m webapp.app" -NoNewWindow
 
 ### Windows Task Scheduler (automated daily trading)
 
-`runner.py` is designed to run unattended. Schedule it to start before US market open and stop after close. Times below are Doha/AST (UTC+3); adjust if timezone differs.
+Two scheduled tasks are active on this machine (Mon–Fri, Doha/AST UTC+3):
 
+| Task | Time | Command |
+|---|---|---|
+| `A1TRADES Start` | 4:15 PM | `C:\Projects\ATrades\start_runner.bat` |
+| `A1TRADES Stop` | 11:15 PM | `stop_runner.ps1` |
+
+To recreate if deleted:
 ```powershell
-# Start runner Mon–Fri at 4:15 PM AST (15 min before US market open)
-schtasks /create /tn "A1TRADES Start" /sc weekly /d MON,TUE,WED,THU,FRI /st 16:15 /tr "python C:\projects\atrades\runner.py" /f
-
-# Stop runner Mon–Fri at 11:15 PM AST (15 min after US market close)
-schtasks /create /tn "A1TRADES Stop" /sc weekly /d MON,TUE,WED,THU,FRI /st 23:15 /tr "powershell -ExecutionPolicy Bypass -File C:\projects\atrades\stop_runner.ps1" /f
+schtasks /create /tn "A1TRADES Start" /sc weekly /d MON,TUE,WED,THU,FRI /st 16:15 /tr "C:\Projects\ATrades\start_runner.bat" /f
+schtasks /create /tn "A1TRADES Stop"  /sc weekly /d MON,TUE,WED,THU,FRI /st 23:15 /tr "powershell -ExecutionPolicy Bypass -File C:\Projects\ATrades\stop_runner.ps1" /f
 ```
 
 `stop_runner.ps1` kills the runner process by matching the command line — do not inline this in schtasks (escaping breaks). Tasks run as a Windows service and do not need a terminal open, but the PC must be on and not sleeping (`powercfg /change standby-timeout-ac 0`).

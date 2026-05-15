@@ -137,6 +137,29 @@
       </div>
     </div>
 
+    <!-- Top 5 Radar (near-miss candidates) -->
+    <div class="card" id="radar-card">
+      <div class="card-header">
+        <span class="card-title">Top 5 Radar</span>
+        <span class="muted" style="font-size:11px;">Highest-scored stocks that didn&#39;t meet threshold</span>
+      </div>
+      <div class="card-body table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>Symbol</th><th>Score</th>
+              <th class="num">Price</th>
+              <th class="num">RSI</th><th class="num">RS/SPY</th>
+              <th class="num">Vol</th><th>Trap</th>
+            </tr>
+          </thead>
+          <tbody id="radar-body">
+            <tr><td colspan="8" class="empty"><span class="spin"></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- Scanner Candidates -->
     <div class="card">
       <div class="card-header">

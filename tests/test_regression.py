@@ -2190,6 +2190,10 @@ class TestNotifications:
             from notifications.whatsapp import notify
             notify("hello world")
             assert captured
-            assert "hello" in captured[0]
+            # captured[0] may be a Request object or a plain URL string
+            import urllib.request as _ur
+            raw = captured[0]
+            url_str = raw.full_url if isinstance(raw, _ur.Request) else str(raw)
+            assert "hello" in url_str
             # spaces must be encoded in the URL
-            assert " " not in captured[0]
+            assert " " not in url_str

@@ -68,8 +68,9 @@ class BreakoutScanner:
         self._executor      = BracketOrderExecutor(self._broker) if execute else None
         self._execute       = execute
         self._regime_aware  = regime_aware and config.REGIME_AWARE_SCANNING
-        self._last_regime:  MarketRegime | None = None
-        self._last_breadth: float = 0.5   # fraction of stocks above 20MA, updated each scan
+        self._last_regime:           MarketRegime | None = None
+        self._last_breadth:          float = 0.5   # fraction of stocks above 20MA, updated each scan
+        self._last_top_unqualified:  list[dict] = []  # top scorers below threshold (radar)
 
     # ── Main scan ─────────────────────────────────────────────────────────────
 
@@ -121,6 +122,7 @@ class BreakoutScanner:
         )
 
         candidates: list[dict] = []
+        all_scored: list[tuple] = []  # (score, symbol, signals) — all symbols that passed base filters
 
         for symbol, df in market_data.items():
             if symbol in open_positions:
@@ -135,6 +137,9 @@ class BreakoutScanner:
             # Score includes per-symbol signals + market breadth component
             score = self._scorer.score(signals, breadth_pct)
 
+            # Track every scored symbol for the radar (before threshold filter)
+            all_scored.append((score, symbol, signals))
+
             if score < effective_min_score:
                 continue
 
@@ -146,6 +151,29 @@ class BreakoutScanner:
 
         candidates.sort(key=lambda c: c["score"], reverse=True)
         top = candidates[:_TOP_N]
+
+        # Build top-5 radar: highest-scoring symbols that did NOT qualify
+        qualified_syms = {c["symbol"] for c in candidates}
+        all_scored.sort(key=lambda t: t[0], reverse=True)
+        top_unqualified: list[dict] = []
+        for score, symbol, signals in all_scored:
+            if symbol in qualified_syms:
+                continue
+            top_unqualified.append({
+                "symbol":       symbol,
+                "score":        round(score, 1),
+                "current_price": round(signals.current_price, 2),
+                "entry":        round(signals.current_price, 2),
+                "volume_ratio": round(signals.volume_surge.value, 2),
+                "rsi":          round(signals.rsi_zone.value, 1),
+                "rs_vs_spy":    round(signals.relative_strength.value, 2),
+                "is_trap":      signals.bull_trap.is_trap if signals.bull_trap else False,
+                "regime":       regime.state.value,
+                "gap_pct":      round(signals.gap_pct * 100, 2),
+            })
+            if len(top_unqualified) >= 5:
+                break
+        self._last_top_unqualified = top_unqualified
 
         if self._execute and top:
             placed = self._place_orders(top, open_positions)
@@ -595,7 +623,8 @@ def main() -> None:
         from data.store import init_db, save_scan
         init_db()
         universe_size = len(scanner._universe.get_symbols())
-        save_scan(candidates, universe_size, scanner._last_regime)
+        save_scan(candidates, universe_size, scanner._last_regime,
+                  top_unqualified=scanner._last_top_unqualified)
     except Exception:
         pass
 

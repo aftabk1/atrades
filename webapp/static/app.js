@@ -55,14 +55,45 @@ async function loadDashboard(dateStr) {
   document.getElementById('date-picker').value = dateStr;
   document.getElementById('refresh-btn').innerHTML = '<span class="spin"></span>';
   try {
-    const res  = await fetch('/api/dashboard?date=' + dateStr);
-    const data = await res.json();
+    const [res, top5Res] = await Promise.all([
+      fetch('/api/dashboard?date=' + dateStr),
+      fetch('/api/scan/top5?date=' + dateStr),
+    ]);
+    const data  = await res.json();
+    const top5  = await top5Res.json();
     renderDashboard(data);
+    renderRadar(top5.candidates || []);
   } catch(e) {
     console.error(e);
   } finally {
     document.getElementById('refresh-btn').innerHTML = '&#8635; Refresh';
   }
+}
+
+function renderRadar(candidates) {
+  const rb = document.getElementById('radar-body');
+  const card = document.getElementById('radar-card');
+  if (!candidates || candidates.length === 0) {
+    card.style.display = 'none';
+    return;
+  }
+  card.style.display = '';
+  rb.innerHTML = candidates.map((c, i) => `
+    <tr>
+      <td class="muted">${i+1}</td>
+      <td><strong>${esc(c.symbol)}</strong></td>
+      <td>
+        <div class="score-wrap">
+          <span>${fmt(c.score,0)}</span>
+          <div class="score-bar"><div class="score-fill" style="width:${c.score}%;background:var(--muted)"></div></div>
+        </div>
+      </td>
+      <td class="num mono">${c.current_price ? '$'+fmt(c.current_price) : '—'}</td>
+      <td class="num ${c.rsi > 70 ? 'yellow' : ''}">${fmt(c.rsi,0)}</td>
+      <td class="num ${c.rs_vs_spy > 0 ? 'green' : 'red'}">${c.rs_vs_spy > 0 ? '+' : ''}${fmt(c.rs_vs_spy,1)}%</td>
+      <td class="num ${c.volume_ratio >= 1.5 ? 'green' : c.volume_ratio < 0.8 ? 'muted' : ''}">${fmt(c.volume_ratio,1)}x</td>
+      <td>${c.is_trap ? '<span class="trap-badge">TRAP</span>' : '<span class="muted">—</span>'}</td>
+    </tr>`).join('');
 }
 
 function renderDashboard(d) {

@@ -216,7 +216,8 @@ def _run_scan(scanner: BreakoutScanner, scan_num: int) -> None:
             scanner.print_table(candidates)
             scanner._execute = scanner_execute_orig
             universe_size = len(scanner._universe.get_symbols())
-            save_scan(candidates, universe_size, scanner._last_regime)
+            save_scan(candidates, universe_size, scanner._last_regime,
+                      top_unqualified=scanner._last_top_unqualified)
             return
 
     candidates = scanner.scan()
@@ -224,7 +225,8 @@ def _run_scan(scanner: BreakoutScanner, scan_num: int) -> None:
 
     # Persist scan results
     universe_size = len(scanner._universe.get_symbols())
-    save_scan(candidates, universe_size, scanner._last_regime)
+    save_scan(candidates, universe_size, scanner._last_regime,
+              top_unqualified=scanner._last_top_unqualified)
 
     if not candidates:
         logger.info("No qualifying setups this scan")
