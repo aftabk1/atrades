@@ -319,8 +319,13 @@ async def security_middleware(request: Request, call_next):
 # ── Login / Logout ────────────────────────────────────────────────────────────
 
 @app.get("/login", include_in_schema=False)
-def login_page():
-    return FileResponse(str(STATIC / "login.html"))
+def login_page(request: Request):
+    # Redirect away if credentials are in the URL (leaked via browser history/autofill)
+    if "username" in request.query_params or "password" in request.query_params:
+        return Response(status_code=302, headers={"Location": "/login"})
+    resp = FileResponse(str(STATIC / "login.html"))
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
 
 
 @app.post("/login", include_in_schema=False)
