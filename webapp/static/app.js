@@ -788,16 +788,12 @@ async function fetchNextScan() {
       document.getElementById('h-last-scan').textContent = `Last scan: ${lsStr} ET`;
     }
 
-    // ── Scan Now / scanning button state
+    // ── Scan Now / View Scan button state
     const scanBtn = document.getElementById('h-scan-now-btn');
     if (scanBtn) {
-      if (d.scan_running) {
-        scanBtn.textContent = '● Scanning…';
-        scanBtn.disabled = true;
-      } else {
-        scanBtn.textContent = '▶ Scan Now';
-        scanBtn.disabled = false;
-      }
+      const scanning = d.scan_running || _scanPollTimer !== null;
+      scanBtn.textContent = scanning ? '● View Scan' : '▶ Scan Now';
+      scanBtn.disabled    = false;  // always clickable — reopens panel if scanning
     }
   } catch(e) {}
 }
@@ -904,9 +900,13 @@ function setRunnerUI(running) {
   if (hLabel) hLabel.textContent = running ? 'Runner ON' : 'Runner OFF';
 }
 
-// Always starts a one-shot scan regardless of runner state
+// Open scan panel; start a new scan only if one isn't already running
 async function doScan() {
   openScanPanel();
+  if (_scanPollTimer !== null) {
+    // Scan in progress — just show the panel, don't restart
+    return;
+  }
   startScan();
 }
 
@@ -984,9 +984,15 @@ function clearScanLog() {
   document.getElementById('scan-summary').textContent = '';
 }
 
+function _setScanBtnState(scanning) {
+  const lbl = document.getElementById('runner-btn-label');
+  if (lbl) lbl.textContent = scanning ? '● Scanning…' : '▶ Scan Now';
+}
+
 async function startScan() {
   clearScanLog();
   _scanOffset = 0;
+  _setScanBtnState(true);
   document.getElementById('scan-status-label').textContent = 'Running…';
   document.getElementById('scan-status-label').style.color = 'var(--cyan)';
   document.getElementById('scan-again-btn').style.display  = 'none';
@@ -1053,6 +1059,7 @@ function finaliseScan() {
   if (warnings) parts.push(warnings + ' warning' + (warnings > 1 ? 's' : ''));
   if (errors)   parts.push(errors   + ' error'   + (errors   > 1 ? 's' : ''));
   document.getElementById('scan-summary').textContent = parts.join(' · ') || 'Completed';
+  _setScanBtnState(false);
   // Refresh dashboard to show new candidates
   loadDashboard(todayStr());
 }

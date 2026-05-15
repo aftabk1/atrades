@@ -1043,12 +1043,30 @@ def scan_next():
 # ── Runner API ───────────────────────────────────────────────────────────────
 
 _runner_proc: subprocess.Popen | None = None
+_RUNNER_PID_FILE = ROOT / "logs" / "runner.pid"
 
 
 def _runner_alive() -> bool:
+    global _runner_proc
+    # 1. Subprocess we launched in this server session
     if _runner_proc is not None and _runner_proc.poll() is None:
         return True
-    # Detect runner.py started outside the webapp (e.g. command line)
+    if _runner_proc is not None:
+        _runner_proc = None  # process exited, clear reference
+
+    # 2. PID file (survives server restarts; written by runner_start below)
+    if _RUNNER_PID_FILE.exists():
+        try:
+            pid = int(_RUNNER_PID_FILE.read_text().strip())
+            os.kill(pid, 0)   # raises OSError if dead; signal 0 = existence check
+            return True
+        except (ValueError, OSError):
+            try:
+                _RUNNER_PID_FILE.unlink()   # stale PID — clean up
+            except OSError:
+                pass
+
+    # 3. Linux-only fallback: pgrep
     import subprocess as _sp
     try:
         out = _sp.check_output(
@@ -1094,6 +1112,11 @@ def runner_start(request: Request, body: dict = Body(default={})):
     if dry_run:
         cmd.append("--dry-run")
     _runner_proc = subprocess.Popen(cmd, cwd=str(ROOT))
+    try:
+        _RUNNER_PID_FILE.parent.mkdir(exist_ok=True)
+        _RUNNER_PID_FILE.write_text(str(_runner_proc.pid))
+    except OSError:
+        pass
     return {"ok": True, "running": True, "message": "runner started"}
 
 
@@ -1106,12 +1129,25 @@ def runner_stop(request: Request):
     if not _runner_alive():
         return {"ok": True, "running": False, "message": "not running"}
     _audit_log.info("RUNNER_STOP | ip=%s", ip)
-    _runner_proc.terminate()
+    if _runner_proc is not None:
+        _runner_proc.terminate()
+        try:
+            _runner_proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            _runner_proc.kill()
+        _runner_proc = None
+    elif _RUNNER_PID_FILE.exists():
+        # Runner was started outside this server session — kill by PID
+        import signal as _signal
+        try:
+            pid = int(_RUNNER_PID_FILE.read_text().strip())
+            os.kill(pid, _signal.SIGTERM)
+        except (ValueError, OSError):
+            pass
     try:
-        _runner_proc.wait(timeout=5)
-    except subprocess.TimeoutExpired:
-        _runner_proc.kill()
-    _runner_proc = None
+        _RUNNER_PID_FILE.unlink()
+    except OSError:
+        pass
     return {"ok": True, "running": False, "message": "runner stopped"}
 
 
