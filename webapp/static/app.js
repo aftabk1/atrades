@@ -733,11 +733,11 @@ async function fetchNextScan() {
     const mktTime = document.getElementById('h-mkt-time');
     if (d.market_open) {
       mktPill.className = 'h-pill h-pill-open';
-      mktPill.textContent = 'OPEN';
+      mktPill.textContent = 'MKT OPEN';
       mktTime.textContent = 'Closes 16:00 ET';
     } else {
       mktPill.className = 'h-pill h-pill-closed';
-      mktPill.textContent = 'CLOSED';
+      mktPill.textContent = 'MKT CLOSED';
       if (d.next_open) {
         const t = new Date(d.next_open).toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit', timeZone:'America/New_York'});
         mktTime.textContent = `Opens ${t} ET`;
@@ -773,7 +773,7 @@ async function fetchNextScan() {
 
 function tickScanCountdown() {
   const el = document.getElementById('scan-countdown');
-  el.style.display = '';   // always visible
+  el.style.display = 'none';   // hidden — status shown via h-scan-pill / h-last-scan
 
   if (_scanInProgress) {
     el.textContent = 'Scanning…';
