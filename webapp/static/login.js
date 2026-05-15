@@ -10,6 +10,8 @@ if (reason === 'idle') {
   n.style.display = 'block';
 }
 
+document.getElementById('login-form').addEventListener('submit', doLogin);
+
 async function doLogin(e) {
   e.preventDefault();
   const btn = document.getElementById('submit-btn');
