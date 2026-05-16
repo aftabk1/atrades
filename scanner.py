@@ -83,6 +83,13 @@ class BreakoutScanner:
         scan_symbols = symbols or self._universe.get_symbols()
         logger.info(f"Scanning {len(scan_symbols)} symbols...")
 
+        try:
+            if not self._broker.is_market_open():
+                logger.warning("Market is currently closed — skipping scan")
+                return []
+        except Exception as exc:
+            logger.warning(f"Could not determine market status ({exc}) — proceeding anyway")
+
         market_data = self._market.get_daily_bars(scan_symbols, days=252)
         spy_data    = self._market.get_spy_data(days=252)
 
