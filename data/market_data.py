@@ -6,7 +6,7 @@ Fallback:       yfinance (auto-triggered for any symbol Alpaca couldn't supply).
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import pandas as pd
@@ -47,7 +47,7 @@ class MarketDataClient:
         Return {symbol: OHLCV DataFrame} with a DatetimeIndex normalized to midnight.
         Alpaca is tried first; yfinance fills any gaps.
         """
-        start = datetime.utcnow() - timedelta(days=days + 10)  # +10 for weekend buffer
+        start = datetime.now(timezone.utc) - timedelta(days=days + 10)  # +10 for weekend buffer
         results = self._alpaca_daily(symbols, start)
 
         missing = [s for s in symbols if s not in results or results[s].empty]
@@ -102,7 +102,7 @@ class MarketDataClient:
         self, symbols: list[str], start: datetime
     ) -> dict[str, pd.DataFrame]:
         results: dict[str, pd.DataFrame] = {}
-        end = datetime.utcnow()
+        end = datetime.now(timezone.utc)
 
         for i in range(0, len(symbols), _ALPACA_BATCH):
             batch = symbols[i : i + _ALPACA_BATCH]
@@ -133,7 +133,7 @@ class MarketDataClient:
         self, symbols: list[str], days: int
     ) -> dict[str, pd.DataFrame]:
         results: dict[str, pd.DataFrame] = {}
-        start_str = (datetime.utcnow() - timedelta(days=days + 10)).strftime("%Y-%m-%d")
+        start_str = (datetime.now(timezone.utc) - timedelta(days=days + 10)).strftime("%Y-%m-%d")
 
         # filter circuit-broken symbols
         active = [s for s in symbols if _YF_FAILURES.get(s, 0) < _YF_FAIL_LIMIT]
