@@ -92,8 +92,11 @@ class BreakoutScanner:
             except Exception as exc:
                 logger.warning(f"Could not determine market status ({exc}) — proceeding anyway")
 
+        _t0 = time.perf_counter()
+
         market_data = self._market.get_daily_bars(scan_symbols, days=252)
         spy_data    = self._market.get_spy_data(days=252)
+        _t_fetch = time.perf_counter()
 
         # ── Market regime detection ───────────────────────────────────────────
         regime = detect_regime(spy_data)
@@ -123,6 +126,7 @@ class BreakoutScanner:
 
         portfolio_value = self._broker.get_portfolio_value()
         open_positions  = {p.symbol for p in self._broker.get_all_positions()}
+        _t_setup = time.perf_counter()
         logger.info(
             f"Portfolio: ${portfolio_value:,.2f} | "
             f"Open: {', '.join(open_positions) or 'none'} | "
@@ -157,6 +161,8 @@ class BreakoutScanner:
                 continue
 
             candidates.append(_build_candidate(signals, setup, self._scorer, regime, breadth_pct))
+
+        _t_loop = time.perf_counter()
 
         candidates.sort(key=lambda c: c["score"], reverse=True)
         top = candidates[:_TOP_N]
@@ -199,6 +205,13 @@ class BreakoutScanner:
                 except Exception:
                     pass  # store errors must never crash the scanner
 
+        _t_end = time.perf_counter()
+        logger.info(
+            f"TIMING — fetch: {_t_fetch-_t0:.1f}s | "
+            f"regime+breadth+broker: {_t_setup-_t_fetch:.1f}s | "
+            f"signal loop: {_t_loop-_t_setup:.1f}s | "
+            f"total: {_t_end-_t0:.1f}s"
+        )
         logger.info(
             f"Scan complete — {len(candidates)} qualified, "
             f"returning top {len(top)} (regime={regime.state.value})"
