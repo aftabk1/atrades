@@ -75,7 +75,8 @@ class BreakoutScanner:
     # ── Main scan ─────────────────────────────────────────────────────────────
 
     def scan(self, symbols: list[str] | None = None,
-             min_score_override: float | None = None) -> list[dict]:
+             min_score_override: float | None = None,
+             force: bool = False) -> list[dict]:
         """
         Full breakout scan with regime gate, accumulation scoring, and trap filtering.
         Returns up to _TOP_N candidates sorted by descending score.
@@ -83,12 +84,13 @@ class BreakoutScanner:
         scan_symbols = symbols or self._universe.get_symbols()
         logger.info(f"Scanning {len(scan_symbols)} symbols...")
 
-        try:
-            if not self._broker.is_market_open():
-                logger.warning("Market is currently closed — skipping scan")
-                return []
-        except Exception as exc:
-            logger.warning(f"Could not determine market status ({exc}) — proceeding anyway")
+        if not force:
+            try:
+                if not self._broker.is_market_open():
+                    logger.warning("Market is currently closed — skipping scan")
+                    return []
+            except Exception as exc:
+                logger.warning(f"Could not determine market status ({exc}) — proceeding anyway")
 
         market_data = self._market.get_daily_bars(scan_symbols, days=252)
         spy_data    = self._market.get_spy_data(days=252)
@@ -595,6 +597,8 @@ def _build_arg_parser() -> argparse.ArgumentParser:
                    help="Candidates to return (default: 5)")
     p.add_argument("--no-regime", action="store_true",
                    help="Bypass market regime filter")
+    p.add_argument("--force", action="store_true",
+                   help="Run scan even when market is closed")
     p.add_argument("--min-score", type=float, default=None, metavar="N",
                    help="Override BREAKOUT_MIN_SCORE for this run (e.g. 0 to show all candidates)")
     return p
@@ -624,7 +628,8 @@ def main() -> None:
         return
 
     candidates = scanner.scan(symbols=args.symbols,
-                              min_score_override=args.min_score)
+                              min_score_override=args.min_score,
+                              force=args.force)
 
     try:
         from data.store import init_db, save_scan
