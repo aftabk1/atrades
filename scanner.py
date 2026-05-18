@@ -126,8 +126,6 @@ class BreakoutScanner:
 
         portfolio_value = self._broker.get_portfolio_value()
         open_positions  = {p.symbol for p in self._broker.get_all_positions()}
-
-        earnings_map = self._market.get_earnings_dates_bulk(list(market_data.keys()))
         _t_setup = time.perf_counter()
         logger.info(
             f"Portfolio: ${portfolio_value:,.2f} | "
@@ -139,24 +137,40 @@ class BreakoutScanner:
         candidates: list[dict] = []
         all_scored: list[tuple] = []  # (score, symbol, signals) — all symbols that passed base filters
 
+        # Phase 1: score all symbols without earnings (avoids 500 yfinance calls)
+        pre_candidates: list[tuple] = []  # (score, symbol, signals, df)
         for symbol, df in market_data.items():
             if symbol in open_positions:
                 continue
 
-            earnings_date = earnings_map.get(symbol)
-            signals = detect_all(symbol, df, spy_data, earnings_date)
+            signals = detect_all(symbol, df, spy_data, None)
 
             if signals is None:
                 continue
 
-            # Score includes per-symbol signals + market breadth component
             score = self._scorer.score(signals, breadth_pct)
-
-            # Track every scored symbol for the radar (before threshold filter)
             all_scored.append((score, symbol, signals))
 
             if score < effective_min_score:
                 continue
+
+            pre_candidates.append((score, symbol, signals))
+
+        # Phase 2: fetch earnings only for qualifiers, then rescore with earnings
+        qualifier_syms = [sym for _, sym, _ in pre_candidates]
+        earnings_map = self._market.get_earnings_dates_bulk(qualifier_syms) if qualifier_syms else {}
+        logger.info(f"Earnings fetch: {len(qualifier_syms)} qualifying symbols")
+
+        for score, symbol, signals in pre_candidates:
+            earnings_date = earnings_map.get(symbol)
+            if earnings_date is not None:
+                # Rescore with earnings signal included
+                signals = detect_all(symbol, market_data[symbol], spy_data, earnings_date)
+                if signals is None:
+                    continue
+                score = self._scorer.score(signals, breadth_pct)
+                if score < effective_min_score:
+                    continue
 
             setup = calculate_setup(signals, score, portfolio_value)
             if setup is None:

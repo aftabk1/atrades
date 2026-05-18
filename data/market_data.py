@@ -98,7 +98,7 @@ class MarketDataClient:
             return None
 
     def get_earnings_dates_bulk(
-        self, symbols: list[str], max_workers: int = 40
+        self, symbols: list[str], max_workers: int = 10
     ) -> dict[str, Optional[datetime]]:
         """Fetch earnings dates for all symbols concurrently. Much faster than one-by-one."""
         results: dict[str, Optional[datetime]] = {}
