@@ -6,6 +6,7 @@ Fallback:       yfinance (auto-triggered for any symbol Alpaca couldn't supply).
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -95,6 +96,21 @@ class MarketDataClient:
         except Exception:
             _YF_FAILURES[symbol] = _YF_FAILURES.get(symbol, 0) + 1
             return None
+
+    def get_earnings_dates_bulk(
+        self, symbols: list[str], max_workers: int = 40
+    ) -> dict[str, Optional[datetime]]:
+        """Fetch earnings dates for all symbols concurrently. Much faster than one-by-one."""
+        results: dict[str, Optional[datetime]] = {}
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            futures = {pool.submit(self.get_earnings_date, sym): sym for sym in symbols}
+            for future in as_completed(futures):
+                sym = futures[future]
+                try:
+                    results[sym] = future.result()
+                except Exception:
+                    results[sym] = None
+        return results
 
     # ── Private helpers ───────────────────────────────────────────────────────
 

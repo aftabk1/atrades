@@ -126,6 +126,8 @@ class BreakoutScanner:
 
         portfolio_value = self._broker.get_portfolio_value()
         open_positions  = {p.symbol for p in self._broker.get_all_positions()}
+
+        earnings_map = self._market.get_earnings_dates_bulk(list(market_data.keys()))
         _t_setup = time.perf_counter()
         logger.info(
             f"Portfolio: ${portfolio_value:,.2f} | "
@@ -141,7 +143,7 @@ class BreakoutScanner:
             if symbol in open_positions:
                 continue
 
-            earnings_date = self._market.get_earnings_date(symbol)
+            earnings_date = earnings_map.get(symbol)
             signals = detect_all(symbol, df, spy_data, earnings_date)
 
             if signals is None:
@@ -208,7 +210,7 @@ class BreakoutScanner:
         _t_end = time.perf_counter()
         logger.info(
             f"TIMING — fetch: {_t_fetch-_t0:.1f}s | "
-            f"regime+breadth+broker: {_t_setup-_t_fetch:.1f}s | "
+            f"regime+breadth+broker+earnings: {_t_setup-_t_fetch:.1f}s | "
             f"signal loop: {_t_loop-_t_setup:.1f}s | "
             f"total: {_t_end-_t0:.1f}s"
         )
