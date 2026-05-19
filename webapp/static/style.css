@@ -242,3 +242,64 @@
   .scan-log-line.mute  { color: var(--muted); }
   .scan-panel-footer { padding: 10px 16px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
   .scan-panel-footer .scan-summary { font-size: 11px; color: var(--muted); flex: 1; }
+
+  /* ── Mobile / PWA ─────────────────────────────────────────────────────────── */
+  @media (max-width: 640px) {
+    /* tighter page padding */
+    .main { padding: 12px; }
+
+    /* ── Header: 2-row layout ── */
+    /* Row 1: logo + pills  |  Row 2: date + buttons */
+    .header { padding: 8px 12px; row-gap: 8px; column-gap: 6px; flex-wrap: wrap; min-height: auto; align-items: center; }
+    .logo { font-size: 15px; flex-shrink: 0; }
+    .logo img.logo-icon { width: 26px; height: 26px; }
+
+    /* pills stay on row 1 */
+    .h-pill { font-size: 10px; padding: 3px 8px; }
+
+    /* hide low-priority items */
+    .h-mkt-time,
+    .h-last-scan,
+    #refresh-btn { display: none; }
+
+    /* live trading banner wraps instead of scrolling */
+    #live-trading-banner { white-space: normal; font-size: 11px; }
+
+    /* header-right pushed to its own full-width row */
+    .header-right { flex-basis: 100%; margin-left: 0; gap: 6px; justify-content: flex-end; }
+    .h-action-btn { font-size: 11px; padding: 5px 10px; }
+    .h-signout-btn { font-size: 10px; padding: 4px 8px; }
+
+    /* date picker shrinks */
+    input[type=date] { font-size: 11px; padding: 5px 6px; width: auto; }
+
+    /* tabs: smaller, scrollable row */
+    .tabs { gap: 0; overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+    .tab { padding: 8px 14px; font-size: 12px; white-space: nowrap; }
+
+    /* stat/kpi tiles: two columns */
+    .stats { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .stat { padding: 10px 12px; }
+    .stat-value { font-size: 18px; }
+    .kpi-grid { grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px; }
+    .kpi-value { font-size: 18px; }
+
+    /* all tables scroll horizontally */
+    .card { overflow: visible; }
+    .card-body, .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { min-width: 480px; }
+
+    /* chart shorter */
+    .chart-wrap { height: 160px; }
+
+    /* config grid already has its own breakpoint at 900px */
+
+    /* scan panel full-width on mobile */
+    .scan-panel { width: 100vw; max-width: 100vw; }
+
+    /* toast above bottom of screen (avoid home-bar overlap) */
+    .toast { bottom: 88px; right: 12px; left: 12px; text-align: center; }
+
+    /* save bar padding */
+    .save-bar { padding: 10px 12px; margin: 0 -12px; }
+  }
