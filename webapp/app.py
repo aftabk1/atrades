@@ -941,6 +941,9 @@ def notifications_test(request: Request, body: dict = Body(...)):
     import urllib.parse, urllib.request, urllib.error
     phone  = str(body.get("phone",  "")).strip()
     apikey = str(body.get("apikey", "")).strip()
+    # UI masks the stored key as "***" — fall back to the real config value
+    if apikey == "***":
+        apikey = str(getattr(config, "WHATSAPP_APIKEY", "")).strip()
     if not phone or not apikey:
         return JSONResponse(status_code=400, content={"ok": False, "error": "phone and apikey are required"})
     msg    = "A1TRADES: test notification — WhatsApp alerts are working."
