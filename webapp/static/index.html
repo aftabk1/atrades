@@ -410,6 +410,14 @@
             <div class="form-control"><input type="number" id="cfg-BREAKOUT_HIGHER_LOWS_LOOKBACK" step="1" min="3"></div>
           </div>
           <div class="form-row">
+            <div class="form-label">Max Breakout Age (days)<span class="wt-badge wt-neg">hard reject</span><div class="form-hint">Reject if close has been above its 20-day high for more than this many consecutive days. 0 = disabled.</div></div>
+            <div class="form-control"><input type="number" id="cfg-BREAKOUT_MAX_AGE_DAYS" step="1" min="0" max="20"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-label">Max Extension from Pivot<span class="wt-badge wt-neg">trap signal</span><div class="form-hint">Adds 20 trap pts when close is this far above the 20-day breakout pivot. (0.08 = 8%)</div></div>
+            <div class="form-control"><input type="number" id="cfg-BREAKOUT_MAX_EXTENSION_PCT" step="0.01" min="0.02" max="0.30"></div>
+          </div>
+          <div class="form-row">
             <div class="form-label">Min Score (0–100)<span class="wt-badge wt-neut">floor</span><div class="form-hint">Candidates below this score are dropped</div></div>
             <div class="form-control">
               <input type="number" id="cfg-BREAKOUT_MIN_SCORE" step="1" min="0" max="100">

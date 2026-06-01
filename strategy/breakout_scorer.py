@@ -78,7 +78,8 @@ class BreakoutScorer:
 
         if factor == "breakout_20d":
             pct = max(sig.value, 0.0)
-            return min(max_pts * 0.5 + pct / 3.0 * max_pts * 0.5, max_pts)
+            capped_pct = min(pct, 3.0)   # no bonus for being >3% extended above pivot
+            return min(max_pts * 0.5 + capped_pct / 3.0 * max_pts * 0.5, max_pts)
 
         if factor == "relative_strength":
             rs = max(sig.value, 0.0)

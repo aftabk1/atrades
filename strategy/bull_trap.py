@@ -4,8 +4,8 @@ Bull-trap (false breakout) detector.
 A bull trap occurs when price moves above a resistance level, attracts
 buyers, then reverses sharply — trapping longs at the top.
 
-Five warning signs are scored; hitting ≥ 40 / 100 points flags the
-breakout as suspect and the scorer will apply a confidence penalty.
+Six warning signs are scored; hitting ≥ 40 points flags the breakout as
+suspect and the scorer will apply a confidence penalty.
 
 Warning signs:
   1. Weak close      — close in the lower 35% of today's bar range (selling into the move)
@@ -13,6 +13,7 @@ Warning signs:
   3. Resistance zone — ≥ 4 prior highs clustered within 1.5% overhead (supply overhead)
   4. RSI divergence  — price makes higher high but RSI makes lower high (momentum fading)
   5. Narrow bar      — today's range < 70% of ATR(14) (low-conviction breakout thrust)
+  6. Extension       — close > BREAKOUT_MAX_EXTENSION_PCT above the 20-day pivot (risk/reward gone)
 
 Fully self-contained — no imports from other strategy modules.
 """
@@ -34,13 +35,14 @@ class _Sig(NamedTuple):
     description: str = ""
 
 
-# Points per warning (sum = 100)
+# Points per warning (base sum = 100; extension adds 20 → max 120)
 _WEIGHTS: dict[str, int] = {
     "weak_close":         30,
     "prior_failures":     25,
     "resistance_zone":    20,
     "rsi_divergence":     15,
     "narrow_bar":         10,
+    "extension":          20,   # 6th: price already extended too far from pivot
 }
 
 TRAP_THRESHOLD = 40   # trap_score ≥ this → flag as suspected trap
@@ -48,7 +50,7 @@ TRAP_THRESHOLD = 40   # trap_score ≥ this → flag as suspected trap
 
 @dataclass
 class BullTrapResult:
-    trap_score: float = 0.0         # 0–100; higher = more likely a trap
+    trap_score: float = 0.0         # 0–120; higher = more likely a trap
     is_trap: bool = False
     warnings: list[str] = field(default_factory=list)
 
@@ -57,6 +59,8 @@ class BullTrapResult:
     resistance_zone: _Sig = _Sig(False, 0.0)
     rsi_divergence:  _Sig = _Sig(False, 0.0)
     narrow_bar:      _Sig = _Sig(False, 0.0)
+    extension:       _Sig = _Sig(False, 0.0)   # 6th: already extended above pivot
+    extension_pct:   float = 0.0               # convenience: raw % above 20-day pivot
 
 
 def detect_bull_trap(df: pd.DataFrame) -> BullTrapResult:
@@ -71,6 +75,8 @@ def detect_bull_trap(df: pd.DataFrame) -> BullTrapResult:
     result.resistance_zone = _check_resistance_zone(df)
     result.rsi_divergence  = _check_rsi_divergence(df)
     result.narrow_bar      = _check_narrow_bar(df)
+    result.extension       = _check_extension(df)
+    result.extension_pct   = result.extension.value
 
     result.trap_score = float(
         sum(_WEIGHTS[k] for k in _WEIGHTS if getattr(result, k).triggered)
@@ -238,5 +244,41 @@ def _check_narrow_bar(df: pd.DataFrame) -> _Sig:
         description=(
             f"Narrow breakout bar: range {today:.2f} = {ratio:.0%} of ATR14 {atr14:.2f} "
             f"(need >70% for conviction)"
+        ),
+    )
+
+
+def _check_extension(
+    df: pd.DataFrame,
+    window: int = 20,
+    max_extension: float | None = None,
+) -> _Sig:
+    """
+    Warn when current close is already too far above the 20-day prior high (the breakout pivot).
+    Risk/reward deteriorates significantly once a stock has run >BREAKOUT_MAX_EXTENSION_PCT
+    above its base on entry day.
+    """
+    if len(df) < window + 1:
+        return _Sig(False, 0.0)
+
+    if max_extension is None:
+        max_extension = config.BREAKOUT_MAX_EXTENSION_PCT
+
+    close   = df["close"]
+    current = float(close.iloc[-1])
+    pivot   = float(close.iloc[-(window + 1):-1].max())
+
+    if pivot <= 0:
+        return _Sig(False, 0.0)
+
+    ext_pct   = (current / pivot) - 1.0
+    triggered = ext_pct > max_extension
+
+    return _Sig(
+        triggered=triggered,
+        value=ext_pct,
+        description=(
+            f"Extended from pivot: {ext_pct:.1%} above ${pivot:.2f} "
+            f"(threshold {max_extension:.1%}) — risk/reward deteriorated"
         ),
     )

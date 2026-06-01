@@ -60,6 +60,7 @@ class BreakoutSignals:
 
     gap_pct: float = 0.0       # today open vs prior close; ≥0.08 = gap-up breakout
     breakout_level: float = 0.0  # 20-day prior high — stored at trade entry for PME
+    breakout_age: int = 0        # consecutive days close has been above rolling 20-day high
 
     # ── Enhancement modules (populated after price-breakout gate) ─────────────
     # Type hints use strings to avoid circular imports at module load time.
@@ -124,6 +125,13 @@ def detect_all(
     sig.breakout_10d      = _check_price_breakout(df, 10)
     sig.volume_surge      = _check_volume_surge(df)
     sig.relative_strength = _check_relative_strength(df, spy_df)
+
+    breakout_age = _count_consecutive_breakout_days(close, window=20)
+    sig.breakout_age = breakout_age
+
+    if require_breakout and config.BREAKOUT_MAX_AGE_DAYS > 0:
+        if breakout_age > config.BREAKOUT_MAX_AGE_DAYS:
+            return None
 
     if require_breakout:
         # Three-way entry gate — any one trigger qualifies the symbol:
@@ -434,5 +442,35 @@ def _find_support(df: pd.DataFrame, lookback: int = config.BREAKOUT_SUPPORT_LOOK
         if lows[i] <= lows[i - 1] and lows[i] <= lows[i + 1]
     ]
     return float(min(swing_lows)) if swing_lows else float(np.min(lows))
+
+
+def _count_consecutive_breakout_days(
+    close: pd.Series,
+    window: int = 20,
+    max_lookback: int = 8,
+) -> int:
+    """
+    Count how many consecutive trailing days (including today) where
+    close[i] > max(close[i-window : i]).
+
+    Returns 0 if today is not above its rolling prior high.
+    Returns 1 if only today qualifies (fresh breakout).
+    Returns N if the last N days all made new rolling highs (stale/extended move).
+    """
+    n = len(close)
+    if n < window + 1:
+        return 0
+
+    count = 0
+    for offset in range(max_lookback):
+        idx = n - 1 - offset
+        if idx < window:
+            break
+        prior_high = float(close.iloc[idx - window : idx].max())
+        if float(close.iloc[idx]) > prior_high:
+            count += 1
+        else:
+            break
+    return count
 
 

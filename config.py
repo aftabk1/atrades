@@ -32,6 +32,10 @@ BREAKOUT_CONSOLIDATION_DAILY_VOL = float(os.getenv("BREAKOUT_CONSOLIDATION_DAILY
 BREAKOUT_CONSOLIDATION_LOOKBACK = int(os.getenv("BREAKOUT_CONSOLIDATION_LOOKBACK", "15"))
 BREAKOUT_HIGHER_LOWS_LOOKBACK = int(os.getenv("BREAKOUT_HIGHER_LOWS_LOOKBACK", "15"))
 
+# ── Breakout scanner — freshness / extension guards ──────────────────────────
+BREAKOUT_MAX_AGE_DAYS      = int(os.getenv("BREAKOUT_MAX_AGE_DAYS",      "3"))
+BREAKOUT_MAX_EXTENSION_PCT = float(os.getenv("BREAKOUT_MAX_EXTENSION_PCT", "0.08"))
+
 # ── Breakout scanner — trade setup ────────────────────────────────────────────
 BREAKOUT_ATR_STOP_MULT    = float(os.getenv("BREAKOUT_ATR_STOP_MULT",    "2.0"))
 BREAKOUT_MAX_STOP_PCT     = float(os.getenv("BREAKOUT_MAX_STOP_PCT",     "0.20")) # stop floor: never below 80% of entry

@@ -1,5 +1,5 @@
 """
-ATrades End-to-End Regression Test Suite  (178 tests)
+ATrades End-to-End Regression Test Suite  (190 tests)
 ======================================================
 Run all:         pytest tests/
 Run one section: pytest tests/ -k "Security"
@@ -11,6 +11,7 @@ Sections:
   2.  Stock Universe                 (9)
   3.  SQLite Data Store              (9)
   4.  Breakout Signal Detection      (13)
+  4b. Breakout Freshness & Extension (12)
   5.  Breakout Scorer                (10)
   6.  Market Regime Detection        (11)
   7.  Trade Setup Calculation        (11)
@@ -548,6 +549,144 @@ class TestBreakoutSignals:
         # breakout_level should be close to the 20-day prior high
         prior_20d_high = float(df["close"].iloc[-21:-1].max())
         assert signals.breakout_level == pytest.approx(prior_20d_high, rel=0.05)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 4b. BREAKOUT FRESHNESS & EXTENSION
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestBreakoutFreshness:
+    """Tests for the staleness age gate and extension penalty."""
+
+    def _make_stale_df(self, stale_days: int = 5) -> pd.DataFrame:
+        """DataFrame where the last `stale_days` bars each close above their rolling 20-day high."""
+        df = make_ohlcv(120, base_price=60.0, avg_vol=2_000_000, trend=0.003)
+        for offset in range(stale_days, 0, -1):
+            idx = len(df) - offset
+            prior_high = float(df["close"].iloc[idx - 20 : idx].max())
+            df.iloc[idx, df.columns.get_loc("close")] = prior_high * 1.02
+            df.iloc[idx, df.columns.get_loc("high")]  = prior_high * 1.025
+        return df
+
+    # ── _count_consecutive_breakout_days helper ───────────────────────────────
+
+    def test_count_helper_returns_zero_for_downtrend(self):
+        from strategy.breakout_signals import _count_consecutive_breakout_days
+        df = make_ohlcv(100, trend=-0.003)
+        assert _count_consecutive_breakout_days(df["close"]) == 0
+
+    def test_count_helper_returns_one_for_fresh_breakout(self):
+        from strategy.breakout_signals import _count_consecutive_breakout_days
+        df = make_breakout_df()   # last bar forced above 20d high; natural trend may give 1–2
+        result = _count_consecutive_breakout_days(df["close"])
+        assert result >= 1
+
+    def test_count_helper_returns_correct_stale_count(self):
+        from strategy.breakout_signals import _count_consecutive_breakout_days
+        df = self._make_stale_df(stale_days=5)
+        result = _count_consecutive_breakout_days(df["close"])
+        assert result >= 3
+
+    def test_count_helper_caps_at_max_lookback(self):
+        from strategy.breakout_signals import _count_consecutive_breakout_days
+        df = self._make_stale_df(stale_days=20)
+        result = _count_consecutive_breakout_days(df["close"], max_lookback=5)
+        assert result <= 5
+
+    def test_count_helper_insufficient_data_returns_zero(self):
+        from strategy.breakout_signals import _count_consecutive_breakout_days
+        df = make_ohlcv(15)
+        assert _count_consecutive_breakout_days(df["close"]) == 0
+
+    # ── Staleness gate integration ────────────────────────────────────────────
+
+    def test_stale_breakout_returns_none(self, monkeypatch):
+        import config
+        monkeypatch.setattr(config, "BREAKOUT_MAX_AGE_DAYS", 3)
+        from strategy.breakout_signals import detect_all
+        df = self._make_stale_df(stale_days=5)
+        result = detect_all("TEST", df, make_spy_df(), require_breakout=True, fast=True)
+        assert result is None
+
+    def test_fresh_breakout_passes_age_gate(self, monkeypatch):
+        import config
+        monkeypatch.setattr(config, "BREAKOUT_MAX_AGE_DAYS", 3)
+        from strategy.breakout_signals import detect_all, BreakoutSignals
+        df = make_breakout_df()
+        result = detect_all("TEST", df, make_spy_df(), require_breakout=True, fast=True)
+        assert isinstance(result, BreakoutSignals)
+
+    def test_age_gate_disabled_when_zero(self, monkeypatch):
+        import config
+        monkeypatch.setattr(config, "BREAKOUT_MAX_AGE_DAYS", 0)
+        from strategy.breakout_signals import detect_all
+        df = make_breakout_df()
+        result = detect_all("TEST", df, make_spy_df(), require_breakout=True, fast=True)
+        assert result is not None
+
+    def test_require_breakout_false_bypasses_age_gate(self, monkeypatch):
+        import config
+        monkeypatch.setattr(config, "BREAKOUT_MAX_AGE_DAYS", 1)
+        from strategy.breakout_signals import detect_all
+        df = make_ohlcv(100, trend=0.000, base_price=60.0, avg_vol=2_000_000)
+        result = detect_all("TEST", df, make_spy_df(), require_breakout=False, fast=True)
+        assert result is not None
+
+    def test_breakout_age_field_populated(self, monkeypatch):
+        import config
+        monkeypatch.setattr(config, "BREAKOUT_MAX_AGE_DAYS", 0)
+        from strategy.breakout_signals import detect_all
+        df = make_breakout_df()
+        result = detect_all("TEST", df, make_spy_df(), require_breakout=True, fast=True)
+        assert result is not None
+        assert result.breakout_age >= 1
+
+    # ── Extension penalty (bull_trap) ─────────────────────────────────────────
+
+    def test_extension_check_fires_when_too_extended(self):
+        from strategy.bull_trap import _check_extension
+        df = make_breakout_df()
+        prior_high = float(df["close"].iloc[-21:-1].max())
+        df.iloc[-1, df.columns.get_loc("close")] = prior_high * 1.12
+        result = _check_extension(df, max_extension=0.08)
+        assert result.triggered is True
+        assert result.value > 0.08
+
+    def test_extension_check_silent_for_tight_breakout(self):
+        from strategy.bull_trap import _check_extension
+        df = make_breakout_df()   # 3% above pivot
+        result = _check_extension(df, max_extension=0.08)
+        assert result.triggered is False
+
+    def test_extension_penalty_reflected_in_trap_score(self):
+        from strategy.bull_trap import detect_bull_trap
+        df_tight   = make_breakout_df()
+        df_extended = make_breakout_df()
+        prior_high = float(df_extended["close"].iloc[-21:-1].max())
+        df_extended.iloc[-1, df_extended.columns.get_loc("close")] = prior_high * 1.12
+        trap_tight    = detect_bull_trap(df_tight)
+        trap_extended = detect_bull_trap(df_extended)
+        assert trap_extended.trap_score >= trap_tight.trap_score + 20
+
+    def test_extension_pct_field_populated(self):
+        from strategy.bull_trap import detect_bull_trap
+        df = make_breakout_df()
+        result = detect_bull_trap(df)
+        assert isinstance(result.extension_pct, float)
+        assert result.extension_pct >= 0
+
+    # ── Scorer: extension does not earn extra points ──────────────────────────
+
+    def test_scorer_does_not_reward_high_extension(self):
+        from strategy.breakout_scorer import BreakoutScorer
+        from strategy.breakout_signals import SignalResult
+        # Once above the 3% cap, additional extension earns no more points
+        sig_at_cap   = make_signals(all_triggered=True)
+        sig_extended = make_signals(all_triggered=True)
+        sig_at_cap.breakout_20d   = SignalResult(True, 3.0)   # at the cap
+        sig_extended.breakout_20d = SignalResult(True, 9.0)   # well above cap
+        scorer = BreakoutScorer()
+        assert scorer.score(sig_extended) == scorer.score(sig_at_cap)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
