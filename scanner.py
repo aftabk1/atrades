@@ -51,7 +51,7 @@ from data.market_data import MarketDataClient
 from execution.bracket_orders import BracketOrderExecutor
 from risk.trade_setup import TradeSetup, calculate_setup
 from strategy.breakout_signals import detect_all
-from strategy.breakout_scorer import BreakoutScorer
+from strategy.breakout_scorer import BreakoutScorer, SetupScorer
 from strategy.market_regime import detect_regime, MarketRegime, Regime
 
 _TOP_N = 5
@@ -68,9 +68,11 @@ class BreakoutScanner:
         self._executor      = BracketOrderExecutor(self._broker) if execute else None
         self._execute       = execute
         self._regime_aware  = regime_aware and config.REGIME_AWARE_SCANNING
+        self._setup_scorer:          SetupScorer = SetupScorer()
         self._last_regime:           MarketRegime | None = None
         self._last_breadth:          float = 0.5   # fraction of stocks above 20MA, updated each scan
         self._last_top_unqualified:  list[dict] = []  # top scorers below threshold (radar)
+        self._last_setups:           list[dict] = []  # pre-breakout SETUP candidates (Gate D)
 
     # ── Main scan ─────────────────────────────────────────────────────────────
 
@@ -206,12 +208,33 @@ class BreakoutScanner:
                 break
         self._last_top_unqualified = top_unqualified
 
-        if self._execute and top:
-            placed = self._place_orders(top, open_positions)
+        # ── Phase 3: SETUP candidate detection (Gate D) ───────────────────────
+        # Only run over symbols not already processed as breakout candidates or radar.
+        already_processed = qualified_syms | {c["symbol"] for c in top_unqualified}
+        setup_candidates_raw: list[dict] = []
+        for symbol, df in market_data.items():
+            if symbol in open_positions or symbol in already_processed:
+                continue
+            signals = detect_all(symbol, df, spy_data, None, detect_setup=True)
+            if signals is None or signals.candidate_type != "SETUP":
+                continue
+            score = self._setup_scorer.score(signals, breadth_pct)
+            if score < config.SETUP_MIN_SCORE:
+                continue
+            setup = calculate_setup(signals, score, portfolio_value)
+            if setup is None:
+                continue
+            setup_candidates_raw.append(
+                _build_setup_candidate(signals, setup, self._setup_scorer, regime, breadth_pct)
+            )
+        self._last_setups = sorted(setup_candidates_raw, key=lambda c: c["score"], reverse=True)[:10]
+
+        if self._execute and (top or self._last_setups):
+            all_to_execute = list(top) + list(self._last_setups)
+            placed = self._place_orders(all_to_execute, open_positions)
             if placed:
                 try:
                     from data.store import save_trade, update_trade_breakout_level
-                    # Build a symbol→breakout_level map from candidates
                     bl_map = {c["symbol"]: c.get("breakout_level", 0) for c in top}
                     for order in placed:
                         save_trade(order)
@@ -305,6 +328,43 @@ class BreakoutScanner:
         print()
         for c in candidates:
             _print_signal_detail(c)
+
+        # ── SETUP / Watchlist section ─────────────────────────────────────────
+        if self._last_setups:
+            print(f"  {'─' * 78}")
+            print(f"  WATCHLIST / SETUPS ({len(self._last_setups)}) — pre-breakout candidates coiling near 20d high")
+            print(f"  {'─' * 78}")
+            if _HAS_TABULATE:
+                setup_rows = [
+                    [
+                        c["symbol"],
+                        f"{c['score']:.0f}",
+                        f"${c['current_price']:.2f}",
+                        f"{c.get('proximity_20d', 0):+.1f}%",
+                        f"{c.get('vcp_contractions', 0)}",
+                        "Y" if c.get("consolidation") else "-",
+                        "Y" if c.get("higher_lows") else "-",
+                        f"{c.get('rs_vs_spy', 0):+.1f}%",
+                        f"${c['stop']:.2f}",
+                        f"${c['target']:.2f}",
+                        f"{c['shares']} sh",
+                    ]
+                    for c in self._last_setups
+                ]
+                print(_tabulate(
+                    setup_rows,
+                    headers=["Symbol", "Score", "Price", "20d%", "VCP", "Con", "HL", "RS/SPY", "Stop", "Target", "Qty"],
+                    tablefmt="simple",
+                ))
+            else:
+                for c in self._last_setups:
+                    print(
+                        f"  {c['symbol']:6s}  score={c['score']:.0f}  "
+                        f"price=${c['current_price']:.2f}  "
+                        f"20d%={c.get('proximity_20d', 0):+.1f}%  "
+                        f"stop=${c['stop']:.2f}"
+                    )
+            print()
 
     def to_json(self, candidates: list[dict]) -> str:
         regime_data = {}
@@ -538,6 +598,52 @@ def _build_candidate(signals, setup: TradeSetup, scorer: BreakoutScorer,
     }
 
 
+def _build_setup_candidate(signals, setup: TradeSetup, scorer: SetupScorer,
+                           regime: MarketRegime, breadth_pct: float = 0.5) -> dict:
+    """Build a candidate dict for a pre-breakout SETUP candidate."""
+    accum = signals.accumulation
+    return {
+        "symbol":           signals.symbol,
+        "candidate_type":   "SETUP",
+        "score":            setup.score,
+        "entry":            setup.entry_price,
+        "stop":             setup.stop_loss,
+        "target":           setup.target_price,
+        "trail_atr":        setup.trail_atr,
+        "shares":           setup.shares,
+        "partial_shares":   setup.partial_shares,
+        "trail_shares":     setup.trail_shares,
+        "dollar_risk":      setup.dollar_risk,
+        "dollar_reward":    setup.dollar_reward,
+        "risk_reward":      setup.risk_reward,
+        "portfolio_pct":    setup.portfolio_pct,
+        "current_price":    round(signals.current_price, 2),
+        "proximity_20d":    round(signals.proximity_20d_high.value, 2),
+        "vcp_contractions": int(signals.vcp.value),
+        "consolidation":    signals.consolidation.triggered,
+        "higher_lows":      signals.higher_lows.triggered,
+        "volume_ratio":     round(signals.volume_surge.value, 2),
+        "rsi":              round(signals.rsi_zone.value, 1),
+        "rs_vs_spy":        round(signals.relative_strength.value, 2),
+        "high_52w_pct":     round(signals.high_52w_proximity.value, 2),
+        "accum_score":      accum.composite_score if accum else 0.0,
+        "is_trap":          False,
+        "gap_pct":          round(signals.gap_pct * 100, 2),
+        "regime":           regime.state.value,
+        "score_breakdown":  scorer.breakdown(signals, breadth_pct),
+        "signals": {
+            "proximity_20d_high": signals.proximity_20d_high.description,
+            "consolidation":      signals.consolidation.description,
+            "higher_lows":        signals.higher_lows.description,
+            "vcp":                signals.vcp.description,
+            "high_52w_proximity": signals.high_52w_proximity.description,
+            "rsi":                signals.rsi_zone.description,
+            "relative_strength":  signals.relative_strength.description,
+            "earnings":           signals.earnings_proximity.description,
+        },
+    }
+
+
 def _print_signal_detail(c: dict) -> None:
     trap_tag = "  [!] TRAP WARNING" if c["is_trap"] else ""
     print(
@@ -665,7 +771,8 @@ def main() -> None:
         init_db()
         universe_size = len(scanner._universe.get_symbols())
         save_scan(candidates, universe_size, scanner._last_regime,
-                  top_unqualified=scanner._last_top_unqualified)
+                  top_unqualified=scanner._last_top_unqualified,
+                  setup_candidates=scanner._last_setups)
     except Exception:
         pass
 

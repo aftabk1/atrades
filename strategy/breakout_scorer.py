@@ -20,6 +20,20 @@ import config
 from .breakout_signals import BreakoutSignals
 
 
+def _breadth_pts(breadth_pct: float) -> float:
+    """Score based on % of S&P 500 above their 20-day MA. Shared by both scorers."""
+    max_pts = config.SCORE_MARKET_BREADTH
+    if breadth_pct >= 0.70:
+        return max_pts
+    if breadth_pct >= 0.60:
+        return max_pts * 0.75
+    if breadth_pct >= 0.50:
+        return max_pts * 0.50
+    if breadth_pct >= 0.40:
+        return max_pts * 0.25
+    return 0.0
+
+
 def _max_pts() -> dict[str, float]:
     """Build the per-factor weight dict from live config values."""
     return {
@@ -103,21 +117,7 @@ class BreakoutScorer:
     # ── Market breadth ────────────────────────────────────────────────────────
 
     def _breadth_pts(self, breadth_pct: float) -> float:
-        """
-        Score based on % of S&P 500 above their 20-day MA.
-        Healthy market (>=70%) = full SCORE_MARKET_BREADTH pts.
-        Narrow/weak market (<40%) = 0 pts.
-        """
-        max_pts = config.SCORE_MARKET_BREADTH
-        if breadth_pct >= 0.70:
-            return max_pts
-        if breadth_pct >= 0.60:
-            return max_pts * 0.75
-        if breadth_pct >= 0.50:
-            return max_pts * 0.50
-        if breadth_pct >= 0.40:
-            return max_pts * 0.25
-        return 0.0
+        return _breadth_pts(breadth_pct)
 
     # ── Adjustments ───────────────────────────────────────────────────────────
 
@@ -127,6 +127,78 @@ class BreakoutScorer:
         return signals.accumulation.composite_score * config.SCORE_ACCUM_MAX_BONUS
 
     def _trap_penalty(self, signals: BreakoutSignals) -> float:
+
         if signals.bull_trap is None:
             return 0.0
         return signals.bull_trap.trap_score * (config.SCORE_TRAP_MAX_PENALTY / 100.0)
+
+
+def _setup_max_pts() -> dict[str, float]:
+    """Weight table for SETUP candidates — replaces breakout_20d with proximity_20d_high."""
+    return {
+        "vcp":                config.SCORE_VCP,
+        "consolidation":      config.SCORE_CONSOLIDATION,
+        "higher_lows":        config.SCORE_HIGHER_LOWS,
+        "high_52w_proximity": config.SCORE_52W_HIGH_PROXIMITY,
+        "earnings_proximity": config.SCORE_EARNINGS_PROXIMITY,
+        "proximity_20d_high": config.SCORE_PROXIMITY_20D,
+        "rsi_zone":           config.SCORE_RSI_ZONE,
+        "relative_strength":  config.SCORE_RELATIVE_STRENGTH,
+        # volume_surge and breakout_20d intentionally excluded
+    }
+
+
+class SetupScorer:
+    """
+    Scores pre-breakout SETUP candidates.
+    Uses setup-quality signals only — no volume surge, no breakout_20d, no bull-trap penalty.
+    proximity_20d_high replaces breakout_20d in the weight table (graded by closeness to level).
+    """
+
+    def score(self, signals: BreakoutSignals, breadth_pct: float = 0.5) -> float:
+        pts  = _setup_max_pts()
+        base = min(sum(self._factor_pts(signals, f, pts) for f in pts), 100.0)
+        return round(max(0.0, min(base + _breadth_pts(breadth_pct) + self._accum_bonus(signals), 100.0)), 1)
+
+    def breakdown(self, signals: BreakoutSignals, breadth_pct: float = 0.5) -> dict[str, float]:
+        pts = _setup_max_pts()
+        bd  = {f: round(self._factor_pts(signals, f, pts), 1) for f in pts}
+        bd["market_breadth"] = round(_breadth_pts(breadth_pct), 1)
+        bd["accum_bonus"]    = round(self._accum_bonus(signals), 1)
+        return bd
+
+    def _factor_pts(self, signals: BreakoutSignals, factor: str, pts: dict) -> float:
+        sig = getattr(signals, factor, None)
+        if sig is None or not sig.triggered:
+            return 0.0
+        max_pts = pts[factor]
+
+        if factor == "proximity_20d_high":
+            # Graded: at threshold (-5%) → 0 pts, at 0% (touching level) → full pts
+            pct           = sig.value  # negative, e.g. -3.2
+            threshold_pct = -config.SETUP_PROXIMITY_PCT * 100  # e.g. -5.0
+            if threshold_pct >= 0:
+                return 0.0
+            fraction = 1.0 - abs(pct) / abs(threshold_pct)
+            return round(max(0.0, min(max_pts * fraction, max_pts)), 1)
+
+        if factor == "relative_strength":
+            rs = max(sig.value, 0.0)
+            return min(rs / 10.0 * max_pts, max_pts)
+
+        if factor == "high_52w_proximity":
+            pct = sig.value
+            if pct >= -3.0:
+                return max_pts
+            return max(0.0, max_pts * (pct + 10.0) / 7.0)
+
+        if factor == "vcp":
+            n = sig.value
+            return max_pts if n >= 2 else max_pts * 0.55
+
+        return max_pts  # binary signals (consolidation, higher_lows, earnings_proximity, rsi_zone)
+
+    def _accum_bonus(self, signals: BreakoutSignals) -> float:
+        if signals.accumulation is None:
+            return 0.0
+        return signals.accumulation.composite_score * config.SCORE_ACCUM_MAX_BONUS

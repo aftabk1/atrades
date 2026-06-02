@@ -44,7 +44,7 @@ from datetime import date as _date
 from data.store import (
     init_db, query_day, query_history, get_open_trades,
     query_performance, get_position_evaluations,
-    query_closed_trades, query_realized_pnl, query_scan_top5,
+    query_closed_trades, query_realized_pnl, query_scan_top5, query_scan_setups,
 )
 
 ENV_PATH = ROOT / ".env"
@@ -200,6 +200,9 @@ CONFIG_DEFAULTS = {
     "BREAKOUT_RSI_LOW":                "50.0",
     "BREAKOUT_RSI_HIGH":               "65.0",
     "GAP_UP_THRESHOLD":                "0.08",
+    "SETUP_PROXIMITY_PCT":             "0.05",
+    "SETUP_MIN_SCORE":                 "45.0",
+    "SCORE_PROXIMITY_20D":             "12.0",
     "BREAKOUT_CONSOLIDATION_LOOKBACK":  "15",
     "BREAKOUT_CONSOLIDATION_DAILY_VOL": "0.015",
     "BREAKOUT_HIGHER_LOWS_LOOKBACK":    "15",
@@ -929,6 +932,16 @@ def scan_top5(date_str: str = Query(default=None, alias="date")):
     """Return top 5 near-miss candidates (qualified=0) from the most recent scan."""
     try:
         rows = query_scan_top5(day=date_str)
+        return {"candidates": rows, "count": len(rows)}
+    except Exception as exc:
+        return JSONResponse(status_code=500, content={"error": str(exc)})
+
+
+@app.get("/api/scan/setups")
+def scan_setups(date_str: str = Query(default=None, alias="date")):
+    """Return pre-breakout SETUP (Gate D) candidates from the most recent scan."""
+    try:
+        rows = query_scan_setups(day=_validate_date(date_str))
         return {"candidates": rows, "count": len(rows)}
     except Exception as exc:
         return JSONResponse(status_code=500, content={"error": str(exc)})

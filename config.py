@@ -56,6 +56,11 @@ MAX_DAILY_LOSS_PCT = float(os.getenv("MAX_DAILY_LOSS_PCT", "0.04"))  # halt if d
 # ── Gap-up detection ──────────────────────────────────────────────────────────
 GAP_UP_THRESHOLD = float(os.getenv("GAP_UP_THRESHOLD", "0.08"))  # ≥8% open vs prior close = gap-up
 
+# ── Pre-breakout SETUP detection ──────────────────────────────────────────────
+SETUP_PROXIMITY_PCT = float(os.getenv("SETUP_PROXIMITY_PCT", "0.05"))   # within 5% below 20d high
+SETUP_MIN_SCORE     = float(os.getenv("SETUP_MIN_SCORE",     "45.0"))   # score floor for setup candidates
+SCORE_PROXIMITY_20D = float(os.getenv("SCORE_PROXIMITY_20D", "12.0"))   # replaces breakout_20d weight in SetupScorer
+
 # ── Signal score weights ──────────────────────────────────────────────────────
 # Base 9 signals sum to 94; market breadth adds up to 6 → effective max 100.
 # Breakdown: predictive (VCP+consolidation+higher_lows+52w+earnings) = 54 pts

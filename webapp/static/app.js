@@ -43,9 +43,10 @@ function switchTab(name, el) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   el.classList.add('active');
   document.getElementById('tab-' + name).classList.add('active');
-  if (name === 'trades')  loadLiveTrades();
-  if (name === 'today')   loadDashboard(currentDate);
-  if (name === 'history') loadHistory();
+  if (name === 'trades')    loadLiveTrades();
+  if (name === 'today')     loadDashboard(currentDate);
+  if (name === 'history')   loadHistory();
+  if (name === 'watchlist') loadWatchlist(currentDate);
   if (name === 'config' && !_configEverLoaded) { _configEverLoaded = true; loadConfig(); }
 }
 
@@ -203,6 +204,69 @@ async function loadPositions() {
     document.getElementById('positions-body').innerHTML =
       '<tr><td colspan="7" class="empty muted">Could not load positions</td></tr>';
   }
+}
+
+// ── Watchlist (pre-breakout setups) ────────────────────────────────────────
+async function loadWatchlist(dateStr) {
+  const url = dateStr ? `/api/scan/setups?date=${dateStr}` : '/api/scan/setups';
+  try {
+    const res  = await fetch(url);
+    const data = await res.json();
+    const candidates = data.candidates || [];
+
+    // Badge
+    const badge = document.getElementById('watchlist-badge');
+    if (candidates.length > 0) {
+      badge.textContent = candidates.length;
+      badge.style.display = 'inline';
+    } else {
+      badge.style.display = 'none';
+    }
+
+    // Stats bar
+    document.getElementById('wl-count').textContent = candidates.length || '0';
+    if (candidates.length > 0) {
+      const avgScore = candidates.reduce((s, c) => s + (c.score || 0), 0) / candidates.length;
+      const avgProx  = candidates.reduce((s, c) => s + (c.proximity_20d || 0), 0) / candidates.length;
+      document.getElementById('wl-avg-score').textContent    = avgScore.toFixed(1);
+      document.getElementById('wl-avg-proximity').textContent = avgProx.toFixed(1) + '%';
+    } else {
+      document.getElementById('wl-avg-score').textContent    = '–';
+      document.getElementById('wl-avg-proximity').textContent = '–';
+    }
+
+    const empty = document.getElementById('watchlist-empty');
+    const wrap  = document.getElementById('watchlist-table-wrap');
+    const tbody = document.getElementById('watchlist-tbody');
+
+    if (candidates.length === 0) {
+      empty.style.display = '';
+      wrap.style.display  = 'none';
+      return;
+    }
+    empty.style.display = 'none';
+    wrap.style.display  = '';
+
+    tbody.innerHTML = candidates.map(c => {
+      const proxColor = (c.proximity_20d || 0) > -1.5 ? 'var(--green)' : 'inherit';
+      return `
+        <tr>
+          <td><strong>${c.symbol}</strong></td>
+          <td>${(c.score || 0).toFixed(0)}</td>
+          <td>$${(c.current_price || 0).toFixed(2)}</td>
+          <td style="color:${proxColor}">${(c.proximity_20d || 0).toFixed(1)}%</td>
+          <td>${(c.vcp_contractions || 0) > 0 ? '&#10003;' : '–'}</td>
+          <td>${c.consolidation ? '&#10003;' : '–'}</td>
+          <td>${c.higher_lows   ? '&#10003;' : '–'}</td>
+          <td>${(c.rs_vs_spy || 0).toFixed(1)}%</td>
+          <td>$${(c.stop || 0).toFixed(2)}</td>
+          <td>$${(c.target || 0).toFixed(2)}</td>
+          <td>${c.shares || 0}</td>
+          <td>$${(c.dollar_risk || 0).toFixed(0)}</td>
+          <td>${(c.risk_reward || 0).toFixed(1)}x</td>
+        </tr>`;
+    }).join('');
+  } catch(e) { console.error('loadWatchlist:', e); }
 }
 
 // ── History ────────────────────────────────────────────────────────────────

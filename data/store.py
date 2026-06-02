@@ -108,6 +108,8 @@ def init_db() -> None:
             con.execute("ALTER TABLE scan_candidates ADD COLUMN qualified INTEGER DEFAULT 1")
         if "current_price" not in sc_cols:
             con.execute("ALTER TABLE scan_candidates ADD COLUMN current_price REAL DEFAULT 0")
+        if "candidate_type" not in sc_cols:
+            con.execute("ALTER TABLE scan_candidates ADD COLUMN candidate_type TEXT DEFAULT 'BREAKOUT'")
 
         # position_evaluations — one record per PME evaluation cycle per trade
         con.executescript("""
@@ -162,11 +164,13 @@ def save_scan(
     symbols_scanned: int,
     regime,                          # MarketRegime dataclass
     top_unqualified: list[dict] | None = None,  # top scorers below threshold
+    setup_candidates: list[dict] | None = None,  # pre-breakout SETUP candidates
 ) -> None:
     """Persist one scan run and all its candidates.
 
     top_unqualified: up to 5 slim dicts for candidates that scored below the
     threshold. Saved with qualified=0 so the UI can show a radar of near-misses.
+    setup_candidates: pre-breakout SETUP candidates (Gate D), saved with candidate_type='SETUP'.
     """
     now  = datetime.now(timezone.utc).isoformat()
     day  = date.today().isoformat()
@@ -232,6 +236,30 @@ def save_scan(
                     c.get("gap_pct", 0),
                     0,  # not qualified
                     c.get("current_price", 0),
+                ),
+            )
+
+        # Persist pre-breakout SETUP candidates (candidate_type='SETUP')
+        for c in (setup_candidates or []):
+            con.execute(
+                """INSERT INTO scan_candidates
+                   (scan_run_id, ts, date, symbol, score, entry, stop, target,
+                    trail_atr, shares, partial_shares, trail_shares,
+                    dollar_risk, risk_reward, volume_ratio, rsi, rs_vs_spy,
+                    is_trap, regime, gap_pct, qualified, current_price, candidate_type)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    run_id, now, day,
+                    c["symbol"], c["score"], c["entry"], c["stop"], c["target"],
+                    c.get("trail_atr", 0), c["shares"], c.get("partial_shares", 0),
+                    c.get("trail_shares", 0), c["dollar_risk"], c["risk_reward"],
+                    c.get("volume_ratio", 0), c.get("rsi", 0), c.get("rs_vs_spy", 0),
+                    0,  # is_trap — setups don't have a breakout bar to evaluate
+                    c.get("regime", ""),
+                    c.get("gap_pct", 0),
+                    1,  # qualified (passed Gate D)
+                    c.get("current_price", c.get("entry", 0)),
+                    "SETUP",
                 ),
             )
 
@@ -572,6 +600,35 @@ def query_scan_top5(day: str | None = None) -> list[dict]:
                  )
                ORDER BY sc.score DESC
                LIMIT 5""",
+            (day, day),
+        ))
+
+
+def query_scan_setups(day: str | None = None) -> list[dict]:
+    """Return SETUP (pre-breakout) candidates for a given date, sorted by score desc.
+
+    If day is None, uses the most recent date that has scan data.
+    """
+    with _conn() as con:
+        if day is None:
+            row = con.execute(
+                "SELECT date FROM scan_runs ORDER BY ts DESC LIMIT 1"
+            ).fetchone()
+            if not row:
+                return []
+            day = row["date"]
+
+        return _rows(con.execute(
+            """SELECT sc.*
+               FROM scan_candidates sc
+               WHERE sc.date=?
+                 AND sc.candidate_type='SETUP'
+                 AND sc.id = (
+                   SELECT sc2.id FROM scan_candidates sc2
+                   WHERE sc2.date=? AND sc2.symbol=sc.symbol AND sc2.candidate_type='SETUP'
+                   ORDER BY sc2.score DESC LIMIT 1
+                 )
+               ORDER BY sc.score DESC""",
             (day, day),
         ))
 

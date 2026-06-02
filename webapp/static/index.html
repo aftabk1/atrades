@@ -84,6 +84,7 @@
     <div class="tab active" data-tab="trades" id="tab-btn-trades">Overview <span id="open-trades-badge" style="display:none;background:var(--cyan);color:#0d1117;border-radius:9px;padding:1px 6px;font-size:10px;font-weight:700;margin-left:3px;">0</span></div>
     <div class="tab" data-tab="today" id="tab-btn-today">Today</div>
     <div class="tab" data-tab="history" id="tab-btn-history">Last 30 Days</div>
+    <div class="tab" data-tab="watchlist" id="tab-btn-watchlist">Watchlist <span id="watchlist-badge" style="display:none;background:var(--cyan);color:#0d1117;border-radius:9px;padding:1px 6px;font-size:10px;font-weight:700;margin-left:3px;">0</span></div>
     <div class="tab" data-tab="config" id="tab-btn-config">&#9881; Config</div>
   </div>
 
@@ -362,6 +363,49 @@
     </div>
 
   </div><!-- /tab-history -->
+
+  <!-- ── WATCHLIST TAB ── -->
+  <div class="tab-panel" id="tab-watchlist">
+
+    <!-- Stats bar -->
+    <div class="stats-bar" id="watchlist-stats" style="margin-bottom:1rem;">
+      <div class="stat-box"><div class="stat-label">Setup Candidates</div><div class="stat-value" id="wl-count">–</div></div>
+      <div class="stat-box"><div class="stat-label">Avg Score</div><div class="stat-value" id="wl-avg-score">–</div></div>
+      <div class="stat-box"><div class="stat-label">Avg 20d Proximity</div><div class="stat-value" id="wl-avg-proximity">–</div></div>
+      <div class="stat-box"><div class="stat-label">Entry Type</div><div class="stat-value" style="color:var(--cyan)">Pre-Breakout</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span>Watchlist &mdash; Pre-Breakout Setups (Gate D)</span>
+        <span style="font-size:0.75rem;color:#6c757d;font-weight:400;">Coiling within 5% of 20-day high with tight base + higher lows</span>
+      </div>
+      <div id="watchlist-empty" style="display:none;padding:2rem;text-align:center;color:#6c757d;font-size:0.9rem;">No setup candidates found for this date.</div>
+      <div id="watchlist-table-wrap" style="overflow-x:auto;">
+        <table class="table table-sm" style="font-size:0.85rem;width:100%;">
+          <thead>
+            <tr>
+              <th>Symbol</th>
+              <th>Score</th>
+              <th>Price</th>
+              <th title="% below 20-day high">20d%</th>
+              <th title="Volatility Contraction Pattern contractions">VCP</th>
+              <th title="Consolidation base detected">Con</th>
+              <th title="Higher lows pattern">H-Lows</th>
+              <th title="Relative strength vs SPY">RS/SPY</th>
+              <th>Stop</th>
+              <th>Target</th>
+              <th>Shares</th>
+              <th>$Risk</th>
+              <th>R:R</th>
+            </tr>
+          </thead>
+          <tbody id="watchlist-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /tab-watchlist -->
 
   <!-- ── CONFIG TAB ── -->
   <div class="tab-panel" id="tab-config">

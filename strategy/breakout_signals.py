@@ -53,13 +53,15 @@ class BreakoutSignals:
     earnings_proximity:  SignalResult = field(default_factory=_default_signal)
     high_52w_proximity:  SignalResult = field(default_factory=_default_signal)
     vcp:                 SignalResult = field(default_factory=_default_signal)
+    proximity_20d_high:  SignalResult = field(default_factory=_default_signal)
 
     # Legacy fields — no longer scored; kept for DB/JSON backward compat
     breakout_50d:        SignalResult = field(default_factory=_default_signal)
     atr_expansion:       SignalResult = field(default_factory=_default_signal)
 
-    gap_pct: float = 0.0       # today open vs prior close; ≥0.08 = gap-up breakout
+    gap_pct: float = 0.0         # today open vs prior close; ≥0.08 = gap-up breakout
     breakout_level: float = 0.0  # 20-day prior high — stored at trade entry for PME
+    candidate_type: str = "BREAKOUT"  # "BREAKOUT" | "SETUP"
 
     # ── Enhancement modules (populated after price-breakout gate) ─────────────
     # Type hints use strings to avoid circular imports at module load time.
@@ -78,6 +80,7 @@ def detect_all(
     *,
     fast: bool = False,
     require_breakout: bool = True,
+    detect_setup: bool = False,
 ) -> Optional[BreakoutSignals]:
     """
     Run the full signal pipeline on a single symbol's daily OHLCV DataFrame.
@@ -137,7 +140,33 @@ def detect_all(
         trigger_c = (gap_pct >= config.GAP_UP_THRESHOLD
                      and sig.volume_surge.triggered)
         if not (trigger_a or trigger_b or trigger_c):
-            return None
+            if not detect_setup:
+                return None
+            # ── Gate D: pre-breakout SETUP path ──────────────────────────────
+            # Stock has NOT broken out yet — check if it's coiling near the level.
+            sig.proximity_20d_high = _check_proximity_20d_high(df)
+            sig.consolidation      = _check_consolidation(df)
+            sig.higher_lows        = _check_higher_lows(df)
+            sig.high_52w_proximity = _check_52w_high_proximity(df)
+            sig.vcp                = _check_vcp(df)
+            trigger_d = (
+                sig.proximity_20d_high.triggered
+                and (sig.consolidation.triggered or sig.vcp.triggered)
+                and sig.higher_lows.triggered
+                and sig.high_52w_proximity.triggered
+                and sig.relative_strength.triggered
+            )
+            if not trigger_d:
+                return None
+            sig.rsi_zone = _check_rsi(df)
+            if earnings_date is not None:
+                sig.earnings_proximity = _check_earnings_proximity(df, earnings_date)
+            if not fast:
+                from .accumulation import detect_accumulation   # noqa: PLC0415
+                sig.accumulation = detect_accumulation(df, lookback=config.ACCUM_LOOKBACK_DAYS)
+                # No bull_trap check for setups — no breakout bar to evaluate
+            sig.candidate_type = "SETUP"
+            return sig
 
     sig.consolidation      = _check_consolidation(df)
     sig.higher_lows        = _check_higher_lows(df)
@@ -319,6 +348,36 @@ def _check_52w_high_proximity(df: pd.DataFrame) -> SignalResult:
             f"52w high: {pct_from_high:+.1f}% from ${high_52w:.2f} — "
             + ("at new highs (no overhead supply)"  if pct_from_high >= -3.0
                else f"{abs(pct_from_high):.1f}% below 52w high")
+        ),
+    )
+
+
+def _check_proximity_20d_high(df: pd.DataFrame) -> SignalResult:
+    """
+    Stock is within SETUP_PROXIMITY_PCT of the 20-day prior high but has NOT yet crossed it.
+    value = % distance from the 20d high (negative = below).
+    Triggered when -(SETUP_PROXIMITY_PCT*100) <= value < 0.
+    """
+    close = df["close"]
+    if len(close) < 22:
+        return SignalResult(False, 0.0)
+
+    current    = float(close.iloc[-1])
+    prior_high = float(close.iloc[-21:-1].max())
+    if prior_high == 0:
+        return SignalResult(False, 0.0)
+
+    pct_from_high = (current - prior_high) / prior_high * 100
+    threshold_pct = -config.SETUP_PROXIMITY_PCT * 100  # e.g. -5.0
+
+    triggered = threshold_pct <= pct_from_high < 0.0
+
+    return SignalResult(
+        triggered=triggered,
+        value=round(pct_from_high, 2),
+        description=(
+            f"20d proximity: {pct_from_high:+.1f}% from ${prior_high:.2f} — "
+            + ("coiling near resistance" if triggered else "not within setup band")
         ),
     )
 
