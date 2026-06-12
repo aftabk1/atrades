@@ -110,6 +110,14 @@ def init_db() -> None:
             con.execute("ALTER TABLE scan_candidates ADD COLUMN current_price REAL DEFAULT 0")
         if "candidate_type" not in sc_cols:
             con.execute("ALTER TABLE scan_candidates ADD COLUMN candidate_type TEXT DEFAULT 'BREAKOUT'")
+        if "proximity_20d" not in sc_cols:
+            con.execute("ALTER TABLE scan_candidates ADD COLUMN proximity_20d REAL DEFAULT 0")
+        if "vcp_contractions" not in sc_cols:
+            con.execute("ALTER TABLE scan_candidates ADD COLUMN vcp_contractions INTEGER DEFAULT 0")
+        if "consolidation" not in sc_cols:
+            con.execute("ALTER TABLE scan_candidates ADD COLUMN consolidation INTEGER DEFAULT 0")
+        if "higher_lows" not in sc_cols:
+            con.execute("ALTER TABLE scan_candidates ADD COLUMN higher_lows INTEGER DEFAULT 0")
 
         # position_evaluations — one record per PME evaluation cycle per trade
         con.executescript("""
@@ -246,8 +254,9 @@ def save_scan(
                    (scan_run_id, ts, date, symbol, score, entry, stop, target,
                     trail_atr, shares, partial_shares, trail_shares,
                     dollar_risk, risk_reward, volume_ratio, rsi, rs_vs_spy,
-                    is_trap, regime, gap_pct, qualified, current_price, candidate_type)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    is_trap, regime, gap_pct, qualified, current_price, candidate_type,
+                    proximity_20d, vcp_contractions, consolidation, higher_lows)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     run_id, now, day,
                     c["symbol"], c["score"], c["entry"], c["stop"], c["target"],
@@ -260,6 +269,10 @@ def save_scan(
                     1,  # qualified (passed Gate D)
                     c.get("current_price", c.get("entry", 0)),
                     "SETUP",
+                    c.get("proximity_20d", 0),
+                    c.get("vcp_contractions", 0),
+                    1 if c.get("consolidation") else 0,
+                    1 if c.get("higher_lows") else 0,
                 ),
             )
 
@@ -547,7 +560,7 @@ def query_day(day: str) -> dict:
                  AND sc.id = (
                    SELECT sc2.id FROM scan_candidates sc2
                    WHERE sc2.date=? AND sc2.symbol=sc.symbol
-                   ORDER BY sc2.score DESC LIMIT 1
+                   ORDER BY sc2.id DESC LIMIT 1
                  )
                ORDER BY sc.score DESC""",
             (day, day),
@@ -596,7 +609,7 @@ def query_scan_top5(day: str | None = None) -> list[dict]:
                  AND sc.id = (
                    SELECT sc2.id FROM scan_candidates sc2
                    WHERE sc2.date=? AND sc2.symbol=sc.symbol AND sc2.qualified=0
-                   ORDER BY sc2.score DESC LIMIT 1
+                   ORDER BY sc2.id DESC LIMIT 1
                  )
                ORDER BY sc.score DESC
                LIMIT 5""",
@@ -626,7 +639,7 @@ def query_scan_setups(day: str | None = None) -> list[dict]:
                  AND sc.id = (
                    SELECT sc2.id FROM scan_candidates sc2
                    WHERE sc2.date=? AND sc2.symbol=sc.symbol AND sc2.candidate_type='SETUP'
-                   ORDER BY sc2.score DESC LIMIT 1
+                   ORDER BY sc2.id DESC LIMIT 1
                  )
                ORDER BY sc.score DESC""",
             (day, day),
