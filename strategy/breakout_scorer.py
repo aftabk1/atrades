@@ -68,7 +68,7 @@ class BreakoutScorer:
         gap_adj    = self._earnings_gap_penalty(signals)
         sector_adj = self._sector_rotation_adj(signals)
         flow_adj   = self._options_flow_bonus(signals)
-        return round(max(0.0, min(base + bread + bonus - pen + rsi_adj + gap_adj + sector_adj + flow_adj, 100.0)), 1)
+        return round(max(0.0, base + bread + bonus - pen + rsi_adj + gap_adj + sector_adj + flow_adj), 1)
 
     def breakdown(self, signals: BreakoutSignals, breadth_pct: float = 0.5) -> dict[str, float]:
         """Per-factor base points + breadth + summary of bonus/penalty (for display)."""
@@ -253,7 +253,7 @@ class SetupScorer:
     def score(self, signals: BreakoutSignals, breadth_pct: float = 0.5) -> float:
         pts  = _setup_max_pts()
         base = min(sum(self._factor_pts(signals, f, pts) for f in pts), 100.0)
-        return round(max(0.0, min(base + _breadth_pts(breadth_pct) + self._accum_bonus(signals), 100.0)), 1)
+        return round(max(0.0, base + _breadth_pts(breadth_pct) + self._accum_bonus(signals)), 1)
 
     def breakdown(self, signals: BreakoutSignals, breadth_pct: float = 0.5) -> dict[str, float]:
         pts = _setup_max_pts()
