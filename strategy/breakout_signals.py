@@ -69,6 +69,7 @@ class BreakoutSignals:
     accumulation:     "AccumulationSignals | None"      = field(default=None)
     bull_trap:        "BullTrapResult | None"            = field(default=None)
     sector_rotation:  "SectorRotationResult | None"     = field(default=None)
+    options_flow:     "OptionsFlowResult | None"        = field(default=None)
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────

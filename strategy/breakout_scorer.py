@@ -64,10 +64,11 @@ class BreakoutScorer:
         bread     = self._breadth_pts(breadth_pct)
         bonus     = self._accum_bonus(signals)
         pen       = self._trap_penalty(signals)
-        rsi_adj   = self._rsi_overbought_penalty(signals)
-        gap_adj   = self._earnings_gap_penalty(signals)
+        rsi_adj    = self._rsi_overbought_penalty(signals)
+        gap_adj    = self._earnings_gap_penalty(signals)
         sector_adj = self._sector_rotation_adj(signals)
-        return round(max(0.0, min(base + bread + bonus - pen + rsi_adj + gap_adj + sector_adj, 100.0)), 1)
+        flow_adj   = self._options_flow_bonus(signals)
+        return round(max(0.0, min(base + bread + bonus - pen + rsi_adj + gap_adj + sector_adj + flow_adj, 100.0)), 1)
 
     def breakdown(self, signals: BreakoutSignals, breadth_pct: float = 0.5) -> dict[str, float]:
         """Per-factor base points + breadth + summary of bonus/penalty (for display)."""
@@ -79,6 +80,7 @@ class BreakoutScorer:
         bd["rsi_overbought"]       = round(self._rsi_overbought_penalty(signals), 1)
         bd["earnings_gap_penalty"] = round(self._earnings_gap_penalty(signals), 1)
         bd["sector_rotation"]      = round(self._sector_rotation_adj(signals), 1)
+        bd["options_flow_bonus"]   = round(self._options_flow_bonus(signals), 1)
         return bd
 
     # ── Base factor scoring ───────────────────────────────────────────────────
@@ -186,6 +188,16 @@ class BreakoutScorer:
             return -20.0
         return 0.0
 
+
+    def _options_flow_bonus(self, signals: BreakoutSignals) -> float:
+        """Add up to +10 pts when smart-money options flow confirms the breakout.
+
+        composite_score 0–1 maps linearly to 0–10 pts.
+        No bonus when options data is unavailable (None → 0).
+        """
+        if signals.options_flow is None:
+            return 0.0
+        return round(signals.options_flow.composite_score * config.SCORE_OPTIONS_FLOW_MAX_BONUS, 1)
 
     def _sector_rotation_adj(self, signals: BreakoutSignals) -> float:
         """

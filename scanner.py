@@ -54,6 +54,7 @@ from strategy.breakout_signals import detect_all
 from strategy.breakout_scorer import BreakoutScorer, SetupScorer
 from strategy.market_regime import detect_regime, MarketRegime, Regime
 from strategy.sector_rotation import SectorRotation
+from strategy.options_flow import detect_options_flow
 
 _TOP_N = 5
 
@@ -164,10 +165,18 @@ class BreakoutScanner:
 
             pre_candidates.append((score, symbol, signals))
 
-        # Phase 2: fetch earnings only for qualifiers, then rescore with earnings
+        # Phase 2: fetch earnings + options flow only for qualifiers (avoids 500 API calls)
         qualifier_syms = [sym for _, sym, _ in pre_candidates]
         earnings_map = self._market.get_earnings_dates_bulk(qualifier_syms) if qualifier_syms else {}
         logger.info(f"Earnings fetch: {len(qualifier_syms)} qualifying symbols")
+
+        # Options flow — one yfinance options chain call per qualifier
+        options_map: dict = {}
+        for sym in qualifier_syms:
+            result = detect_options_flow(sym)
+            if result is not None:
+                options_map[sym] = result
+        logger.info(f"Options flow: {len(options_map)}/{len(qualifier_syms)} with data")
 
         for score, symbol, signals in pre_candidates:
             earnings_date = earnings_map.get(symbol)
@@ -177,9 +186,13 @@ class BreakoutScanner:
                 signals = detect_all(symbol, market_data[symbol], spy_data, earnings_date, sector_rotation=sr)
                 if signals is None:
                     continue
-                score = self._scorer.score(signals, breadth_pct)
-                if score < effective_min_score:
-                    continue
+
+            # Attach options flow (may be None if unavailable — scorer handles gracefully)
+            signals.options_flow = options_map.get(symbol)
+
+            score = self._scorer.score(signals, breadth_pct)
+            if score < effective_min_score:
+                continue
 
             setup = calculate_setup(signals, score, portfolio_value)
             if setup is None:
@@ -594,6 +607,11 @@ def _build_candidate(signals, setup: TradeSetup, scorer: BreakoutScorer,
         "sector_rank":        signals.sector_rotation.sector_rank   if signals.sector_rotation else 0,
         "sector_rs":          signals.sector_rotation.sector_rs     if signals.sector_rotation else 0.0,
         "sector_desc":        signals.sector_rotation.description   if signals.sector_rotation else "",
+        "options_pcr":        signals.options_flow.pcr              if signals.options_flow else None,
+        "options_oi_ratio":   signals.options_flow.atm_oi_ratio     if signals.options_flow else None,
+        "options_iv_rank":    signals.options_flow.iv_rank          if signals.options_flow else None,
+        "options_score":      signals.options_flow.composite_score  if signals.options_flow else None,
+        "options_desc":       signals.options_flow.description      if signals.options_flow else "",
         "score_breakdown":    scorer.breakdown(signals, breadth_pct),
         "signals": {
             "breakout_20d":        signals.breakout_20d.description,

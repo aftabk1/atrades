@@ -87,8 +87,9 @@ SCORE_RELATIVE_STRENGTH  = float(os.getenv("SCORE_RELATIVE_STRENGTH",   "4.0"))
 # Market breadth (computed at scan level, not per-symbol)
 SCORE_MARKET_BREADTH     = float(os.getenv("SCORE_MARKET_BREADTH",      "6.0"))
 
-SCORE_ACCUM_MAX_BONUS    = float(os.getenv("SCORE_ACCUM_MAX_BONUS",    "12.0"))
-SCORE_TRAP_MAX_PENALTY   = float(os.getenv("SCORE_TRAP_MAX_PENALTY",   "32.0"))
+SCORE_ACCUM_MAX_BONUS         = float(os.getenv("SCORE_ACCUM_MAX_BONUS",         "12.0"))
+SCORE_TRAP_MAX_PENALTY        = float(os.getenv("SCORE_TRAP_MAX_PENALTY",        "32.0"))
+SCORE_OPTIONS_FLOW_MAX_BONUS  = float(os.getenv("SCORE_OPTIONS_FLOW_MAX_BONUS",  "10.0"))
 
 # ── Runner schedule ───────────────────────────────────────────────────────────
 SCANNER_INTERVAL_MINUTES = int(os.getenv("SCANNER_INTERVAL_MINUTES", "60"))

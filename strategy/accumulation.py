@@ -33,7 +33,8 @@ class AccumulationSignals:
     chaikin_mf:         _Sig = _Sig(False, 0.0)
     up_down_vol_ratio:  _Sig = _Sig(False, 0.0)
     institutional_days: _Sig = _Sig(False, 0.0)
-    composite_score: float = 0.0   # fraction 0–1 (how many of the 4 signals triggered)
+    block_accumulation: _Sig = _Sig(False, 0.0)   # stealth block buying proxy
+    composite_score: float = 0.0   # fraction 0–1
 
 
 def detect_accumulation(df: pd.DataFrame, lookback: int = 20) -> AccumulationSignals:
@@ -47,19 +48,21 @@ def detect_accumulation(df: pd.DataFrame, lookback: int = 20) -> AccumulationSig
     # Always exclude today's bar (index -1) so we measure pre-breakout behaviour
     window = df.iloc[-(lookback + 1):-1]
 
-    obv   = _obv_trend(window)
-    cmf   = _chaikin_money_flow(window)
-    udv   = _up_down_volume(window)
-    idays = _institutional_days(df, lookback)  # uses full df for avg vol baseline
+    obv    = _obv_trend(window)
+    cmf    = _chaikin_money_flow(window)
+    udv    = _up_down_volume(window)
+    idays  = _institutional_days(df, lookback)   # uses full df for avg vol baseline
+    block  = _block_accumulation(df, lookback)   # stealth block buying proxy
 
-    n_triggered  = sum(s.triggered for s in (obv, cmf, udv, idays))
-    composite    = n_triggered / 4.0
+    n_triggered = sum(s.triggered for s in (obv, cmf, udv, idays, block))
+    composite   = n_triggered / 5.0
 
     return AccumulationSignals(
         obv_trend=obv,
         chaikin_mf=cmf,
         up_down_vol_ratio=udv,
         institutional_days=idays,
+        block_accumulation=block,
         composite_score=composite,
     )
 
@@ -167,4 +170,42 @@ def _institutional_days(df: pd.DataFrame, lookback: int = 20) -> _Sig:
         triggered=count >= 3,
         value=float(count),
         description=f"Institutional buying days: {count}/{lookback} (need ≥3)",
+    )
+
+
+def _block_accumulation(df: pd.DataFrame, lookback: int = 20) -> _Sig:
+    """
+    Stealth block-buying proxy — detects institutional accumulation that hides
+    inside narrow-range bars (institutions spread orders to avoid moving the price).
+
+    A 'block day' has BOTH:
+      • Volume ≥ 2× 20-day average  (unusually large order flow)
+      • True range < 1.0% of close  (price barely moved despite the volume)
+
+    Institutions building a position don't want to push price up prematurely —
+    they buy into any dip quietly. ≥2 such days in the lookback = block accumulation.
+
+    This is the classic 'effort vs result' divergence (Wyckoff methodology):
+    large volume producing small price movement = professional absorption.
+    """
+    if len(df) < lookback + 1:
+        return _Sig(False, 0.0)
+
+    recent  = df.iloc[-(lookback + 1):-1]   # exclude today
+    avg_vol = float(df["volume"].iloc[-(lookback + 21):-1].mean()) if len(df) >= lookback + 21 else float(df["volume"].mean())
+
+    h, l, c = recent["high"], recent["low"], recent["close"]
+    true_range_pct = (h - l) / c.replace(0, np.nan)
+
+    block_mask = (recent["volume"] >= 2.0 * avg_vol) & (true_range_pct < 0.01)
+    count      = int(block_mask.sum())
+
+    triggered = count >= 2
+    return _Sig(
+        triggered=triggered,
+        value=float(count),
+        description=(
+            f"Block accumulation: {count} stealth high-vol/narrow-range days in {lookback}d"
+            + (" — institutional absorption detected" if triggered else " — no block pattern")
+        ),
     )
