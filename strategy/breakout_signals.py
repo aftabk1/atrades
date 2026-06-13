@@ -184,7 +184,9 @@ def detect_all(
 
         # ── Bull trap / false breakout detection ──────────────────────────────
         from .bull_trap import detect_bull_trap         # noqa: PLC0415
-        sig.bull_trap = detect_bull_trap(df)
+        _rsi_val = float(sig.rsi_zone.value) if sig.rsi_zone else 0.0
+        _rs_val  = float(sig.relative_strength.value) if sig.relative_strength else 0.0
+        sig.bull_trap = detect_bull_trap(df, gap_pct=sig.gap_pct, rsi=_rsi_val, rs_vs_spy=_rs_val)
 
     return sig
 

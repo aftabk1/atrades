@@ -36,11 +36,12 @@ class _Sig(NamedTuple):
 
 # Points per warning (sum = 100)
 _WEIGHTS: dict[str, int] = {
-    "weak_close":         30,
-    "prior_failures":     25,
-    "resistance_zone":    20,
+    "weak_close":         25,
+    "prior_failures":     20,
+    "resistance_zone":    15,
     "rsi_divergence":     15,
     "narrow_bar":         10,
+    "earnings_gap_fade":  15,   # NEW — large gap-up on news, not organic breakout
 }
 
 TRAP_THRESHOLD = 40   # trap_score ≥ this → flag as suspected trap
@@ -52,25 +53,31 @@ class BullTrapResult:
     is_trap: bool = False
     warnings: list[str] = field(default_factory=list)
 
-    weak_close:      _Sig = _Sig(False, 0.0)
-    prior_failures:  _Sig = _Sig(False, 0.0)
-    resistance_zone: _Sig = _Sig(False, 0.0)
-    rsi_divergence:  _Sig = _Sig(False, 0.0)
-    narrow_bar:      _Sig = _Sig(False, 0.0)
+    weak_close:         _Sig = _Sig(False, 0.0)
+    prior_failures:     _Sig = _Sig(False, 0.0)
+    resistance_zone:    _Sig = _Sig(False, 0.0)
+    rsi_divergence:     _Sig = _Sig(False, 0.0)
+    narrow_bar:         _Sig = _Sig(False, 0.0)
+    earnings_gap_fade:  _Sig = _Sig(False, 0.0)   # NEW
 
 
-def detect_bull_trap(df: pd.DataFrame) -> BullTrapResult:
+def detect_bull_trap(df: pd.DataFrame, gap_pct: float = 0.0, rsi: float = 0.0, rs_vs_spy: float = 0.0) -> BullTrapResult:
     """
     Analyse the current (last) bar for bull-trap characteristics.
     Returns BullTrapResult with aggregate trap_score and individual flags.
+
+    gap_pct   — today open vs prior close (fraction, e.g. 0.34 = 34%)
+    rsi       — RSI(14) value for today
+    rs_vs_spy — 20-day relative strength vs SPY (%)
     """
     result = BullTrapResult()
 
-    result.weak_close      = _check_weak_close(df)
-    result.prior_failures  = _check_prior_failures(df)
-    result.resistance_zone = _check_resistance_zone(df)
-    result.rsi_divergence  = _check_rsi_divergence(df)
-    result.narrow_bar      = _check_narrow_bar(df)
+    result.weak_close          = _check_weak_close(df)
+    result.prior_failures      = _check_prior_failures(df)
+    result.resistance_zone     = _check_resistance_zone(df)
+    result.rsi_divergence      = _check_rsi_divergence(df)
+    result.narrow_bar          = _check_narrow_bar(df)
+    result.earnings_gap_fade   = _check_earnings_gap_fade(gap_pct, rsi, rs_vs_spy)
 
     result.trap_score = float(
         sum(_WEIGHTS[k] for k in _WEIGHTS if getattr(result, k).triggered)
@@ -239,4 +246,38 @@ def _check_narrow_bar(df: pd.DataFrame) -> _Sig:
             f"Narrow breakout bar: range {today:.2f} = {ratio:.0%} of ATR14 {atr14:.2f} "
             f"(need >70% for conviction)"
         ),
+    )
+
+
+def _check_earnings_gap_fade(gap_pct: float, rsi: float, rs_vs_spy: float) -> _Sig:
+    """
+    Detect gap-ups driven by earnings/news rather than organic breakout demand.
+
+    A large same-day gap combined with overbought RSI or extreme RS vs SPY
+    is the fingerprint of an earnings-driven spike — these almost always fade
+    within days as the initial buyers distribute their positions.
+
+    Triggers when any of:
+      • gap ≥ 5% (any large gap is suspect regardless of RSI)
+      • gap ≥ 3% AND RSI > 75 (overbought on earnings gap = classic fade)
+      • gap ≥ 2% AND RS > 30% (news spike masquerading as momentum)
+    """
+    gap = abs(gap_pct * 100)
+
+    if gap >= 5.0:
+        reason = f"large gap +{gap:.1f}% (≥5% threshold)"
+        triggered = True
+    elif gap >= 3.0 and rsi > 75:
+        reason = f"gap +{gap:.1f}% with RSI {rsi:.0f} (overbought post-news)"
+        triggered = True
+    elif gap >= 2.0 and rs_vs_spy > 30.0:
+        reason = f"gap +{gap:.1f}% with RS/SPY +{rs_vs_spy:.0f}% (news-driven spike)"
+        triggered = True
+    else:
+        return _Sig(False, gap, "No earnings gap detected")
+
+    return _Sig(
+        triggered=True,
+        value=gap,
+        description=f"Earnings/news gap fade risk: {reason} — price likely to revert",
     )

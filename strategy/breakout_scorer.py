@@ -59,20 +59,24 @@ class BreakoutScorer:
         breadth_pct — fraction of S&P 500 stocks above their 20-day MA,
                       computed once per scan run and passed in from scanner.py.
         """
-        pts   = _max_pts()
-        base  = min(sum(self._factor_pts(signals, f, pts) for f in pts), 100.0)
-        bread = self._breadth_pts(breadth_pct)
-        bonus = self._accum_bonus(signals)
-        pen   = self._trap_penalty(signals)
-        return round(max(0.0, min(base + bread + bonus - pen, 100.0)), 1)
+        pts      = _max_pts()
+        base     = min(sum(self._factor_pts(signals, f, pts) for f in pts), 100.0)
+        bread    = self._breadth_pts(breadth_pct)
+        bonus    = self._accum_bonus(signals)
+        pen      = self._trap_penalty(signals)
+        rsi_adj  = self._rsi_overbought_penalty(signals)
+        gap_adj  = self._earnings_gap_penalty(signals)
+        return round(max(0.0, min(base + bread + bonus - pen + rsi_adj + gap_adj, 100.0)), 1)
 
     def breakdown(self, signals: BreakoutSignals, breadth_pct: float = 0.5) -> dict[str, float]:
         """Per-factor base points + breadth + summary of bonus/penalty (for display)."""
         pts = _max_pts()
         bd  = {f: round(self._factor_pts(signals, f, pts), 1) for f in pts}
-        bd["market_breadth"] = round(self._breadth_pts(breadth_pct), 1)
-        bd["accum_bonus"]    = round(self._accum_bonus(signals), 1)
-        bd["trap_penalty"]   = round(-self._trap_penalty(signals), 1)
+        bd["market_breadth"]       = round(self._breadth_pts(breadth_pct), 1)
+        bd["accum_bonus"]          = round(self._accum_bonus(signals), 1)
+        bd["trap_penalty"]         = round(-self._trap_penalty(signals), 1)
+        bd["rsi_overbought"]       = round(self._rsi_overbought_penalty(signals), 1)
+        bd["earnings_gap_penalty"] = round(self._earnings_gap_penalty(signals), 1)
         return bd
 
     # ── Base factor scoring ───────────────────────────────────────────────────
@@ -87,7 +91,12 @@ class BreakoutScorer:
         # ── Graded signals (partial credit based on magnitude) ────────────────
 
         if factor == "volume_surge":
-            ratio = max(sig.value, config.BREAKOUT_VOLUME_SURGE_MULT)
+            ratio    = max(sig.value, config.BREAKOUT_VOLUME_SURGE_MULT)
+            gap_pct  = abs(signals.gap_pct * 100)
+            if gap_pct >= 3.0:
+                # High volume on a large gap means institutions selling into
+                # the news spike, not accumulating into a real breakout.
+                return -8.0
             return min((ratio - 1.0) / 2.0 * max_pts, max_pts)
 
         if factor == "breakout_20d":
@@ -95,8 +104,12 @@ class BreakoutScorer:
             return min(max_pts * 0.5 + pct / 3.0 * max_pts * 0.5, max_pts)
 
         if factor == "relative_strength":
-            rs = max(sig.value, 0.0)
-            return min(rs / 10.0 * max_pts, max_pts)
+            rs = sig.value
+            if rs > 25.0:
+                # Extreme RS almost always means a post-earnings spike, not a
+                # real technical setup — penalise rather than reward.
+                return -10.0
+            return min(max(rs, 0.0) / 10.0 * max_pts, max_pts)
 
         if factor == "high_52w_proximity":
             pct = sig.value   # 0 = at 52w high, negative = below
@@ -127,10 +140,49 @@ class BreakoutScorer:
         return signals.accumulation.composite_score * config.SCORE_ACCUM_MAX_BONUS
 
     def _trap_penalty(self, signals: BreakoutSignals) -> float:
-
         if signals.bull_trap is None:
             return 0.0
         return signals.bull_trap.trap_score * (config.SCORE_TRAP_MAX_PENALTY / 100.0)
+
+    def _rsi_overbought_penalty(self, signals: BreakoutSignals) -> float:
+        """Penalise extended RSI — stocks above 75 are already overbought.
+
+        The RSI zone signal gives 0 pts for RSI outside 50–65, but does not
+        subtract anything. Candidates with RSI 75–92 were consistently our
+        worst performers (-5% to -26% within days of the signal).
+
+        Returns a negative number (penalty) or 0.
+        """
+        rsi = signals.rsi_zone.value
+        if rsi <= 75:
+            return 0.0
+        if rsi <= 80:
+            return -10.0   # moderately extended
+        return -20.0       # severely overbought — near-certain short-term reversal
+
+    def _earnings_gap_penalty(self, signals: BreakoutSignals) -> float:
+        """Penalise large intraday gaps combined with overbought / extreme RS.
+
+        A gap-up on earnings is NOT a technical breakout — it is a news event.
+        Price typically fades within days as the initial buyers take profits.
+        The bigger the gap AND the more extreme the RS, the harsher the penalty.
+
+        Returns a negative number (penalty) or 0.
+        """
+        gap = abs(signals.gap_pct * 100)   # convert to %
+        rs  = signals.relative_strength.value
+        rsi = signals.rsi_zone.value
+
+        if gap >= 5.0:
+            # Any gap ≥5% is almost certainly earnings — heavy penalty regardless of RS
+            return -25.0
+        if gap >= 3.0 and rsi > 75:
+            # Moderate gap on already-overbought stock = classic post-earnings fade
+            return -30.0
+        if gap >= 2.0 and rs > 30.0:
+            # News-driven RS spike masquerading as momentum breakout
+            return -20.0
+        return 0.0
 
 
 def _setup_max_pts() -> dict[str, float]:
