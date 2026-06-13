@@ -53,6 +53,7 @@ from risk.trade_setup import TradeSetup, calculate_setup
 from strategy.breakout_signals import detect_all
 from strategy.breakout_scorer import BreakoutScorer, SetupScorer
 from strategy.market_regime import detect_regime, MarketRegime, Regime
+from strategy.sector_rotation import SectorRotation
 
 _TOP_N = 5
 
@@ -68,6 +69,7 @@ class BreakoutScanner:
         self._executor      = BracketOrderExecutor(self._broker) if execute else None
         self._execute       = execute
         self._regime_aware  = regime_aware and config.REGIME_AWARE_SCANNING
+        self._sector        = SectorRotation()
         self._setup_scorer:          SetupScorer = SetupScorer()
         self._last_regime:           MarketRegime | None = None
         self._last_breadth:          float = 0.5   # fraction of stocks above 20MA, updated each scan
@@ -103,6 +105,9 @@ class BreakoutScanner:
         # ── Market regime detection ───────────────────────────────────────────
         regime = detect_regime(spy_data)
         self._last_regime = regime
+
+        # ── Sector rotation: fetch once, reuse for every candidate ────────────
+        sector_ranks = self._sector.get_ranks()
 
         base_min = min_score_override if min_score_override is not None else config.BREAKOUT_MIN_SCORE
         effective_min_score = (
@@ -145,7 +150,8 @@ class BreakoutScanner:
             if symbol in open_positions:
                 continue
 
-            signals = detect_all(symbol, df, spy_data, None)
+            sr = self._sector.score_symbol(symbol, sector_ranks)
+            signals = detect_all(symbol, df, spy_data, None, sector_rotation=sr)
 
             if signals is None:
                 continue
@@ -167,7 +173,8 @@ class BreakoutScanner:
             earnings_date = earnings_map.get(symbol)
             if earnings_date is not None:
                 # Rescore with earnings signal included
-                signals = detect_all(symbol, market_data[symbol], spy_data, earnings_date)
+                sr = self._sector.score_symbol(symbol, sector_ranks)
+                signals = detect_all(symbol, market_data[symbol], spy_data, earnings_date, sector_rotation=sr)
                 if signals is None:
                     continue
                 score = self._scorer.score(signals, breadth_pct)
@@ -215,7 +222,8 @@ class BreakoutScanner:
         for symbol, df in market_data.items():
             if symbol in open_positions or symbol in already_processed:
                 continue
-            signals = detect_all(symbol, df, spy_data, None, detect_setup=True)
+            sr = self._sector.score_symbol(symbol, sector_ranks)
+            signals = detect_all(symbol, df, spy_data, None, detect_setup=True, sector_rotation=sr)
             if signals is None or signals.candidate_type != "SETUP":
                 continue
             score = self._setup_scorer.score(signals, breadth_pct)
@@ -582,6 +590,10 @@ def _build_candidate(signals, setup: TradeSetup, scorer: BreakoutScorer,
         "trap_warnings":      trap_warnings,
         "accum_detail":       accum_detail,
         "regime":             regime.state.value,
+        "sector_etf":         signals.sector_rotation.sector_etf   if signals.sector_rotation else None,
+        "sector_rank":        signals.sector_rotation.sector_rank   if signals.sector_rotation else 0,
+        "sector_rs":          signals.sector_rotation.sector_rs     if signals.sector_rotation else 0.0,
+        "sector_desc":        signals.sector_rotation.description   if signals.sector_rotation else "",
         "score_breakdown":    scorer.breakdown(signals, breadth_pct),
         "signals": {
             "breakout_20d":        signals.breakout_20d.description,

@@ -59,14 +59,15 @@ class BreakoutScorer:
         breadth_pct — fraction of S&P 500 stocks above their 20-day MA,
                       computed once per scan run and passed in from scanner.py.
         """
-        pts      = _max_pts()
-        base     = min(sum(self._factor_pts(signals, f, pts) for f in pts), 100.0)
-        bread    = self._breadth_pts(breadth_pct)
-        bonus    = self._accum_bonus(signals)
-        pen      = self._trap_penalty(signals)
-        rsi_adj  = self._rsi_overbought_penalty(signals)
-        gap_adj  = self._earnings_gap_penalty(signals)
-        return round(max(0.0, min(base + bread + bonus - pen + rsi_adj + gap_adj, 100.0)), 1)
+        pts       = _max_pts()
+        base      = min(sum(self._factor_pts(signals, f, pts) for f in pts), 100.0)
+        bread     = self._breadth_pts(breadth_pct)
+        bonus     = self._accum_bonus(signals)
+        pen       = self._trap_penalty(signals)
+        rsi_adj   = self._rsi_overbought_penalty(signals)
+        gap_adj   = self._earnings_gap_penalty(signals)
+        sector_adj = self._sector_rotation_adj(signals)
+        return round(max(0.0, min(base + bread + bonus - pen + rsi_adj + gap_adj + sector_adj, 100.0)), 1)
 
     def breakdown(self, signals: BreakoutSignals, breadth_pct: float = 0.5) -> dict[str, float]:
         """Per-factor base points + breadth + summary of bonus/penalty (for display)."""
@@ -77,6 +78,7 @@ class BreakoutScorer:
         bd["trap_penalty"]         = round(-self._trap_penalty(signals), 1)
         bd["rsi_overbought"]       = round(self._rsi_overbought_penalty(signals), 1)
         bd["earnings_gap_penalty"] = round(self._earnings_gap_penalty(signals), 1)
+        bd["sector_rotation"]      = round(self._sector_rotation_adj(signals), 1)
         return bd
 
     # ── Base factor scoring ───────────────────────────────────────────────────
@@ -183,6 +185,35 @@ class BreakoutScorer:
             # News-driven RS spike masquerading as momentum breakout
             return -20.0
         return 0.0
+
+
+    def _sector_rotation_adj(self, signals: BreakoutSignals) -> float:
+        """
+        Adjust score based on whether the candidate's sector has positive money flow.
+
+        Sector ranks are pre-computed once per scan run (one yfinance call for 11
+        ETFs) and stored on signals.sector_rotation. If not present (fast/backtest
+        mode without sector data) this is a no-op.
+
+        Points:
+          Top 3 sector   (rank 1–3)  → +10 pts  (follow the money)
+          Mid sectors    (rank 4–7)  →   0 pts  (neutral)
+          Lagging sector (rank 8–11) →  -5 pts  (outflows — avoid)
+          Strongly lag   (RS < -3%)  → -10 pts  (heavy outflows)
+        """
+        sr = signals.sector_rotation
+        if sr is None:
+            return 0.0
+
+        if sr.sector_rank == 0:       # unknown sector
+            return 0.0
+        if sr.sector_rank <= 3:
+            return 10.0
+        if sr.sector_rank <= 7:
+            return 0.0
+        if sr.sector_rs < -3.0:
+            return -10.0
+        return -5.0
 
 
 def _setup_max_pts() -> dict[str, float]:

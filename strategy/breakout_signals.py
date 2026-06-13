@@ -65,9 +65,10 @@ class BreakoutSignals:
 
     # ── Enhancement modules (populated after price-breakout gate) ─────────────
     # Type hints use strings to avoid circular imports at module load time.
-    # Both are set by detect_all via lazy local imports.
-    accumulation: "AccumulationSignals | None" = field(default=None)
-    bull_trap:    "BullTrapResult | None"       = field(default=None)
+    # All are set by detect_all via lazy local imports.
+    accumulation:     "AccumulationSignals | None"      = field(default=None)
+    bull_trap:        "BullTrapResult | None"            = field(default=None)
+    sector_rotation:  "SectorRotationResult | None"     = field(default=None)
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
@@ -81,6 +82,7 @@ def detect_all(
     fast: bool = False,
     require_breakout: bool = True,
     detect_setup: bool = False,
+    sector_rotation: "SectorRotationResult | None" = None,
 ) -> Optional[BreakoutSignals]:
     """
     Run the full signal pipeline on a single symbol's daily OHLCV DataFrame.
@@ -187,6 +189,9 @@ def detect_all(
         _rsi_val = float(sig.rsi_zone.value) if sig.rsi_zone else 0.0
         _rs_val  = float(sig.relative_strength.value) if sig.relative_strength else 0.0
         sig.bull_trap = detect_bull_trap(df, gap_pct=sig.gap_pct, rsi=_rsi_val, rs_vs_spy=_rs_val)
+
+    # ── Sector rotation (passed in pre-computed from scanner, None in fast mode)
+    sig.sector_rotation = sector_rotation
 
     return sig
 
