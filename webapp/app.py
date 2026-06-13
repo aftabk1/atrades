@@ -947,6 +947,33 @@ def scan_setups(date_str: str = Query(default=None, alias="date")):
         return JSONResponse(status_code=500, content={"error": str(exc)})
 
 
+@app.get("/api/prices")
+def live_prices(symbols: str = Query(...)):
+    """Return latest close price for a comma-separated list of symbols via yfinance."""
+    try:
+        syms = [s.strip().upper() for s in symbols.split(",") if s.strip()][:50]
+        if not syms:
+            return {}
+        import yfinance as yf
+        tickers = yf.download(syms, period="2d", interval="1d", progress=False, auto_adjust=True)
+        if tickers.empty:
+            return {}
+        close = tickers["Close"] if "Close" in tickers.columns else tickers.xs("Close", axis=1, level=0)
+        result = {}
+        for sym in syms:
+            try:
+                col = sym if sym in close.columns else None
+                if col is None:
+                    continue
+                price = float(close[col].dropna().iloc[-1])
+                result[sym] = round(price, 2)
+            except Exception:
+                pass
+        return result
+    except Exception as exc:
+        return JSONResponse(status_code=500, content={"error": str(exc)})
+
+
 @app.post("/api/notifications/test")
 def notifications_test(request: Request, body: dict = Body(...)):
     if not _rate_check(request.client.host, "notif", max_hits=3, window=60):

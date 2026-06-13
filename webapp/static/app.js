@@ -368,14 +368,16 @@ async function toggleHistoryDetail(date, srcRow) {
     const scanLabel = (data.scan_count||1) > 1
       ? `${cands.length} unique candidate${cands.length>1?'s':''} across ${data.scan_count} scans`
       : `${cands.length} candidate${cands.length>1?'s':''} · 1 scan run`;
+    const tableId = `hist-cands-${date}`;
     inner.innerHTML = `
       <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">${scanLabel}</div>
       <div style="overflow-x:auto">
-      <table style="font-size:12px;width:100%">
+      <table id="${tableId}" style="font-size:12px;width:100%">
         <thead>
           <tr>
             <th>#</th><th>Symbol</th><th>Score</th>
-            <th class="num">Entry</th><th class="num">Stop</th><th class="num">Target</th>
+            <th class="num">Entry</th><th class="num">Now&nbsp;$</th>
+            <th class="num">Stop</th><th class="num">Target</th>
             <th class="num">R:R</th><th class="num">$&nbsp;Risk</th>
             <th class="num">RSI</th><th class="num">RS/SPY</th><th class="num">Vol</th><th>Trap</th>
           </tr>
@@ -392,6 +394,7 @@ async function toggleHistoryDetail(date, srcRow) {
                 </div>
               </td>
               <td class="num mono">$${fmt(c.entry)}</td>
+              <td class="num mono" id="now-${tableId}-${c.symbol}"><span class="muted" style="font-size:10px;">…</span></td>
               <td class="num mono red">$${fmt(c.stop)}</td>
               <td class="num mono green">$${fmt(c.target)}</td>
               <td class="num">${fmt(c.risk_reward,1)}x</td>
@@ -403,6 +406,30 @@ async function toggleHistoryDetail(date, srcRow) {
             </tr>`).join('')}
         </tbody>
       </table></div>`;
+
+    // Fetch live prices and fill in the Now $ cells
+    const syms = cands.map(c => c.symbol).join(',');
+    fetch(`/api/prices?symbols=${syms}`)
+      .then(r => r.json())
+      .then(prices => {
+        cands.forEach(c => {
+          const cell = document.getElementById(`now-${tableId}-${c.symbol}`);
+          if (!cell) return;
+          const price = prices[c.symbol];
+          if (price == null) { cell.innerHTML = '<span class="muted">—</span>'; return; }
+          const pct  = c.entry ? ((price - c.entry) / c.entry * 100) : null;
+          const cls  = pct == null ? '' : pct >= 0 ? 'green' : 'red';
+          const sign = pct == null ? '' : pct >= 0 ? '▲' : '▼';
+          cell.innerHTML = `<span class="${cls}">$${fmt(price)}</span>`
+            + (pct != null ? `<br><span style="font-size:10px;" class="${cls}">${sign}${Math.abs(pct).toFixed(1)}%</span>` : '');
+        });
+      })
+      .catch(() => {
+        cands.forEach(c => {
+          const cell = document.getElementById(`now-${tableId}-${c.symbol}`);
+          if (cell) cell.innerHTML = '<span class="muted">—</span>';
+        });
+      });
   } catch(e) {
     inner.innerHTML = '<span class="muted" style="font-size:12px;">Failed to load candidates.</span>';
   }
