@@ -110,12 +110,18 @@ def detect_regime(spy_df: pd.DataFrame) -> MarketRegime:
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+_SLOPE_RAPID_DECLINE = -7.0   # SPY falling >7% in 20d = bear even if above 200MA
+
 def _classify(
     adx: float, above_200ma: bool, slope_20d: float, real_vol: float
 ) -> Regime:
     if real_vol > _VOL_HIGH:
         return Regime.HIGH_VOLATILITY
     if not above_200ma and slope_20d < _SLOPE_BEAR:
+        return Regime.BEAR_TREND
+    # Rapid decline — even if technically above 200MA, a -7%+ 20-day drop signals
+    # distribution / institutional selling; treat as bear to block new entries.
+    if slope_20d < _SLOPE_RAPID_DECLINE:
         return Regime.BEAR_TREND
     if above_200ma and adx >= _ADX_TRENDING and slope_20d >= _SLOPE_BULL:
         return Regime.BULL_TREND

@@ -24,6 +24,7 @@ from loguru import logger
 import config
 from strategy.breakout_signals import detect_all
 from strategy.breakout_scorer import BreakoutScorer
+from strategy.market_regime import detect_regime
 from risk.trade_setup import calculate_setup
 
 _SCORER = BreakoutScorer()
@@ -172,6 +173,12 @@ class BacktestEngine:
             slots = max_concurrent - len(open_trades)
             if slots <= 0:
                 continue
+
+            # ── Regime gate: skip new entries on bad market days ──────────────
+            spy_hist_regime = spy_data[spy_data.index <= signal_date] if not spy_data.empty else pd.DataFrame()
+            regime = detect_regime(spy_hist_regime)
+            if not regime.scan_recommended:
+                continue   # BEAR or HIGH_VOLATILITY — no new entries today
 
             held_symbols = {t.symbol for t in open_trades}
             candidates: list[tuple[float, object, pd.DataFrame]] = []

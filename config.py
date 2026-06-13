@@ -37,10 +37,10 @@ BREAKOUT_ATR_STOP_MULT    = float(os.getenv("BREAKOUT_ATR_STOP_MULT",    "2.0"))
 BREAKOUT_MAX_STOP_PCT     = float(os.getenv("BREAKOUT_MAX_STOP_PCT",     "0.20")) # stop floor: never below 80% of entry
 BREAKOUT_SUPPORT_LOOKBACK = int(os.getenv("BREAKOUT_SUPPORT_LOOKBACK",   "10"))   # days for swing-low support
 BREAKOUT_RR_RATIO         = float(os.getenv("BREAKOUT_RR_RATIO",         "2.0"))  # partial exit at 2R
-BREAKOUT_MIN_SCORE        = float(os.getenv("BREAKOUT_MIN_SCORE",        "65.0")) # 0–100 score floor
+BREAKOUT_MIN_SCORE        = float(os.getenv("BREAKOUT_MIN_SCORE",        "68.0")) # raised 65→68 (score doesn't discriminate; reduce noise)
 
 # ── Partial exit + trailing stop ──────────────────────────────────────────────
-PARTIAL_EXIT_R   = float(os.getenv("PARTIAL_EXIT_R",   "2.0"))   # take partial profit at this R multiple
+PARTIAL_EXIT_R   = float(os.getenv("PARTIAL_EXIT_R",   "1.5"))   # lowered 2R→1.5R (2R almost never hit in 20d; 1.5R triggers sooner)
 PARTIAL_EXIT_PCT = float(os.getenv("PARTIAL_EXIT_PCT", "0.50"))  # fraction of position to exit at partial
 TRAIL_ATR_MULT   = float(os.getenv("TRAIL_ATR_MULT",   "2.0"))   # trailing stop distance = N × ATR14
 
@@ -98,7 +98,7 @@ REGIME_AWARE_SCANNING = os.getenv("REGIME_AWARE_SCANNING", "true").lower() == "t
 REGIME_OVERRIDE       = os.getenv("REGIME_OVERRIDE", "")   # blank = auto-detect; or BULL_TREND/SIDEWAYS/BEAR_TREND/HIGH_VOLATILITY
 
 # ── Backtest ──────────────────────────────────────────────────────────────────
-BACKTEST_MAX_HOLD_DAYS = int(os.getenv("BACKTEST_MAX_HOLD_DAYS", "20"))
+BACKTEST_MAX_HOLD_DAYS = int(os.getenv("BACKTEST_MAX_HOLD_DAYS", "30"))  # raised 20→30 (profitable timeouts need more time)
 BACKTEST_SLIPPAGE_PCT = float(os.getenv("BACKTEST_SLIPPAGE_PCT", "0.0005")) # 0.05% slippage
 BACKTEST_INITIAL_CAPITAL = float(os.getenv("BACKTEST_INITIAL_CAPITAL", "100000"))
 
