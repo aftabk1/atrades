@@ -1,4 +1,4 @@
-const CACHE = 'a1trades-v1';
+const CACHE = 'a1trades-v2';
 const STATIC = [
   '/static/style.css',
   '/static/app.js',
