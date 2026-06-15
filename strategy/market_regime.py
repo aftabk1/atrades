@@ -55,9 +55,9 @@ _MA_LOOKBACK    = 200      # bars for long-term MA
 
 _REGIME_CONFIG: dict[Regime, dict] = {
     Regime.BULL_TREND:      {"multiplier": 1.00, "min_score": 40.0, "scan": True},
-    Regime.SIDEWAYS:        {"multiplier": 0.80, "min_score": 52.0, "scan": True},
-    Regime.BEAR_TREND:      {"multiplier": 0.55, "min_score": 62.0, "scan": False},
-    Regime.HIGH_VOLATILITY: {"multiplier": 0.40, "min_score": 70.0, "scan": False},
+    Regime.SIDEWAYS:        {"multiplier": 0.80, "min_score": 65.0, "scan": True},
+    Regime.BEAR_TREND:      {"multiplier": 0.55, "min_score": 70.0, "scan": False},
+    Regime.HIGH_VOLATILITY: {"multiplier": 0.40, "min_score": 75.0, "scan": False},
 }
 
 _REGIME_LABELS = {

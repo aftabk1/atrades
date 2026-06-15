@@ -97,6 +97,46 @@ class MarketDataClient:
             _YF_FAILURES[symbol] = _YF_FAILURES.get(symbol, 0) + 1
             return None
 
+    def get_eps_growth(self, symbol: str) -> Optional[float]:
+        """
+        Returns YoY EPS growth for the most recent reported quarter as a fraction (0.10 = 10%).
+        Returns None if data is unavailable (treated as passing the filter — don't penalise missing data).
+        """
+        if not _YF_OK or _YF_FAILURES.get(symbol, 0) >= _YF_FAIL_LIMIT:
+            return None
+        try:
+            ticker = yf.Ticker(symbol)
+            earnings = ticker.quarterly_earnings
+            if earnings is None or (hasattr(earnings, "empty") and earnings.empty):
+                return None
+            # quarterly_earnings index is the period end date (most recent first after sort)
+            earnings = earnings.sort_index(ascending=False)
+            if len(earnings) < 5:  # need at least 5 quarters for YoY (Q vs Q-4)
+                return None
+            eps_recent = float(earnings["Earnings"].iloc[0])
+            eps_year_ago = float(earnings["Earnings"].iloc[4])
+            if eps_year_ago == 0:
+                return None
+            return (eps_recent - eps_year_ago) / abs(eps_year_ago)
+        except Exception:
+            _YF_FAILURES[symbol] = _YF_FAILURES.get(symbol, 0) + 1
+            return None
+
+    def get_eps_growth_bulk(
+        self, symbols: list[str], max_workers: int = 10
+    ) -> dict[str, Optional[float]]:
+        """Fetch EPS growth for all symbols concurrently."""
+        results: dict[str, Optional[float]] = {}
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            futures = {pool.submit(self.get_eps_growth, sym): sym for sym in symbols}
+            for future in as_completed(futures):
+                sym = futures[future]
+                try:
+                    results[sym] = future.result()
+                except Exception:
+                    results[sym] = None
+        return results
+
     def get_earnings_dates_bulk(
         self, symbols: list[str], max_workers: int = 10
     ) -> dict[str, Optional[datetime]]:

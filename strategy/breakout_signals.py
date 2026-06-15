@@ -152,6 +152,17 @@ def detect_all(
     sig.volume_surge      = _check_volume_surge(df)
     sig.relative_strength = _check_relative_strength(df, spy_df)
 
+    # ── Hard gates (applied before breakout logic) ────────────────────────────
+    # 1. Volume floor: projected volume must be ≥ 0.75× avg (filters low-conviction days)
+    avg_vol = float(df["volume"].iloc[-21:-1].mean())
+    if avg_vol > 0 and sig.current_volume / avg_vol < config.BREAKOUT_MIN_VOLUME_RATIO:
+        return None
+
+    # 2. RSI ceiling: reject overbought stocks regardless of score
+    _rsi_now = float(_rsi(df["close"], 14).iloc[-1])
+    if _rsi_now > config.BREAKOUT_RSI_MAX:
+        return None
+
     if require_breakout:
         # Three-way entry gate — any one trigger qualifies the symbol:
         #   A: classic 20-day high breakout

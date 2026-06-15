@@ -26,8 +26,12 @@ BREAKOUT_MIN_AVG_VOLUME = int(os.getenv("BREAKOUT_MIN_AVG_VOLUME", "1000000"))
 
 # ── Breakout scanner — signal thresholds ─────────────────────────────────────
 BREAKOUT_VOLUME_SURGE_MULT = float(os.getenv("BREAKOUT_VOLUME_SURGE_MULT", "1.5"))
-BREAKOUT_RSI_LOW = float(os.getenv("BREAKOUT_RSI_LOW", "50.0"))   # was 55 — catch momentum earlier
-BREAKOUT_RSI_HIGH = float(os.getenv("BREAKOUT_RSI_HIGH", "65.0"))  # was 70 — exclude extended stocks
+BREAKOUT_MIN_VOLUME_RATIO  = float(os.getenv("BREAKOUT_MIN_VOLUME_RATIO",  "0.75"))  # hard gate: reject if projected vol < 0.75x avg
+BREAKOUT_RSI_LOW           = float(os.getenv("BREAKOUT_RSI_LOW",  "50.0"))   # was 55 — catch momentum earlier
+BREAKOUT_RSI_HIGH          = float(os.getenv("BREAKOUT_RSI_HIGH", "65.0"))   # was 70 — exclude extended stocks
+BREAKOUT_RSI_MAX           = float(os.getenv("BREAKOUT_RSI_MAX",  "75.0"))   # hard gate: reject overbought regardless of score
+EARNINGS_FILTER_ENABLED    = os.getenv("EARNINGS_FILTER_ENABLED", "true").lower() == "true"
+EARNINGS_MIN_EPS_GROWTH    = float(os.getenv("EARNINGS_MIN_EPS_GROWTH", "0.10"))  # last Q YoY EPS growth ≥ 10%
 BREAKOUT_CONSOLIDATION_DAILY_VOL = float(os.getenv("BREAKOUT_CONSOLIDATION_DAILY_VOL", "0.015"))
 BREAKOUT_CONSOLIDATION_LOOKBACK = int(os.getenv("BREAKOUT_CONSOLIDATION_LOOKBACK", "15"))
 BREAKOUT_HIGHER_LOWS_LOOKBACK = int(os.getenv("BREAKOUT_HIGHER_LOWS_LOOKBACK", "15"))

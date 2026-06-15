@@ -42,13 +42,42 @@ def make_ohlcv(
 
 
 def make_breakout_df(bars: int = 100) -> pd.DataFrame:
-    """OHLCV that should trigger all breakout signals on the last bar."""
-    df = make_ohlcv(bars, base_price=60.0, avg_vol=2_000_000, trend=0.003)
+    """
+    OHLCV that triggers all breakout signals on the last bar.
+    Structure: slow uptrend for first 75 bars → 20-bar consolidation (flat, tight) →
+    breakout bar with volume surge. This keeps RSI in the 55–70 momentum zone.
+    """
+    np.random.seed(42)
+    dates = pd.bdate_range(end="2025-01-31", periods=bars)
+
+    # Phase 1: slow uptrend (RSI stays moderate)
+    consolidation_bars = min(30, max(bars // 3, 1))
+    trend_bars = bars - consolidation_bars
+    daily_trend = np.random.normal(0.0008, 0.007, max(trend_bars, 1))
+    close_trend = 60.0 * np.cumprod(1 + daily_trend)
+
+    # Phase 2: flat consolidation — alternating moves so RSI resets toward 50
+    base        = float(close_trend[-1])
+    flat_moves  = np.tile([0.003, -0.003], consolidation_bars // 2 + 1)[:consolidation_bars]
+    close_flat  = base * np.cumprod(1 + flat_moves)
+
+    close_all   = np.concatenate([close_trend, close_flat])
+    noise       = np.abs(np.random.normal(0, 0.005, bars))
+
+    df = pd.DataFrame({
+        "open":   close_all * (1 - noise * 0.5),
+        "high":   close_all * (1 + noise),
+        "low":    close_all * (1 - noise),
+        "close":  close_all,
+        "volume": np.full(bars, 2_000_000, dtype=float),
+    }, index=dates)
+
+    # Breakout bar: close 3% above 20d high with 2.5× volume surge
     prior_20d_high = df["close"].iloc[-21:-1].max()
-    # Last bar: close 3% above 20d high with volume surge
-    df.iloc[-1, df.columns.get_loc("close")] = prior_20d_high * 1.03
-    df.iloc[-1, df.columns.get_loc("high")]  = prior_20d_high * 1.035
-    df.iloc[-1, df.columns.get_loc("open")]  = prior_20d_high * 1.01
+    breakout_price = max(prior_20d_high * 1.03, float(close_all[-2]) * 1.005)
+    df.iloc[-1, df.columns.get_loc("close")]  = breakout_price
+    df.iloc[-1, df.columns.get_loc("high")]   = breakout_price * 1.005
+    df.iloc[-1, df.columns.get_loc("open")]   = breakout_price * 0.998
     df.iloc[-1, df.columns.get_loc("volume")] = 5_000_000  # 2.5x surge
     return df
 

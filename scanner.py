@@ -170,6 +170,12 @@ class BreakoutScanner:
         earnings_map = self._market.get_earnings_dates_bulk(qualifier_syms) if qualifier_syms else {}
         logger.info(f"Earnings fetch: {len(qualifier_syms)} qualifying symbols")
 
+        # EPS growth filter — fetch only for qualifiers, gate before final scoring
+        eps_map: dict[str, float | None] = {}
+        if config.EARNINGS_FILTER_ENABLED and qualifier_syms:
+            eps_map = self._market.get_eps_growth_bulk(qualifier_syms)
+            logger.info(f"EPS growth fetch: {len(qualifier_syms)} qualifying symbols")
+
         # Options flow — one yfinance options chain call per qualifier
         options_map: dict = {}
         for sym in qualifier_syms:
@@ -179,6 +185,14 @@ class BreakoutScanner:
         logger.info(f"Options flow: {len(options_map)}/{len(qualifier_syms)} with data")
 
         for score, symbol, signals in pre_candidates:
+            # EPS growth gate: last Q YoY EPS must be > 0 and ≥ EARNINGS_MIN_EPS_GROWTH
+            # None = data unavailable → pass (don't penalise missing data)
+            if config.EARNINGS_FILTER_ENABLED:
+                eps_growth = eps_map.get(symbol)
+                if eps_growth is not None and (eps_growth < config.EARNINGS_MIN_EPS_GROWTH or eps_growth < 0):
+                    logger.debug(f"{symbol} rejected: EPS growth {eps_growth:.1%} < {config.EARNINGS_MIN_EPS_GROWTH:.0%}")
+                    continue
+
             earnings_date = earnings_map.get(symbol)
             if earnings_date is not None:
                 # Rescore with earnings signal included
