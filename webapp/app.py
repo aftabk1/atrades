@@ -949,20 +949,44 @@ def scan_setups(date_str: str = Query(default=None, alias="date")):
 
 @app.get("/api/prices")
 def live_prices(symbols: str = Query(...)):
-    """Return latest close price for a comma-separated list of symbols via yfinance."""
+    """Return latest price for a comma-separated list of symbols via Alpaca (real-time) or yfinance fallback."""
+    syms = [s.strip().upper() for s in symbols.split(",") if s.strip()][:50]
+    if not syms:
+        return {}
+
+    # Try Alpaca latest trades first (real-time during market hours)
     try:
-        syms = [s.strip().upper() for s in symbols.split(",") if s.strip()][:50]
-        if not syms:
-            return {}
+        env = _parse_env(_read_env_lines())
+        from alpaca.data.historical import StockHistoricalDataClient
+        from alpaca.data.requests import StockLatestTradeRequest
+        data_client = StockHistoricalDataClient(
+            api_key=env.get("ALPACA_API_KEY", ""),
+            secret_key=env.get("ALPACA_SECRET_KEY", ""),
+        )
+        resp = data_client.get_stock_latest_trade(StockLatestTradeRequest(symbol_or_symbols=syms))
+        result = {}
+        for sym in syms:
+            if sym in resp and resp[sym].price:
+                result[sym] = round(float(resp[sym].price), 2)
+        if result:
+            return result
+    except Exception:
+        pass
+
+    # Fallback: yfinance 1-minute bars (15-min delayed)
+    try:
         import yfinance as yf
-        tickers = yf.download(syms, period="2d", interval="1d", progress=False, auto_adjust=True)
+        tickers = yf.download(syms, period="1d", interval="1m", progress=False, auto_adjust=True)
         if tickers.empty:
             return {}
-        close = tickers["Close"] if "Close" in tickers.columns else tickers.xs("Close", axis=1, level=0)
+        if isinstance(tickers.columns, pd.MultiIndex):
+            close = tickers.xs("Close", axis=1, level=0)
+        else:
+            close = tickers[["Close"]] if "Close" in tickers.columns else tickers
         result = {}
         for sym in syms:
             try:
-                col = sym if sym in close.columns else None
+                col = sym if sym in close.columns else (close.columns[0] if len(syms) == 1 else None)
                 if col is None:
                     continue
                 price = float(close[col].dropna().iloc[-1])
