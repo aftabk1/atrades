@@ -100,21 +100,30 @@ class MarketDataClient:
     def get_eps_growth(self, symbol: str) -> Optional[float]:
         """
         Returns YoY EPS growth for the most recent reported quarter as a fraction (0.10 = 10%).
+        Uses quarterly_income_stmt (Basic EPS row) — quarterly_earnings is deprecated in yfinance.
         Returns None if data is unavailable (treated as passing the filter — don't penalise missing data).
         """
         if not _YF_OK or _YF_FAILURES.get(symbol, 0) >= _YF_FAIL_LIMIT:
             return None
         try:
             ticker = yf.Ticker(symbol)
-            earnings = ticker.quarterly_earnings
-            if earnings is None or (hasattr(earnings, "empty") and earnings.empty):
+            stmt = ticker.quarterly_income_stmt
+            if stmt is None or (hasattr(stmt, "empty") and stmt.empty):
                 return None
-            # quarterly_earnings index is the period end date (most recent first after sort)
-            earnings = earnings.sort_index(ascending=False)
-            if len(earnings) < 5:  # need at least 5 quarters for YoY (Q vs Q-4)
+            # Look for Basic EPS row; fall back to Diluted EPS
+            eps_row = None
+            for label in ("Basic EPS", "Diluted EPS"):
+                if label in stmt.index:
+                    eps_row = stmt.loc[label]
+                    break
+            if eps_row is None:
                 return None
-            eps_recent = float(earnings["Earnings"].iloc[0])
-            eps_year_ago = float(earnings["Earnings"].iloc[4])
+            # Columns are period-end dates, most recent first
+            eps_row = eps_row.sort_index(ascending=False).dropna()
+            if len(eps_row) < 5:  # need 5 quarters for YoY (Q vs Q-4)
+                return None
+            eps_recent   = float(eps_row.iloc[0])
+            eps_year_ago = float(eps_row.iloc[4])
             if eps_year_ago == 0:
                 return None
             return (eps_recent - eps_year_ago) / abs(eps_year_ago)
