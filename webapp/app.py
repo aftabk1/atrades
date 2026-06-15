@@ -150,7 +150,9 @@ def _read_env_lines() -> list[str]:
     return ENV_PATH.read_text(encoding="utf-8").splitlines()
 
 def _parse_env(lines: list[str]) -> dict:
-    result = {}
+    # Seed with real environment variables so AWS / Docker deployments work
+    # without a .env file. .env file values take precedence when present.
+    result = dict(os.environ)
     for line in lines:
         s = line.strip()
         if not s or s.startswith("#"):
