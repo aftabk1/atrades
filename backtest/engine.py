@@ -139,6 +139,19 @@ class BacktestEngine:
         results = BacktestResults(initial_capital=self.initial_capital)
         capital = self.initial_capital
 
+        # Pre-fetch EPS growth for all symbols once (avoids per-bar API calls)
+        eps_map: dict[str, float | None] = {}
+        if config.EARNINGS_FILTER_ENABLED:
+            from data.market_data import MarketDataClient as _MDC
+            _mdc = _MDC()
+            logger.info(f"Fetching EPS growth for {len(market_data)} symbols...")
+            eps_map = _mdc.get_eps_growth_bulk(list(market_data.keys()))
+            filtered = sum(
+                1 for v in eps_map.values()
+                if v is not None and (v < 0 or v < config.EARNINGS_MIN_EPS_GROWTH)
+            )
+            logger.info(f"EPS filter: {filtered}/{len(market_data)} symbols will be excluded")
+
         # Build a unified date timeline from all symbol DataFrames
         all_dates = _build_date_index(market_data, start_date, end_date)
         if len(all_dates) < 5:
@@ -190,6 +203,12 @@ class BacktestEngine:
                 # Use only data available at signal_date (no lookahead)
                 hist = full_df[full_df.index <= signal_date]
                 spy_hist = spy_data[spy_data.index <= signal_date] if not spy_data.empty else pd.DataFrame()
+
+                # EPS growth gate — same logic as scanner Phase 2
+                if config.EARNINGS_FILTER_ENABLED:
+                    eps = eps_map.get(symbol)
+                    if eps is not None and (eps < 0 or eps < config.EARNINGS_MIN_EPS_GROWTH):
+                        continue
 
                 signals = detect_all(symbol, hist, spy_hist)
                 if signals is None:
