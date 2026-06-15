@@ -24,6 +24,7 @@ from loguru import logger
 import config
 from strategy.breakout_signals import detect_all
 from strategy.breakout_scorer import BreakoutScorer
+from strategy.sector_rotation import _SYMBOL_TO_ETF as _SECTOR_ETF_MAP
 from strategy.market_regime import detect_regime
 from risk.trade_setup import calculate_setup
 
@@ -203,6 +204,12 @@ class BacktestEngine:
                 # Use only data available at signal_date (no lookahead)
                 hist = full_df[full_df.index <= signal_date]
                 spy_hist = spy_data[spy_data.index <= signal_date] if not spy_data.empty else pd.DataFrame()
+
+                # Sector exclusion gate
+                if config.EXCLUDED_SECTOR_ETFS:
+                    etf = _SECTOR_ETF_MAP.get(symbol.upper())
+                    if etf and etf in config.EXCLUDED_SECTOR_ETFS:
+                        continue
 
                 # EPS growth gate — same logic as scanner Phase 2
                 if config.EARNINGS_FILTER_ENABLED:

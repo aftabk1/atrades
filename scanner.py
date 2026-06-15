@@ -152,6 +152,9 @@ class BreakoutScanner:
                 continue
 
             sr = self._sector.score_symbol(symbol, sector_ranks)
+            if sr.sector_etf and sr.sector_etf in config.EXCLUDED_SECTOR_ETFS:
+                continue
+
             signals = detect_all(symbol, df, spy_data, None, sector_rotation=sr)
 
             if signals is None:

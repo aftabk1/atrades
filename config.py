@@ -32,6 +32,15 @@ BREAKOUT_RSI_HIGH          = float(os.getenv("BREAKOUT_RSI_HIGH", "65.0"))   # w
 BREAKOUT_RSI_MAX           = float(os.getenv("BREAKOUT_RSI_MAX",  "75.0"))   # hard gate: reject overbought regardless of score
 EARNINGS_FILTER_ENABLED    = os.getenv("EARNINGS_FILTER_ENABLED", "true").lower() == "true"
 EARNINGS_MIN_EPS_GROWTH    = float(os.getenv("EARNINGS_MIN_EPS_GROWTH", "0.10"))  # last Q YoY EPS growth ≥ 10%
+
+# Sector exclusions — these sectors don't make sustained momentum breakout moves
+EXCLUDED_SECTOR_ETFS: set[str] = set(
+    s.strip() for s in os.getenv(
+        "EXCLUDED_SECTOR_ETFS",
+        "XLU,XLP,XLE,XLB,XLRE"  # Utilities, Consumer Defensive, Energy, Materials, Real Estate
+    ).split(",") if s.strip()
+)
+
 BREAKOUT_CONSOLIDATION_DAILY_VOL = float(os.getenv("BREAKOUT_CONSOLIDATION_DAILY_VOL", "0.015"))
 BREAKOUT_CONSOLIDATION_LOOKBACK = int(os.getenv("BREAKOUT_CONSOLIDATION_LOOKBACK", "15"))
 BREAKOUT_HIGHER_LOWS_LOOKBACK = int(os.getenv("BREAKOUT_HIGHER_LOWS_LOOKBACK", "15"))
