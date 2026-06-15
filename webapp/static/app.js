@@ -1179,7 +1179,8 @@ function populateConfig(data) {
   // Simple text/number inputs
   const fields = [
     'BREAKOUT_MIN_PRICE','BREAKOUT_MIN_AVG_VOLUME','BREAKOUT_VOLUME_SURGE_MULT',
-    'BREAKOUT_RSI_LOW','BREAKOUT_RSI_HIGH','GAP_UP_THRESHOLD',
+    'BREAKOUT_MIN_VOLUME_RATIO','BREAKOUT_RSI_LOW','BREAKOUT_RSI_HIGH','BREAKOUT_RSI_MAX',
+    'EARNINGS_MIN_EPS_GROWTH','GAP_UP_THRESHOLD',
     'BREAKOUT_CONSOLIDATION_LOOKBACK','BREAKOUT_CONSOLIDATION_DAILY_VOL',
     'BREAKOUT_HIGHER_LOWS_LOOKBACK','BREAKOUT_MIN_SCORE',
     'BREAKOUT_ATR_STOP_MULT','BREAKOUT_MAX_STOP_PCT','BREAKOUT_SUPPORT_LOOKBACK','BREAKOUT_RR_RATIO',
@@ -1204,7 +1205,7 @@ function populateConfig(data) {
   });
 
   // Toggles (boolean)
-  const boolFields = ['IS_PAPER', 'REGIME_AWARE_SCANNING'];
+  const boolFields = ['IS_PAPER', 'REGIME_AWARE_SCANNING', 'EARNINGS_FILTER_ENABLED'];
   boolFields.forEach(k => {
     const el = document.getElementById('cfg-' + k);
     if (el) el.checked = (data[k] === 'true' || data[k] === true);
@@ -1274,7 +1275,8 @@ function collectConfig() {
   // Text/number inputs
   const fields = [
     'BREAKOUT_MIN_PRICE','BREAKOUT_MIN_AVG_VOLUME','BREAKOUT_VOLUME_SURGE_MULT',
-    'BREAKOUT_RSI_LOW','BREAKOUT_RSI_HIGH','GAP_UP_THRESHOLD',
+    'BREAKOUT_MIN_VOLUME_RATIO','BREAKOUT_RSI_LOW','BREAKOUT_RSI_HIGH','BREAKOUT_RSI_MAX',
+    'EARNINGS_MIN_EPS_GROWTH','GAP_UP_THRESHOLD',
     'BREAKOUT_CONSOLIDATION_LOOKBACK','BREAKOUT_CONSOLIDATION_DAILY_VOL',
     'BREAKOUT_HIGHER_LOWS_LOOKBACK','BREAKOUT_MIN_SCORE',
     'BREAKOUT_ATR_STOP_MULT','BREAKOUT_MAX_STOP_PCT','BREAKOUT_SUPPORT_LOOKBACK','BREAKOUT_RR_RATIO',
@@ -1299,8 +1301,9 @@ function collectConfig() {
   });
 
   // Booleans
-  cfg.IS_PAPER              = document.getElementById('cfg-IS_PAPER').checked              ? 'true' : 'false';
-  cfg.REGIME_AWARE_SCANNING = document.getElementById('cfg-REGIME_AWARE_SCANNING').checked ? 'true' : 'false';
+  cfg.IS_PAPER               = document.getElementById('cfg-IS_PAPER').checked               ? 'true' : 'false';
+  cfg.REGIME_AWARE_SCANNING  = document.getElementById('cfg-REGIME_AWARE_SCANNING').checked  ? 'true' : 'false';
+  cfg.EARNINGS_FILTER_ENABLED = document.getElementById('cfg-EARNINGS_FILTER_ENABLED').checked ? 'true' : 'false';
 
   // Selects
   ['SCANNER_INTERVAL_MINUTES','REGIME_OVERRIDE'].forEach(k => {

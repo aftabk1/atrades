@@ -196,28 +196,38 @@ CONFIG_DEFAULTS = {
     "MAX_PORTFOLIO_RISK":              "0.01",
     "MAX_CONCURRENT_TRADES":           "4",
     "MAX_DAILY_LOSS_PCT":              "0.04",
+    # Scanner thresholds
     "BREAKOUT_MIN_PRICE":              "25.0",
     "BREAKOUT_MIN_AVG_VOLUME":         "1000000",
     "BREAKOUT_VOLUME_SURGE_MULT":      "1.5",
+    "BREAKOUT_MIN_VOLUME_RATIO":       "0.75",
     "BREAKOUT_RSI_LOW":                "50.0",
     "BREAKOUT_RSI_HIGH":               "65.0",
+    "BREAKOUT_RSI_MAX":                "75.0",
     "GAP_UP_THRESHOLD":                "0.08",
-    "SETUP_PROXIMITY_PCT":             "0.05",
-    "SETUP_MIN_SCORE":                 "45.0",
-    "SCORE_PROXIMITY_20D":             "12.0",
     "BREAKOUT_CONSOLIDATION_LOOKBACK":  "15",
     "BREAKOUT_CONSOLIDATION_DAILY_VOL": "0.015",
     "BREAKOUT_HIGHER_LOWS_LOOKBACK":    "15",
-    "BREAKOUT_MIN_SCORE":               "65.0",
+    "BREAKOUT_MIN_SCORE":               "68.0",
     "BREAKOUT_ATR_STOP_MULT":           "2.0",
     "BREAKOUT_MAX_STOP_PCT":            "0.20",
     "BREAKOUT_SUPPORT_LOOKBACK":        "10",
     "BREAKOUT_RR_RATIO":                "2.0",
-    "PARTIAL_EXIT_R":                  "2.0",
+    # Earnings filter
+    "EARNINGS_FILTER_ENABLED":         "true",
+    "EARNINGS_MIN_EPS_GROWTH":         "0.10",
+    # Setup detection (watchlist only — no orders placed)
+    "SETUP_PROXIMITY_PCT":             "0.05",
+    "SETUP_MIN_SCORE":                 "60.0",
+    "SCORE_PROXIMITY_20D":             "12.0",
+    # Trade exits
+    "PARTIAL_EXIT_R":                  "1.5",
     "PARTIAL_EXIT_PCT":                "0.50",
     "TRAIL_ATR_MULT":                  "2.0",
+    # Accumulation & trap
     "ACCUM_LOOKBACK_DAYS":             "20",
     "BULL_TRAP_SCORE_THRESHOLD":       "40.0",
+    # Signal weights
     "SCORE_VCP":                        "14.0",
     "SCORE_CONSOLIDATION":             "12.0",
     "SCORE_HIGHER_LOWS":               "12.0",
@@ -230,13 +240,17 @@ CONFIG_DEFAULTS = {
     "SCORE_MARKET_BREADTH":             "6.0",
     "SCORE_ACCUM_MAX_BONUS":           "12.0",
     "SCORE_TRAP_MAX_PENALTY":          "32.0",
+    "SCORE_OPTIONS_FLOW_MAX_BONUS":    "10.0",
+    # Regime
     "REGIME_AWARE_SCANNING":           "true",
     "REGIME_OVERRIDE":                 "",
-    "SCAN_MODE":                        "custom",
-    "SCANNER_INTERVAL_MINUTES":        "5",
-    "BACKTEST_MAX_HOLD_DAYS":          "20",
+    # Runner
+    "SCANNER_INTERVAL_MINUTES":        "60",
+    # Backtest
+    "BACKTEST_MAX_HOLD_DAYS":          "30",
     "BACKTEST_SLIPPAGE_PCT":           "0.0005",
     "BACKTEST_INITIAL_CAPITAL":        "100000",
+    # Notifications
     "WHATSAPP_PHONE":                  "",
     "WHATSAPP_APIKEY":                 "",
     # Position Management Engine

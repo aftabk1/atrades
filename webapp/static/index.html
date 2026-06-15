@@ -426,16 +426,24 @@
             <div class="form-control"><input type="number" id="cfg-BREAKOUT_MIN_AVG_VOLUME" step="100000" min="0"></div>
           </div>
           <div class="form-row">
-            <div class="form-label">Volume Surge Multiplier<span class="wt-badge wt-pos" id="wt-SCORE_VOLUME_SURGE">14 pts</span><div class="form-hint">Today vs avg (e.g. 1.5 = 50% above avg)</div></div>
+            <div class="form-label">Volume Surge Multiplier<span class="wt-badge wt-pos" id="wt-SCORE_VOLUME_SURGE">14 pts</span><div class="form-hint">Today vs avg to score the surge bonus (e.g. 1.5 = 50% above avg)</div></div>
             <div class="form-control"><input type="number" id="cfg-BREAKOUT_VOLUME_SURGE_MULT" step="0.1" min="1"></div>
           </div>
           <div class="form-row">
-            <div class="form-label">RSI Low Zone<span class="wt-badge wt-pos" id="wt-SCORE_RSI_ZONE">10 pts</span><div class="form-hint">RSI band lower bound — RSI Low &amp; High together = one signal (50–65 default)</div></div>
+            <div class="form-label">Min Volume Ratio (hard gate)<span class="wt-badge wt-neg">gate</span><div class="form-hint">Hard reject if projected volume &lt; this × 20d avg — filters low-conviction days (0.75 default)</div></div>
+            <div class="form-control"><input type="number" id="cfg-BREAKOUT_MIN_VOLUME_RATIO" step="0.05" min="0" max="2"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-label">RSI Low Zone<span class="wt-badge wt-pos" id="wt-SCORE_RSI_ZONE">10 pts</span><div class="form-hint">RSI band lower bound — score signal fires when RSI is between Low and High (50–65 default)</div></div>
             <div class="form-control"><input type="number" id="cfg-BREAKOUT_RSI_LOW" step="1" min="1" max="100"></div>
           </div>
           <div class="form-row">
-            <div class="form-label">RSI High Zone<span class="wt-badge wt-neut">same signal</span><div class="form-hint">RSI band upper bound &mdash; not overbought ceiling</div></div>
+            <div class="form-label">RSI High Zone<span class="wt-badge wt-neut">same signal</span><div class="form-hint">RSI band upper bound for the score signal (not the overbought ceiling)</div></div>
             <div class="form-control"><input type="number" id="cfg-BREAKOUT_RSI_HIGH" step="1" min="1" max="100"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-label">RSI Max (hard gate)<span class="wt-badge wt-neg">gate</span><div class="form-hint">Hard reject if RSI exceeds this — overbought ceiling regardless of score (75 default)</div></div>
+            <div class="form-control"><input type="number" id="cfg-BREAKOUT_RSI_MAX" step="1" min="50" max="100"></div>
           </div>
           <div class="form-row">
             <div class="form-label">Gap-Up Threshold<span class="wt-badge wt-neut">entry gate</span><div class="form-hint">Min open vs prior close gap % to qualify as a gap-up entry (e.g. 0.08 = 8%)</div></div>
@@ -459,7 +467,16 @@
               <input type="number" id="cfg-BREAKOUT_MIN_SCORE" step="1" min="0" max="100">
             </div>
           </div>
-
+          <div class="form-row">
+            <div class="form-label">Earnings Filter<span class="wt-badge wt-neg">gate</span><div class="form-hint">Require positive EPS with minimum YoY growth — filters mature/declining businesses</div></div>
+            <div class="form-control">
+              <label class="toggle"><input type="checkbox" id="cfg-EARNINGS_FILTER_ENABLED"><span class="toggle-slider"></span></label>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-label">Min EPS Growth (YoY)<span class="wt-badge wt-neg">gate</span><div class="form-hint">Last reported Q EPS must be this much above same Q a year ago (0.10 = 10%)</div></div>
+            <div class="form-control"><input type="number" id="cfg-EARNINGS_MIN_EPS_GROWTH" step="0.05" min="0" max="2"></div>
+          </div>
 
         </div>
       </div>
