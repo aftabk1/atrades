@@ -9,14 +9,35 @@ or None if the symbol fails base filters or lacks a price breakout.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, time as dtime
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 import numpy as np
 import pandas as pd
 from loguru import logger
 
 import config
+
+_NY = ZoneInfo("America/New_York")
+_MARKET_OPEN  = dtime(9, 30)
+_MARKET_CLOSE = dtime(16, 0)
+
+
+def _intraday_volume_projection(raw_volume: float) -> float:
+    """
+    Scale today's partial volume to an estimated full-day equivalent.
+    Only applied when the market is open; outside market hours returns raw_volume.
+    """
+    now = datetime.now(_NY).time()
+    if now <= _MARKET_OPEN or now >= _MARKET_CLOSE:
+        return raw_volume
+    elapsed_secs  = (now.hour * 3600 + now.minute * 60 + now.second) - (9 * 3600 + 30 * 60)
+    session_secs  = (16 - 9.5) * 3600  # 6.5 hours
+    fraction_done = min(elapsed_secs / session_secs, 1.0)
+    if fraction_done < 0.05:  # too early to project reliably
+        return raw_volume
+    return raw_volume / fraction_done
 
 _MIN_BARS = 60  # minimum history needed for reliable signal detection
 
@@ -118,7 +139,7 @@ def detect_all(
     sig = BreakoutSignals(
         symbol=symbol,
         current_price=current_price,
-        current_volume=float(volume.iloc[-1]),
+        current_volume=_intraday_volume_projection(float(volume.iloc[-1])),
         avg_volume_20d=avg_vol_20d,
         atr_14=atr14_val,
         support_level=support,
@@ -268,9 +289,10 @@ def _check_higher_lows(df: pd.DataFrame) -> SignalResult:
 
 
 def _check_volume_surge(df: pd.DataFrame) -> SignalResult:
-    """Today's volume ≥ BREAKOUT_VOLUME_SURGE_MULT × 20-day average."""
+    """Today's projected volume ≥ BREAKOUT_VOLUME_SURGE_MULT × 20-day average."""
     vol      = df["volume"]
-    today    = float(vol.iloc[-1])
+    raw      = float(vol.iloc[-1])
+    today    = _intraday_volume_projection(raw)
     avg_20   = float(vol.iloc[-21:-1].mean())
 
     if avg_20 == 0:
@@ -279,10 +301,11 @@ def _check_volume_surge(df: pd.DataFrame) -> SignalResult:
     ratio     = today / avg_20
     threshold = config.BREAKOUT_VOLUME_SURGE_MULT
 
+    proj_note = f" (proj from {raw:,.0f})" if today != raw else ""
     return SignalResult(
         triggered=ratio >= threshold,
         value=ratio,
-        description=f"Volume surge: {ratio:.2f}x avg ({today:,.0f} vs 20d avg {avg_20:,.0f})",
+        description=f"Volume surge: {ratio:.2f}x avg ({today:,.0f}{proj_note} vs 20d avg {avg_20:,.0f})",
     )
 
 
