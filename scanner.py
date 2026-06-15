@@ -264,9 +264,10 @@ class BreakoutScanner:
             )
         self._last_setups = sorted(setup_candidates_raw, key=lambda c: c["score"], reverse=True)[:10]
 
-        if self._execute and (top or self._last_setups):
-            all_to_execute = list(top) + list(self._last_setups)
-            placed = self._place_orders(all_to_execute, open_positions)
+        if self._execute and top:
+            # Only execute confirmed BREAKOUT candidates — SETUPs are watchlist only,
+            # no breakout has occurred so there is no valid entry trigger yet.
+            placed = self._place_orders(top, open_positions)
             if placed:
                 try:
                     from data.store import save_trade, update_trade_breakout_level

@@ -62,7 +62,7 @@ GAP_UP_THRESHOLD = float(os.getenv("GAP_UP_THRESHOLD", "0.08"))  # ≥8% open vs
 
 # ── Pre-breakout SETUP detection ──────────────────────────────────────────────
 SETUP_PROXIMITY_PCT = float(os.getenv("SETUP_PROXIMITY_PCT", "0.05"))   # within 5% below 20d high
-SETUP_MIN_SCORE     = float(os.getenv("SETUP_MIN_SCORE",     "45.0"))   # score floor for setup candidates
+SETUP_MIN_SCORE     = float(os.getenv("SETUP_MIN_SCORE",     "60.0"))   # raised 45→60: weak setups were triggering orders
 SCORE_PROXIMITY_20D = float(os.getenv("SCORE_PROXIMITY_20D", "12.0"))   # replaces breakout_20d weight in SetupScorer
 
 # ── Signal score weights ──────────────────────────────────────────────────────
